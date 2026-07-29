@@ -1,0 +1,3 @@
+program_id,program_name,assignee,target,kind,note
+pfizer-alk,Pfizer ALK 程序 (克唑替尼 → 洛拉替尼),Pfizer,ALK,single_assignee,"同一申请人的真实代际演化。中间代（J. Med. Chem. 2014, 57, 4720 中的无环去哌啶类似物）尚未录入，见 README。"
+alk-landscape,ALK 抑制剂跨公司代际全景,多家,ALK,cross_assignee,"跨申请人，不是产品定义里的『研发程序』。用于演示按靶点入口的时间线；跨公司 assay 不可比，管道会自动降级。"

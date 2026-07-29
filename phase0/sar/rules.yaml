@@ -1,0 +1,293 @@
+# 结构变化 -> 研发意图 规则库
+#
+# 这是产品的 know-how 所在，故意做成可配置 YAML —— 它会被反复迭代。
+#
+# 设计原则：宁少勿滥。一条假阳性规则对可信度的伤害远大于漏报。
+# 每条规则只在证据明确时才发射，narrative 一律使用推断性语气。
+#
+# 条件算子：
+#   delta:      本代中位值 - 上代中位值，落在给定不等式内
+#   abs_delta:  |delta| 落在给定不等式内（用于"变了但方向不重要"）
+#   value_to:   本代中位值本身落在给定不等式内
+#   value_from: 上代中位值本身落在给定不等式内
+#   transition: 布尔特征跨越 0.5 分界，如 "false -> true"
+#   ratio:      仅用于伪特征 activity_ratio（本代中位活性 / 上代中位活性）
+#
+# 伪特征（由 deltas.py 计算，非 RDKit 描述符）：
+#   activity_ratio, mcs_coverage, years_elapsed
+#
+# combine: all（默认）| any
+
+meta:
+  version: "0.1.0"
+  support_factors:      # n_support -> 置信度乘子，单化合物代不得给满分
+    "1": 0.80
+    "2": 0.90
+    "5": 1.00
+  cross_assay_penalty: 0.75   # 活性来自不同 assay 时，依赖活性的规则打折
+
+rules:
+  # ---------- 骨架级事件：置信度最高，因为判据是结构性的 ----------
+  - id: macrocyclization
+    name: 大环化
+    combine: all
+    conditions:
+      - feature: has_macrocycle
+        transition: "false -> true"
+    confidence_base: 0.90
+    narrative: >-
+      出现大环化。大环化通常用于锁定生物活性构象、提升选择性，
+      或通过降低有效氢键给体暴露改善膜渗透性。
+
+  - id: covalent_warhead
+    name: 转向共价机制
+    combine: all
+    conditions:
+      - feature: has_warhead
+        transition: "false -> true"
+    confidence_base: 0.90
+    narrative: >-
+      引入共价弹头，提示作用机制从可逆结合转向共价结合，
+      常见动机是延长靶点占据时间或获得对特定突变体的选择性。
+
+  # 判据是环系重叠而非 MCS 覆盖率 —— MCS 在大环化面前会给出自信的错误答案，
+  # 详见 align.py 顶部的实测记录。阈值只在 8 个化合物对上标定过，务必在
+  # §5 benchmark 上重新拟合后再把它当结论用。
+  - id: core_hopping
+    name: 骨架跃迁
+    combine: all
+    conditions:
+      - feature: ring_jaccard
+        value_to: "< 0.55"
+    confidence_base: 0.70
+    narrative: >-
+      相邻两代之间共有环系比例偏低，提示发生了母核跃迁。
+      母核跃迁通常出于专利规避、或原骨架的性质天花板已无法通过取代基优化突破。
+
+  # ---------- CNS / 渗透性 ----------
+  - id: cns_penetration
+    name: 提升脑渗透
+    combine: all
+    conditions:
+      - feature: hbd
+        delta: "<= -1"
+      - feature: tpsa
+        delta: "<= -5"
+      - feature: strong_basic_amine_count
+        delta: "<= 0"
+    confidence_base: 0.75
+    narrative: >-
+      氢键给体数与极性表面积同时下降，且未新增强碱性中心。
+      这是提升脑渗透（降低 P-gp 外排、提高游离脑/血浆比）的经典组合手段。
+
+  # 本规则原来还要求 TPSA <= 90。在洛拉替尼案例上发现该条件会把真阳性挡掉：
+  # 其 TPSA 反而从 78 升到 110，但 HBD 2->1、强碱性中心归零。文献上 P-gp 底物
+  # 特征主要由 HBD 数与碱性驱动（CNS MPO / Hitchcock-Pennington），TPSA 是次级项，
+  # 因此改为以 HBD + 碱性为判据。这是看到案例后做的修改，属于阶段 0 的规则迭代，
+  # 需要在 §5 benchmark 上独立验证，不能只凭这一个案例。
+  - id: pgp_efflux_mitigation
+    name: 降低 P-gp 外排
+    combine: all
+    conditions:
+      - feature: hbd
+        value_to: "<= 1"
+      - feature: hbd
+        delta: "<= -1"
+      - feature: strong_basic_amine_count
+        value_to: "<= 0"
+      - feature: strong_basic_amine_count
+        delta: "<= -1"
+    confidence_base: 0.70
+    narrative: >-
+      氢键给体降至 1 以下且强碱性中心被完全移除，是 P-gp 外排底物特征的两个主要驱动因素，
+      提示在为提升脑内暴露做定向优化。注意极性表面积不一定同步下降。
+
+  # ---------- 安全性 ----------
+  - id: herg_mitigation
+    name: hERG 心脏毒性优化
+    combine: all
+    conditions:
+      - feature: strong_basic_amine_count
+        delta: "<= -1"
+      - feature: clogp
+        delta: "<= -0.5"
+    confidence_base: 0.75
+    narrative: >-
+      强碱性中心减少且亲脂性下降，是降低 hERG 结合的经典组合手段。
+
+  - id: basicity_removal
+    name: 去除碱性中心
+    combine: all
+    conditions:
+      - feature: strong_basic_amine_count
+        delta: "<= -1"
+    confidence_base: 0.65
+    narrative: >-
+      强碱性中心被移除或减弱。常见动机包括降低 hERG 风险、
+      减少 P-gp 外排、或改善组织分布与磷脂沉积。
+
+  # ---------- 代谢 ----------
+  - id: metabolic_cyp_blocking
+    name: 代谢稳定性优化
+    combine: any
+    conditions:
+      - feature: f_count
+        delta: ">= +1"
+      - feature: benzylic_h_count
+        delta: "<= -1"
+    confidence_base: 0.65
+    narrative: >-
+      引入氟原子或封堵苄位氢，是阻断 CYP 氧化代谢位点的典型策略。
+
+  - id: metabolic_soft_spot_capping
+    name: 封堵代谢软点
+    combine: all
+    conditions:
+      - feature: alpha_heteroatom_h_count
+        delta: "<= -2"
+    confidence_base: 0.60
+    narrative: >-
+      α-杂原子位氢显著减少，提示在封堵 O/N-脱烷基化这类代谢软点。
+
+  - id: deuteration
+    name: 氘代
+    combine: all
+    conditions:
+      - feature: d_count
+        delta: ">= +1"
+    confidence_base: 0.85
+    narrative: >-
+      引入氘代。通常用于利用动力学同位素效应减慢特定代谢位点的转化速率。
+
+  # ---------- 物性 ----------
+  - id: escape_flatland
+    name: 提升三维性/溶解度
+    combine: all
+    conditions:
+      - feature: fsp3
+        delta: ">= +0.10"
+      - feature: aromatic_rings
+        delta: "<= -1"
+    confidence_base: 0.65
+    narrative: >-
+      Fsp3 上升且芳环数下降，提示在提升分子三维性，
+      常见动机是改善溶解度、降低血浆蛋白结合或脱离芳环堆积带来的脱靶风险。
+
+  - id: lipophilicity_trim
+    name: 降低亲脂性
+    combine: all
+    conditions:
+      - feature: clogp
+        delta: "<= -0.5"
+      - feature: mw
+        delta: "<= 0"
+    confidence_base: 0.60
+    narrative: >-
+      在不增加分子量的前提下降低亲脂性，提示在优化配体效率与成药性平衡。
+
+  - id: molecular_weight_trim
+    name: 分子量精简
+    combine: all
+    conditions:
+      - feature: mw
+        delta: "<= -30"
+    confidence_base: 0.60
+    narrative: >-
+      分子量明显下降，提示在做结构精简，常伴随对口服暴露或渗透性的诉求。
+
+  - id: solubility_basic_amine_added
+    name: 引入碱性中心改善溶解度
+    combine: all
+    conditions:
+      - feature: strong_basic_amine_count
+        delta: ">= +1"
+      - feature: tpsa
+        delta: ">= +5"
+    confidence_base: 0.60
+    narrative: >-
+      新增强碱性中心且极性表面积上升，常见动机是改善水溶性或提供成盐位点。
+
+  - id: polar_surface_addition
+    name: 增加极性
+    combine: all
+    conditions:
+      - feature: tpsa
+        delta: ">= +15"
+    confidence_base: 0.50
+    narrative: >-
+      极性表面积明显上升，可能出于溶解度、降低血浆蛋白结合或规避外周分布的考虑。
+
+  # ---------- 构象 / 立体 ----------
+  - id: conformational_restriction
+    name: 构象限制
+    combine: all
+    conditions:
+      - feature: rotb
+        delta: "<= -2"
+      - feature: ring_count
+        delta: ">= +1"
+    confidence_base: 0.70
+    narrative: >-
+      可旋转键减少且环数增加，提示通过成环做构象限制，
+      常见动机是降低结合熵损失以提升效价或选择性。
+
+  - id: hbd_masking
+    name: 封闭氢键给体
+    combine: all
+    conditions:
+      - feature: hbd
+        delta: "<= -1"
+      - feature: heavy_atoms
+        delta: ">= 0"
+    confidence_base: 0.55
+    narrative: >-
+      在重原子数未减少的情况下氢键给体下降，提示对 NH/OH 做了烷基化或等排替换，
+      典型动机是改善渗透性或代谢稳定性。
+
+  - id: stereochemical_definition
+    name: 立体化学收敛
+    combine: all
+    conditions:
+      - feature: chiral_centers_defined
+        delta: ">= +1"
+    confidence_base: 0.50
+    narrative: >-
+      已定义手性中心增加，提示从消旋体或平面结构收敛到单一立体异构体。
+
+  # ---------- 取代基层面 ----------
+  - id: heteroatom_walk
+    name: 杂原子walk
+    combine: all
+    conditions:
+      - feature: aromatic_n_count
+        abs_delta: ">= 1"
+      - feature: ring_jaccard
+        value_to: ">= 0.55"
+    confidence_base: 0.50
+    narrative: >-
+      母核基本保留但芳香氮数目改变，提示在做杂原子walk，
+      常见动机是微调 pKa、氢键模式或代谢位点分布。
+
+  - id: halogen_scan
+    name: 卤素/氟取代扫描
+    combine: all
+    conditions:
+      - feature: halogen_count
+        delta: ">= +1"
+      - feature: f_count
+        delta: ">= +1"
+    confidence_base: 0.50
+    narrative: >-
+      卤原子（以氟为主）数目增加，常见于同时兼顾效价、代谢稳定性与构象偏好的取代扫描。
+
+  # ---------- 活性驱动 ----------
+  - id: potency_leap
+    name: 效价跃迁
+    combine: all
+    conditions:
+      - feature: activity_ratio
+        ratio: "<= 0.20"
+    confidence_base: 0.60
+    uses_activity: true
+    narrative: >-
+      中位活性提升 5 倍以上，提示该代改动命中了关键结合相互作用。
