@@ -20,6 +20,34 @@ from .schema import Dataset, Membership
 
 
 @dataclass
+class MeasureAggregate:
+    """Median of one measure_type across the compounds of one generation."""
+
+    measure_type: str
+    median: float
+    n: int
+    unit: str
+    assays: list[str]
+    all_verified: bool
+
+
+@dataclass
+class MeasureDelta:
+    measure_type: str
+    val_from: float
+    val_to: float
+    unit: str
+    ratio: float | None
+    n_support: int
+    comparable: bool
+    note: str = ""
+
+    @property
+    def delta(self) -> float:
+        return round(self.val_to - self.val_from, 4)
+
+
+@dataclass
 class GenerationSummary:
     program_id: str
     generation: int
@@ -32,6 +60,7 @@ class GenerationSummary:
     activity_assays: list[str]
     activity_n: int
     n_compounds: int
+    measures: dict[str, MeasureAggregate] = field(default_factory=dict)
 
     @property
     def patent_label(self) -> str:
@@ -72,6 +101,7 @@ class GenerationDelta:
     activity_note: str = ""
     n_support: int = 0
     hypotheses: list = field(default_factory=list)
+    measures: dict[str, MeasureDelta] = field(default_factory=dict)
 
     def delta_of(self, feature: str) -> FeatureDelta | None:
         return self.features.get(feature)
@@ -105,6 +135,27 @@ def summarize_generation(
     acts = [m.activity_value_nm for m in members if m.activity_value_nm is not None]
     assays = sorted({m.activity_assay for m in members if m.activity_assay})
 
+    by_type: dict[str, list] = {}
+    for m in members:
+        for meas in dataset.measurements_for(m.compound_id):
+            by_type.setdefault(meas.measure_type, []).append(meas)
+    measures: dict[str, MeasureAggregate] = {}
+    for mtype, items in sorted(by_type.items()):
+        units = {i.unit for i in items if i.unit}
+        if len(units) > 1:
+            raise ValueError(
+                f"{mtype} 在 Gen{generation} 中混用了单位 {sorted(units)}，"
+                "无法聚合 —— 请统一单位后再录入"
+            )
+        measures[mtype] = MeasureAggregate(
+            measure_type=mtype,
+            median=round(statistics.median(i.value for i in items), 4),
+            n=len(items),
+            unit=next(iter(units), ""),
+            assays=sorted({i.assay for i in items if i.assay}),
+            all_verified=all(i.verified for i in items),
+        )
+
     return GenerationSummary(
         program_id=program_id,
         generation=generation,
@@ -117,6 +168,7 @@ def summarize_generation(
         activity_assays=assays,
         activity_n=len(acts),
         n_compounds=len(members),
+        measures=measures,
     )
 
 
@@ -183,6 +235,23 @@ def compute_program_deltas(
         else:
             note = "两代均无活性数据"
 
+        measure_deltas: dict[str, MeasureDelta] = {}
+        for mtype in sorted(set(prev.measures) & set(curr.measures)):
+            ma, mb = prev.measures[mtype], curr.measures[mtype]
+            shared_assay = set(ma.assays) & set(mb.assays)
+            comparable = not (ma.assays and mb.assays and not shared_assay)
+            measure_deltas[mtype] = MeasureDelta(
+                measure_type=mtype,
+                val_from=ma.median,
+                val_to=mb.median,
+                unit=ma.unit or mb.unit,
+                ratio=round(mb.median / ma.median, 3) if ma.median else None,
+                n_support=min(ma.n, mb.n),
+                comparable=comparable,
+                note="" if comparable
+                else f"assay 不同 ({'/'.join(ma.assays)} vs {'/'.join(mb.assays)})，仅趋势可读",
+            )
+
         # Ring-system comparison always runs (it is what core-hop detection is
         # keyed on); the MCS pass is descriptive only and can be skipped.
         alignment = align_generations(
@@ -202,6 +271,7 @@ def compute_program_deltas(
                 activity_comparable=comparable,
                 activity_note=note,
                 n_support=n_support,
+                measures=measure_deltas,
             )
         )
     return summaries, deltas

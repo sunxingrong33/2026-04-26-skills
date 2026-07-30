@@ -219,6 +219,24 @@ def build_facts(
     elif delta.activity_note:
         add("activity", f"活性数据情况: {delta.activity_note}")
 
+    # --- additional measurements (mutant potency, efflux, brain exposure, ...) ---
+    for mtype, md in delta.measures.items():
+        unit = f" {md.unit}" if md.unit else ""
+        fold = ""
+        if md.ratio:
+            fold = (
+                f"，约 {1/md.ratio:.1f} 倍下降"
+                if md.ratio < 1
+                else f"，约 {md.ratio:.1f} 倍上升"
+            )
+        caveat = f"；{md.note}" if md.note else ""
+        add(
+            "measurement",
+            f"{mtype}: 中位 {_fmt(md.val_from)}{unit} → {_fmt(md.val_to)}{unit} "
+            f"(Δ {md.delta:+g}{unit}){fold}, n={md.n_support}{caveat}",
+            features=(f"measure:{mtype}",),
+        )
+
     # --- rule hits ---
     rule_lines: list[str] = []
     ev_by_feature: dict[str, list[str]] = {}

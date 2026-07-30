@@ -21,6 +21,12 @@ from .features import FeatureSet, StructureError, compute_features
 CHECKABLE_PROVENANCE = {"pubchem", "chembl", "patent", "paper", "drawn_and_checked"}
 # Everything else (notably ``unverified``) is usable but flagged everywhere.
 
+# A skeleton row whose SMILES has not been filled in yet. Such rows are skipped
+# with a warning rather than raising, so a half-curated dataset still runs and
+# the curation tool can report what is left. Anything else that fails to parse is
+# still a hard error -- this is a placeholder allowance, not a lenient parser.
+PLACEHOLDER_SMILES = {"", "待补", "TODO", "todo", "<SMILES>", "?", "-"}
+
 REQUIRED_COMPOUND_COLUMNS = (
     "compound_id",
     "compound_name",
@@ -57,6 +63,30 @@ class Compound:
 
 
 @dataclass
+class Measurement:
+    """One measured value for one compound.
+
+    Separate from Membership because the interesting generations in a real
+    programme are characterised by several numbers at once (wild-type potency,
+    mutant potency, efflux ratio, free brain/plasma), and a single activity
+    column cannot express the trade-off those numbers are being traded against.
+    """
+
+    compound_id: str
+    measure_type: str
+    value: float
+    unit: str = ""
+    assay: str = ""
+    source: str = ""
+    provenance: str = "unverified"
+    note: str = ""
+
+    @property
+    def verified(self) -> bool:
+        return self.provenance in CHECKABLE_PROVENANCE
+
+
+@dataclass
 class Membership:
     """One compound's appearance in one program generation, with its citation."""
 
@@ -67,6 +97,9 @@ class Membership:
     priority_date: date | None
     example_ref: str
     source_url: str
+    # Intermediate compounds usually come from the discovery paper rather than a
+    # patent example, so the citation has to be able to say which it is.
+    source_kind: str = "patent"
     activity_type: str = ""
     activity_value_nm: float | None = None
     activity_assay: str = ""
@@ -77,7 +110,12 @@ class Membership:
     @property
     def citation(self) -> str:
         bits = [b for b in (self.patent_number, self.example_ref) if b]
-        return " ".join(bits) if bits else "(无引用)"
+        if not bits:
+            return "(无引用)"
+        label = " ".join(bits)
+        if self.source_kind == "paper":
+            return f"{label} [文献]"
+        return label
 
 
 @dataclass
@@ -96,6 +134,13 @@ class Dataset:
     compounds: dict[str, Compound]
     memberships: list[Membership]
     warnings: list[str] = field(default_factory=list)
+    measurements: list[Measurement] = field(default_factory=list)
+
+    def measurements_for(self, compound_id: str) -> list[Measurement]:
+        return [m for m in self.measurements if m.compound_id == compound_id]
+
+    def measure_types(self) -> list[str]:
+        return sorted({m.measure_type for m in self.measurements})
 
     def members_of(self, program_id: str) -> list[Membership]:
         return [m for m in self.memberships if m.program_id == program_id]
@@ -162,12 +207,16 @@ def load_dataset(data_dir: str | Path) -> Dataset:
             )
 
     compounds: dict[str, Compound] = {}
+    pending: list[str] = []
     with compounds_path.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
         _require_columns(compounds_path, reader.fieldnames or [], REQUIRED_COMPOUND_COLUMNS)
         for row in reader:
             cid = row.get("compound_id", "").strip()
             if not cid:
+                continue
+            if row.get("smiles", "").strip() in PLACEHOLDER_SMILES:
+                pending.append(cid)
                 continue
             if not row.get("structure_source", "").strip():
                 raise ValueError(f"{cid}: structure_source 为空 —— 可审计字段不允许缺失")
@@ -199,6 +248,8 @@ def load_dataset(data_dir: str | Path) -> Dataset:
                 continue
             if pid not in programs:
                 raise ValueError(f"program_members.csv 引用了未知 program_id: {pid}")
+            if cid in pending:
+                continue
             if cid not in compounds:
                 raise ValueError(f"program_members.csv 引用了未知 compound_id: {cid}")
             if not row.get("source_url", "").strip():
@@ -212,6 +263,7 @@ def load_dataset(data_dir: str | Path) -> Dataset:
                     priority_date=_parse_date(row.get("priority_date", "")),
                     example_ref=row.get("example_ref", "").strip(),
                     source_url=row["source_url"].strip(),
+                    source_kind=row.get("source_kind", "").strip() or "patent",
                     activity_type=row.get("activity_type", "").strip(),
                     activity_value_nm=_parse_float(row.get("activity_value_nm", "")),
                     activity_assay=row.get("activity_assay", "").strip(),
@@ -222,8 +274,55 @@ def load_dataset(data_dir: str | Path) -> Dataset:
                 )
             )
 
-    dataset = Dataset(programs, compounds, memberships, warnings)
+    # measurements.csv is optional -- a dataset with only a primary activity
+    # column stays valid.
+    measurements: list[Measurement] = []
+    measures_path = data_dir / "measurements.csv"
+    if measures_path.exists():
+        with measures_path.open(newline="", encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            _require_columns(
+                measures_path,
+                reader.fieldnames or [],
+                ("compound_id", "measure_type", "value", "source"),
+            )
+            for row in reader:
+                cid = row.get("compound_id", "").strip()
+                mtype = row.get("measure_type", "").strip()
+                if not cid or not mtype:
+                    continue
+                if cid in pending:
+                    continue
+                if cid not in compounds:
+                    raise ValueError(f"measurements.csv 引用了未知 compound_id: {cid}")
+                value = _parse_float(row.get("value", ""))
+                if value is None:
+                    raise ValueError(f"{cid}/{mtype}: value 为空")
+                if not row.get("source", "").strip():
+                    raise ValueError(
+                        f"{cid}/{mtype}: source 为空 —— 可审计字段不允许缺失"
+                    )
+                measurements.append(
+                    Measurement(
+                        compound_id=cid,
+                        measure_type=mtype,
+                        value=value,
+                        unit=row.get("unit", "").strip(),
+                        assay=row.get("assay", "").strip(),
+                        source=row["source"].strip(),
+                        provenance=row.get("provenance", "unverified").strip()
+                        or "unverified",
+                        note=row.get("note", "").strip(),
+                    )
+                )
 
+    dataset = Dataset(programs, compounds, memberships, warnings, measurements)
+
+    if pending:
+        warnings.append(
+            f"{len(pending)} 行骨架行的 SMILES 还没填，已跳过: {', '.join(pending)}。"
+            "跑 `python -m phase0.sar.curate --check` 看还缺什么。"
+        )
     n_unver_struct = len(dataset.unverified_structures())
     if n_unver_struct:
         warnings.append(
@@ -234,5 +333,10 @@ def load_dataset(data_dir: str | Path) -> Dataset:
     if n_unver_act:
         warnings.append(
             f"{n_unver_act} 条活性数据的 provenance 不可核查。趋势可看，绝对值不可引用。"
+        )
+    n_unver_meas = sum(1 for m in measurements if not m.verified)
+    if n_unver_meas:
+        warnings.append(
+            f"{n_unver_meas} 条实测数据 (measurements.csv) 的 provenance 不可核查。"
         )
     return dataset

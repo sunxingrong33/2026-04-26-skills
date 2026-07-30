@@ -74,6 +74,10 @@ def _print_timeline(dataset: Dataset, program_id: str, summaries, deltas) -> Non
                 f"  活性中位: {s.activity_median_nm:g} nM (n={s.activity_n}, "
                 f"assay: {'/'.join(s.activity_assays) or '未标注'})"
             )
+        for mtype, agg in s.measures.items():
+            unit = f" {agg.unit}" if agg.unit else ""
+            mark = "" if agg.all_verified else "  [未核实]"
+            print(f"  {mtype}: 中位 {agg.median:g}{unit} (n={agg.n}){mark}")
 
 
 def _print_delta(delta: GenerationDelta, hypotheses: list[Hypothesis]) -> None:
@@ -112,6 +116,14 @@ def _print_delta(delta: GenerationDelta, hypotheses: list[Hypothesis]) -> None:
     elif delta.activity_note:
         print(f"  活性: {delta.activity_note}")
 
+    for mtype, md in delta.measures.items():
+        unit = f" {md.unit}" if md.unit else ""
+        flag = "" if md.comparable else "  [assay 不同，仅趋势]"
+        print(
+            f"  {mtype}: {md.val_from:g}{unit} → {md.val_to:g}{unit} "
+            f"(Δ {md.delta:+g}{unit}, n={md.n_support}){flag}"
+        )
+
     print(f"  规则命中: {len(hypotheses)} 条")
     for h in hypotheses:
         print(f"    [{h.confidence:.2f}] {h.rule_id} — {h.name}")
@@ -119,6 +131,14 @@ def _print_delta(delta: GenerationDelta, hypotheses: list[Hypothesis]) -> None:
             print(f"        · {mc.text}")
         for p in h.penalties:
             print(f"        ! {p}")
+
+
+def _rel(path: Path) -> str:
+    """Repo-relative when possible, absolute otherwise (--out may point anywhere)."""
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def _serialize(obj: Any) -> Any:
@@ -187,13 +207,14 @@ def run(args: argparse.Namespace) -> int:
                 "activity_comparable": delta.activity_comparable,
                 "activity_note": delta.activity_note,
                 "feature_deltas": _serialize(delta.features),
+                "measure_deltas": _serialize(delta.measures),
                 "rule_hits": _serialize(hyps),
-                "facts_prompt_path": str(prompt_path.relative_to(REPO_ROOT)),
+                "facts_prompt_path": _rel(prompt_path),
                 "evidence": [_serialize(e) for e in facts.evidence],
             }
 
             if args.dry_run:
-                print(f"  [dry-run] FACTS 已写入 {prompt_path.relative_to(REPO_ROOT)}")
+                print(f"  [dry-run] FACTS 已写入 {_rel(prompt_path)}")
             else:
                 raw = call_claude(facts, model=args.model)
                 audit = audit_response(raw, facts, strict_numbers=args.strict_numbers)
@@ -212,7 +233,7 @@ def run(args: argparse.Namespace) -> int:
         bundle_path.write_text(
             json.dumps(bundle, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        print(f"\n结构化结果已写入 {bundle_path.relative_to(REPO_ROOT)}")
+        print(f"\n结构化结果已写入 {_rel(bundle_path)}")
 
     return 0
 

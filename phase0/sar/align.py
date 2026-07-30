@@ -105,11 +105,28 @@ class Alignment:
         return f"保留环系: {keep}; 消失: {lost}; 新增: {gained}"
 
 
-def _union_ring_set(mols: list[Chem.Mol]) -> set[str]:
-    out: set[str] = set()
+def consensus_ring_set(mols: list[Chem.Mol], min_fraction: float = 0.5) -> set[str]:
+    """Rings present in at least ``min_fraction`` of a generation's compounds.
+
+    Not the union. A generation that explores five different solubilising groups
+    has a large ring union, which deflates the Jaccard against the next
+    generation and biases towards *false* core-hop calls precisely where the data
+    is richest -- the opposite of what you want. Requiring a ring to appear in
+    half the generation keeps the peripheral exploration out and leaves what the
+    generation actually treats as its core.
+
+    Falls back to the union when nothing clears the threshold, so a generation of
+    entirely dissimilar compounds still yields something rather than nothing.
+    """
+    if not mols:
+        return set()
+    counts: dict[str, int] = {}
     for m in mols:
-        out |= ring_systems(m)
-    return out
+        for ring in ring_systems(m):
+            counts[ring] = counts.get(ring, 0) + 1
+    need = max(1, len(mols) * min_fraction)
+    consensus = {r for r, c in counts.items() if c >= need}
+    return consensus or set(counts)
 
 
 def align_generations(
@@ -123,7 +140,7 @@ def align_generations(
     if not a or not b:
         return None
 
-    ra, rb = _union_ring_set(a), _union_ring_set(b)
+    ra, rb = consensus_ring_set(a), consensus_ring_set(b)
     shared = ra & rb
     union = ra | rb
     jaccard = len(shared) / len(union) if union else 0.0

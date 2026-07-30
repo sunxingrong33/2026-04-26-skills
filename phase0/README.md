@@ -13,6 +13,7 @@
 
 ```bash
 pip install -r requirements.txt
+python -m phase0.sar.curate --check                      # 校验数据、报告缺什么
 python -m phase0.sar.cli --program pfizer-alk --dry-run   # 只算，不调 API
 python -m phase0.sar.cli --program pfizer-alk             # 需要 ANTHROPIC_API_KEY
 python -m pytest phase0/tests -q
@@ -55,9 +56,74 @@ PubChem / ChEMBL / EBI / Wikipedia 全部不可达，所以无法自动核对。
 
 ---
 
-## 开发过程中发现的三件事
+## 怎么补中间代（需要你做的）
 
-这三件事都改变了方案里写的做法，值得单独说。
+骨架行已经建好了。`pfizer-alk` 现在是 Gen1(克唑替尼) → Gen2/Gen3(空) → Gen4(洛拉替尼)，
+六个空槽位在 `compounds.csv` 里等着填。
+
+**只有一件事必须你来做：把 SMILES 填进去。** 其余能自动算的都自动算。
+
+原因是本环境网络策略只放行 GitHub，我拿不到 J. Med. Chem. 2014, 57, 4720 的正文和 SI，
+凭记忆写中间体结构等于编数据 —— 这正是产品最不能碰的红线，所以我不写。
+
+### 步骤
+
+1. 打开论文（或它的 SI），挑代表性化合物：
+   - **Gen2 槽位**（`pf-int-2a/2b/2c`）：无环的、去哌啶或降碱性的那一批
+   - **Gen3 槽位**（`pf-int-3a/3b/3c`）：首批大环，效价或渗透性还没达标的
+   - 每代 2-3 个就够。**每代至少 2 个**，否则中位值等同单点值、置信度会被乘 0.8。
+     只想录 2 个就把 `c` 那行整行删掉。
+
+2. ChemDraw 里画出来 → 右键 Copy As → SMILES → 粘到 `compounds.csv` 的 `smiles` 列。
+   顺手把 `structure_source` 改成你从哪儿画的（哪张图、哪个化合物编号）。
+
+3. ```bash
+   python -m phase0.sar.curate --fill-formula   # 自动回写 expected_formula
+   python -m phase0.sar.curate --check          # 看还差什么
+   ```
+   `--check` 会打出每个结构的分子式、MW、以及大环/共价弹头/未定义手性中心这些标志。
+   **拿 MW 跟论文对一遍** —— 这是发现画错的最快办法。
+
+4. `program_members.csv` 里补 `example_ref`（论文里的化合物编号，如"化合物 22"）
+   和 `source_url`。文献来源的中间体没有优先权日，`priority_date` 留空即可，
+   代际顺序由 `generation` 列决定。`source_kind` 已预填为 `paper`。
+
+5. 核对完把 `structure_provenance` 从 `unverified` 改掉。警告横幅消失就是可以拿出去的信号。
+
+### 想把多维数据一起录进去
+
+中间代的故事本质是**权衡**——效价上去了但脑暴露没上去，或者反过来。
+单一个 IC50 列表达不了这个，所以有 `measurements.csv`（可选，不建也能跑）：
+
+```csv
+compound_id,measure_type,value,unit,assay,source,provenance,note
+pf-int-2a,pgp_efflux_ratio,6.2,,MDR1-MDCK,J. Med. Chem. 2014 57 4720 Table 3,paper,
+pf-int-2a,alk_l1196m_ic50,210,nM,ALK L1196M enzymatic,同上,paper,
+```
+
+`measure_type` 自己定，只要前后一致。建议的几个：
+`alk_ic50_wt` `alk_l1196m_ic50` `alk_g1202r_ic50` `pgp_efflux_ratio` `kpuu_rat`
+`hlm_clint` `solubility_ph68` `ppb_free_fraction`
+
+同一 `measure_type` 在一代里**单位必须统一**，混用 nM 和 uM 会直接报错而不是
+悄悄算出一个错的中位值。这些数字会进入 FACTS 成为可引用证据，
+但目前**没有规则引用它们** —— 规则库还只跑在结构描述符和主活性上。
+
+### 关于"专利时间线"还是"论文时间线"
+
+得说清楚一个模型上的紧张关系：论文里的中间体**没有优先权日**，
+所以补进来得到的是**结构演化顺序**，不是可辩护的专利时间线。
+
+产品最终要卖的是"从专利里读出教训"，那中间代应该来自 2006-2012 之间
+Pfizer 的中间专利，而不是论文。论文给的是"为什么"，专利给的是"什么时候"。
+两者都要，但别混为一谈。`source_kind` 列就是为了让这个区别留在数据里。
+
+---
+
+## 开发过程中发现的四件事
+
+这四件事都改变了方案里写的做法，值得单独说。前三条来自主线开发，
+第四条是搭中间代脚手架时用合成数据冒烟测试发现的。
 
 ### 1. MCS 覆盖率做不了骨架跃迁判定，会给出自信的错误答案
 
@@ -106,6 +172,16 @@ N-甲基是 N-脱烷基化软点，不是苄位氧化软点，混在一起会让
 N-甲基化说成"封堵苄位"。已拆成 `benzylic_h_count`（接芳碳 `[c]`）和
 `n_alkyl_h_count`（接芳氮 `[n]`），实际值 1→3 和 1→3。
 
+### 4. 每代多个化合物时，环系不能取并集
+
+这条是补中间代的过程中用合成数据做冒烟测试发现的。原来每代的环集合取并集，
+于是一代里探索了 5 个不同溶解性基团，环集合就膨胀，跟下一代的 Jaccard 被稀释 ——
+**数据越丰富的代际越容易被误判成骨架跃迁**，方向完全反了。冒烟数据上
+Gen2→Gen3 因此掉到 0.60，紧贴 0.55 阈值。
+
+改成"出现在该代 ≥50% 化合物里的环"（consensus core）之后同一对变成 1.00。
+单化合物代不受影响（golden test 里的 0.75 没变）。
+
 ---
 
 ## 设计原则（和方案一致的部分）
@@ -137,17 +213,19 @@ prompt 要求证据不足时输出空数组并置 `insufficient_evidence`。
 phase0/
   data/
     programs.csv          程序定义
-    compounds.csv         结构 + 分子式声明 + provenance
-    program_members.csv   代际归属 + 专利引用 + 活性
+    compounds.csv         结构 + 分子式声明 + provenance（含 6 个待填骨架行）
+    program_members.csv   代际归属 + 引用 + 主活性
+    measurements.csv      可选：多维实测数据（外排比、突变体效价、Kp,uu…）
   sar/
     features.py   RDKit 描述符 + 分子式闸门
     align.py      环系比对 / 骨架跃迁判定（含实测记录）
-    deltas.py     代际聚合 + delta
+    deltas.py     代际聚合 + delta + 多维数据聚合
     rules.py      规则引擎
     rules.yaml    规则库（20 条）
     narrate.py    FACTS 构建 + Claude 调用 + 引用审计
+    curate.py     录数据的校验与自动补全
     cli.py        跑批入口
-  tests/          66 个测试，含骨架判定的 golden test
+  tests/          77 个测试，含骨架判定的 golden test
 ```
 
 ---
@@ -158,11 +236,9 @@ phase0/
 
 1. **结构与专利数据核对**（见上文表格）。没做完之前不能给化学家看。
 2. **实施例编号**。`example_ref` 全是"待补"，产品承诺的可点开证据现在点不开。
-3. **中间代**。`pfizer-alk` 现在只有克唑替尼和洛拉替尼两代，中间那些
-   无环去哌啶类似物（J. Med. Chem. 2014, 57, 4720）没录。补上之后每代
-   n>1，中位值才有意义，`n_support` 惩罚也才会松开。真正的
-   "他们试过什么、放弃了什么"藏在中间代里 —— **现在这版讲的是起点和终点，
-   最有价值的中间过程是缺失的**。
+3. **中间代的 SMILES**。骨架行和工具链都已就位（见上文"怎么补中间代"），
+   缺的就是六个 SMILES。**现在这版讲的仍然是起点和终点，
+   最有价值的中间过程是空的**。
 4. **叙述层没跑过**。环境里没有 `ANTHROPIC_API_KEY`，只验证过 dry-run 和
    审计逻辑的单元测试，没做过真实 LLM 调用。
 5. **碱性 pKa**。方案里列了"最强碱性 pKa"，开源没有靠谱的预测器，
@@ -170,6 +246,11 @@ phase0/
    （子结构计数，可解释）代替。要真 pKa 就得接 ChemAxon，或者在 CSV 里加一列人工填。
 6. **死路规则**（`dead_end`）没实现。它需要按位点的 R 基团拆解，
    阶段 0 的化合物级数据支撑不了。
+7. **规则库还没用上 measurements**。多维数据现在只作为可引用证据进 FACTS，
+   没有规则读它。等真实数据进来、看清哪些维度真的有判别力之后再写规则，
+   比现在凭想象写更靠谱。
+8. **多代际路径只用合成数据验证过**。四代 + 多维数据的代码路径跑通了，
+   但用的是我手工改出来的类似物，不是真实中间体。
 
 ---
 

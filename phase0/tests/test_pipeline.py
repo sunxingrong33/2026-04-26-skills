@@ -31,10 +31,21 @@ def test_unverified_provenance_is_surfaced(dataset):
 
 
 def test_pfizer_program_generations_ordered(dataset):
+    """Gen2/Gen3 skeleton rows are unfilled, so only Gen1 and Gen4 are loaded.
+
+    A gap in generation numbering must still produce a usable adjacent pair --
+    that is what lets the intermediate generations be filled in incrementally.
+    """
     summaries, deltas = compute_program_deltas(dataset, "pfizer-alk", run_mcs=False)
-    assert [s.generation for s in summaries] == [1, 2]
+    assert [s.generation for s in summaries] == [1, 4]
     assert len(deltas) == 1
     assert deltas[0].years_elapsed and deltas[0].years_elapsed > 7
+
+
+def test_unfilled_skeleton_rows_are_skipped_not_fatal(dataset):
+    assert "pf-int-2a" not in dataset.compounds
+    assert any("骨架行" in w for w in dataset.warnings)
+    assert not [m for m in dataset.memberships if m.compound_id == "pf-int-2a"]
 
 
 def test_landscape_generation_two_aggregates_three_compounds(dataset):
