@@ -1,0 +1,52 @@
+# §5 评测集：ground truth 与指标目标
+#
+# ⚠️ 当前所有 challenges 条目的 verified 均为 false。它们是**占位**，
+# 不是可用的 ground truth。评分脚本会拒绝对未核实的程序给出 recall 分数。
+#
+# ground truth 的正确来源是 discovery paper 里**原文明确写出**的障碍陈述
+# （"the major challenge was…" / "compound X suffered from…"），
+# 逐条抄下来并附页码。凭印象写 ground truth 会让 recall 变成自证预言：
+# 你会不自觉地按工具的输出来写挑战列表。
+#
+# keywords 用于把叙述文本匹配到挑战上。匹配是确定性的子串命中，
+# 宁可漏判也不要放宽 —— recall 偏低是可接受的，虚高不是。
+
+meta:
+  version: "0.1.0"
+
+targets:
+  recall: 0.60                # 目标：ground truth 里的挑战命中六成以上
+  hallucination_rate: 0.10    # 生死线：低于一成
+  citation_accuracy: 0.95     # 引用的证据编号必须真实存在
+
+programs:
+  - program_id: pfizer-alk
+    source: "J. Med. Chem. 2014, 57, 4720 —— 待核对，需逐条抄录原文的障碍陈述"
+    verified: false
+    challenges:
+      - id: cns_penetration
+        name: 脑渗透不足 / P-gp 外排
+        keywords: ["脑", "渗透", "P-gp", "外排", "CNS", "血脑"]
+      - id: resistance_mutation
+        name: 耐药突变覆盖
+        keywords: ["耐药", "突变", "L1196M", "G1202R", "抗性"]
+      - id: kinase_selectivity
+        name: 激酶选择性
+        keywords: ["选择性", "脱靶", "激酶谱"]
+      - id: metabolic_stability
+        name: 代谢稳定性
+        keywords: ["代谢", "CYP", "清除", "半衰期", "软点"]
+
+  - program_id: alk-landscape
+    source: "跨公司聚合，无单一原文 —— 本条不适合做 ground truth，仅用于跑通指标管道"
+    verified: false
+    challenges:
+      - id: resistance_mutation
+        name: 对一代耐药突变的覆盖
+        keywords: ["耐药", "突变", "L1196M", "抗性"]
+      - id: cns_penetration
+        name: 脑转移 / 脑渗透
+        keywords: ["脑", "渗透", "P-gp", "外排", "CNS"]
+      - id: scaffold_escape
+        name: 母核规避 / 专利规避
+        keywords: ["母核", "骨架", "跃迁", "规避"]

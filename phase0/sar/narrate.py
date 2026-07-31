@@ -143,6 +143,10 @@ def build_facts(
         return item
 
     a, b = delta.summary_from, delta.summary_to
+    # n_support is min(n_from, n_to) -- the conservative claim strength. Printing
+    # it alone next to a median computed over several compounds reads as "this
+    # generation had one compound", so show the per-generation counts too.
+    n_txt = f"n={a.n_compounds}→{b.n_compounds}, 支撑 n={delta.n_support}"
 
     header = [
         f"【代际】Gen{delta.gen_from} → Gen{delta.gen_to}",
@@ -172,7 +176,7 @@ def build_facts(
                 "structure",
                 f"{fd.label}: {fd.transition} "
                 f"(Gen{delta.gen_from} {fd.val_from:.0%} → Gen{delta.gen_to} {fd.val_to:.0%} 的化合物命中), "
-                f"n={fd.n_support}",
+                f"{n_txt}",
                 features=(name,),
             )
 
@@ -213,7 +217,7 @@ def build_facts(
         add(
             "property",
             f"{fd.label}: 中位 {_fmt(fd.val_from)} → {_fmt(fd.val_to)} "
-            f"(Δ {fd.delta:+g}), n={fd.n_support}",
+            f"(Δ {fd.delta:+g}), {n_txt}",
             features=(name,),
         )
 

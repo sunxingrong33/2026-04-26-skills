@@ -16,6 +16,7 @@ pip install -r requirements.txt
 python -m phase0.sar.curate --check                      # 校验数据、报告缺什么
 python -m phase0.sar.cli --program pfizer-alk --dry-run   # 只算，不调 API
 python -m phase0.sar.cli --program pfizer-alk             # 需要 ANTHROPIC_API_KEY
+python -m phase0.sar.benchmark                            # §5 三项指标
 python -m pytest phase0/tests -q
 ```
 
@@ -120,7 +121,7 @@ Pfizer 的中间专利，而不是论文。论文给的是"为什么"，专利�
 
 ---
 
-## 开发过程中发现的十件事
+## 开发过程中发现的十一件事
 
 这些都改变了方案里写的做法，值得单独说。前三条来自主线开发，
 第四条来自合成数据冒烟测试，后面几条来自第一次真实录入及其复盘。
@@ -245,6 +246,51 @@ THP 缩醛/硼酸酯/芳基碘/苄酯），在录入校验和管道横幅上都�
 上限 20 条。**分析层算了却没进 FACTS 的特征，比没算还糟** ——
 终端上看得见，会让人误以为模型也看见了。
 
+### 11. 评测指标自己会作弊：免责声明被算成了命中
+
+`benchmark.py` 第一版把 `what_we_cannot_tell` 也纳入 recall 匹配。结果是
+工具说"**无法判断**动机是效价还是渗透性"，因为含"渗透"二字被记成
+"命中脑渗透挑战"。**工具越是老实承认不知道，recall 越高** —— 方向完全反了。
+
+已改为只统计 `headline` 与 `hypotheses[].claim`，即只算断言不算免责。
+
+这条要单独记下来，是因为它示范了评测集自身的失败模式：
+**一个偏向讨好工具的指标，比没有指标更糟**，它会让你在错误的方向上加速。
+
+---
+
+## §5 评测
+
+`benchmark.py` 算三个指标，并且对三者的可自动化程度不打马虎眼：
+
+| 指标 | 可自动化程度 | 现状 |
+|---|---|---|
+| Citation accuracy | 完全可自动化 | 两条叙述均 1.000（目标 ≥0.95） |
+| Hallucination rate | **只能算下界** | 自动下界 0.000，但只覆盖伪造引用与凭空数字 |
+| Recall | 依赖 ground truth | **拒绝给分** —— ground truth 未核实 |
+
+**Hallucination 的自动值是下界，不是答案。** 程序抓得到"引用了不存在的 E9"和
+"冒出 FACTS 里没有的数字"，抓不到"引用真实证据但推出无据结论"。后者只能人工判，
+所以脚本会导出 `out/review.csv` 复核工作表，每条假说附上它引用的证据原文，
+填完"人工判定_有据"列才能算出真实幻觉率。
+
+方案 §5 说 hallucination 是生死线 —— 而它恰恰是最不能自动测的那个。
+**任何声称"幻觉率 0.03"的纯自动化数字都应该被怀疑。**
+
+**Recall 目前拒绝计分**，因为 `benchmark.yaml` 里所有 ground truth 都是
+`verified: false` 的占位。ground truth 必须从 discovery paper 里**原文明确写出**的
+障碍陈述逐条抄录并附页码 —— 凭印象写会让 recall 变成自证预言：
+人会不自觉地按工具的输出来写挑战列表。
+
+即便如此，命中数已经能看出数据密度的影响：
+
+| 程序 | 数据情况 | 命中挑战 |
+|---|---|---|
+| `pfizer-alk` Gen3→Gen4 | 无活性、无 ADME | 1 / 4 |
+| `alk-landscape` Gen1→Gen2 | 每代 n=3、有活性 | 2 / 3 |
+
+只有两个转换，样本太小，当方向性信号看。
+
 ---
 
 ## 设计原则（和方案一致的部分）
@@ -279,6 +325,7 @@ phase0/
     compounds.csv         结构 + 分子式声明 + provenance（含 6 个待填骨架行）
     program_members.csv   代际归属 + 引用 + 主活性
     measurements.csv      可选：多维实测数据（外排比、突变体效价、Kp,uu…）
+    benchmark.yaml        §5 ground truth 与指标目标（当前全部待核实）
   sar/
     features.py   RDKit 描述符 + 分子式闸门
     align.py      环系比对 / 骨架跃迁判定（含实测记录）
@@ -287,8 +334,9 @@ phase0/
     rules.yaml    规则库（20 条）
     narrate.py    FACTS 构建 + Claude 调用 + 引用审计
     curate.py     录数据的校验与自动补全
+    benchmark.py  §5 三项指标打分 + 人工复核工作表
     cli.py        跑批入口
-  tests/          89 个测试，含骨架判定的 golden test
+  tests/          100 个测试，含骨架判定的 golden test
 ```
 
 ---
