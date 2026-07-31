@@ -116,3 +116,34 @@ def test_facts_block_never_leaks_uncomputed_values():
     rendered = facts.render()
     assert "[E1]" in rendered and "[E2]" in rendered
     assert "[E3]" not in rendered
+
+
+def _pfizer_gen3_4():
+    from phase0.sar.cli import DEFAULT_DATA
+    from phase0.sar.deltas import compute_program_deltas
+    from phase0.sar.narrate import build_facts
+    from phase0.sar.rules import evaluate, load_rules
+    from phase0.sar.schema import load_dataset
+
+    ds = load_dataset(DEFAULT_DATA)
+    _, deltas = compute_program_deltas(ds, "pfizer-alk", run_mcs=False)
+    d = deltas[-1]
+    return build_facts("p", d, evaluate(d, load_rules()))
+
+
+def test_facts_include_functional_group_changes():
+    """Regression: an allowlist in build_facts hid every feature no rule used.
+
+    The ether -> amide linker swap and the added nitrile are the most informative
+    facts about this transition and were absent from the prompt entirely.
+    """
+    text = _pfizer_gen3_4().render()
+    assert "醚键数" in text
+    assert "酰胺数" in text
+    assert "腈基数" in text
+
+
+def test_facts_block_stays_bounded():
+    facts = _pfizer_gen3_4()
+    props = [e for e in facts.evidence if e.kind == "property"]
+    assert len(props) <= 20

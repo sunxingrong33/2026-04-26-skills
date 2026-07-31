@@ -99,8 +99,8 @@ def _fmt(v: float) -> str:
     return f"{v:g}"
 
 
-# Features worth narrating even when no rule fired -- they give the model enough
-# context to *reject* a rule hit, which is as valuable as confirming one.
+# Retained for reference only: build_facts now considers every feature that
+# moved, so there is no allowlist to maintain.
 CONTEXT_FEATURES = (
     "mw",
     "clogp",
@@ -119,6 +119,9 @@ CONTEXT_FEATURES = (
 )
 
 MIN_RELATIVE_CHANGE = 0.05
+# Cap on property evidence items so the FACTS block stays readable. Rule-backed
+# facts always make the cut; the rest compete on relative magnitude.
+MAX_PROPERTY_FACTS = 20
 
 
 def build_facts(
@@ -184,15 +187,29 @@ def build_facts(
         for note in al.notes:
             add("scaffold_caveat", f"骨架判定提示: {note}")
 
-    # --- numeric deltas: rule-relevant ones always, others only if they moved ---
+    # --- numeric deltas ---
+    # Iterate over everything that actually moved, not over a fixed allowlist.
+    # The allowlist version silently dropped any feature no rule referenced, so
+    # when functional-group counts were added the ether->amide linker swap --
+    # the most informative fact about that transition -- never reached the model
+    # even though the terminal printed it. A feature the analysis layer computes
+    # but the FACTS block hides is worse than one that was never computed.
     rule_features = {f for h in hypotheses for f in h.features_used}
-    for name in dict.fromkeys(list(rule_features) + list(CONTEXT_FEATURES)):
-        fd = delta.delta_of(name)
-        if fd is None or fd.kind == "boolean":
+    scored: list[tuple[float, str, object]] = []
+    for name, fd in delta.features.items():
+        if fd.kind == "boolean":
             continue
         moved = abs(fd.delta) >= max(abs(fd.val_from) * MIN_RELATIVE_CHANGE, 1e-9)
         if name not in rule_features and not moved:
             continue
+        # rule-referenced facts sort first, then by relative magnitude
+        rank = float("inf") if name in rule_features else abs(fd.delta) / (
+            abs(fd.val_from) or 1
+        )
+        scored.append((rank, name, fd))
+
+    scored.sort(key=lambda t: t[0], reverse=True)
+    for _, name, fd in scored[:MAX_PROPERTY_FACTS]:
         add(
             "property",
             f"{fd.label}: 中位 {_fmt(fd.val_from)} → {_fmt(fd.val_to)} "
