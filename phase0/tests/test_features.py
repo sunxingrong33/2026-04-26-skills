@@ -87,8 +87,10 @@ def test_tpsa_rises_from_crizotinib_to_lorlatinib():
 def test_nihonium_typo_is_rejected():
     """[Nh] parses as element 113 instead of failing -- the gate must catch it.
 
-    Regression: a curated row used [Nh] where [nH] was meant. RDKit accepted it
-    silently and produced a 902 Da structure whose every descriptor was garbage.
+    Regression: a curated row wrote [Nh] intending an exocyclic amine N-H (the
+    nitrogen of a Boc-protected aminopyridine). RDKit read it as nihonium and
+    silently produced a 902 Da structure whose every descriptor was garbage.
+    The correct writing there is a plain N; [nH] is for ring aromatic nitrogen.
     """
     with pytest.raises(StructureError, match="非常规元素"):
         compute_features("C(C1NN=C(I)C=1CCCOC1=CC=C(F)C=C1COC1=C([Nh]C)N=CC(I)=C1)#N")
@@ -125,3 +127,22 @@ def test_linker_swap_is_visible_as_a_feature_delta():
     assert early["ether_count"] - lorl["ether_count"] == 1
     assert lorl["amide_count"] - early["amide_count"] == 1
     assert lorl["nitrile_count"] - early["nitrile_count"] == 1
+
+
+BOC_PRECURSOR = (
+    "C(C1NN=C(I)C=1CCCOC1=CC=C(F)C=C1COC1=C(NC(=O)OC(C)(C)C)N=CC(I)=C1)#N"
+)
+
+
+def test_synthetic_handles_flag_a_protected_coupling_precursor():
+    """The [Nh] row, once corrected, is a valid molecule that passes every other
+    gate: right elements, and it keeps the programme's core rings. Only the Boc
+    and the aryl iodides distinguish it from a tested analogue."""
+    feats = compute_features(BOC_PRECURSOR)
+    assert "Boc 保护基" in feats.synthetic_handles
+    assert "芳基碘" in feats.synthetic_handles
+
+
+def test_tested_compounds_carry_no_synthetic_handles():
+    for name in ("crizotinib", "lorlatinib", "ceritinib", "alectinib", "brigatinib"):
+        assert compute_features(SMILES[name]).synthetic_handles == [], name

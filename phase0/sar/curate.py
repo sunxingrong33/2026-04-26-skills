@@ -134,7 +134,8 @@ def check(data_dir: Path) -> int:
             if exotic:
                 print(
                     f"  ✗ {cid:22s} 含非常规元素 {exotic} —— "
-                    "多半是 SMILES 打错（如 [Nh] 被当成鉨/113号元素，正确写法是 [nH]）"
+                    "多半是 SMILES 打错。如 [Nh] 被当成鉨/113号元素；N-H 在环内芳香氮写 [nH]，"
+                    "环外胺氮直接写 N"
                 )
                 problems += 1
                 continue
@@ -165,6 +166,12 @@ def check(data_dir: Path) -> int:
                     "chiral_centers_defined"
                 ]:
                     flags.append("有未定义手性中心")
+                if feats.synthetic_handles:
+                    flags.append("⚠ " + "/".join(feats.synthetic_handles))
+                    todos.append(
+                        f"{cid}: 含 {'/'.join(feats.synthetic_handles)}，"
+                        "确认是受测类似物而非合成砌块"
+                    )
                 extra = ("  " + ", ".join(flags)) if flags else ""
                 print(f"  ✓ {cid:22s} {formula:20s} MW {mw:7.2f}{extra}")
 

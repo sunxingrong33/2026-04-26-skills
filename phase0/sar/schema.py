@@ -334,6 +334,18 @@ def load_dataset(data_dir: str | Path) -> Dataset:
         warnings.append(
             f"{n_unver_act} 条活性数据的 provenance 不可核查。趋势可看，绝对值不可引用。"
         )
+    flagged = [
+        (c.compound_id, c.features.synthetic_handles)
+        for c in compounds.values()
+        if c.features.synthetic_handles
+    ]
+    if flagged:
+        detail = "; ".join(f"{cid}({'/'.join(h)})" for cid, h in flagged)
+        warnings.append(
+            f"{len(flagged)} 个结构带保护基或偶联把手: {detail}。"
+            "受测类似物几乎不会带这些基团 —— 请确认没有把合成砌块当成受测化合物录入。"
+        )
+
     n_unver_meas = sum(1 for m in measurements if not m.verified)
     if n_unver_meas:
         warnings.append(

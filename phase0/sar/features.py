@@ -93,6 +93,31 @@ _FUNCTIONAL_GROUPS = {
     k: Chem.MolFromSmarts(v) for k, v in FUNCTIONAL_GROUP_SMARTS.items()
 }
 
+# Protecting groups and cross-coupling handles. A tested analogue essentially
+# never carries these; a compound in a paper's SI experimental section routinely
+# does. This is the most reliable automatic signal for "a synthetic building
+# block was curated instead of a tested compound" -- the element whitelist and
+# the core-ring check both pass such a structure, because it is a perfectly
+# valid molecule that retains the core.
+#
+# Advisory only. Deciding whether a flagged row is a mis-curation is a human
+# call, so nothing here blocks loading.
+SYNTHETIC_HANDLE_SMARTS: dict[str, str] = {
+    "Boc 保护基": "[NX3,OX2]C(=O)OC(C)(C)C",
+    "Cbz 保护基": "[NX3,OX2]C(=O)OCc1ccccc1",
+    "Fmoc 保护基": "[NX3]C(=O)OCC1c2ccccc2-c2ccccc21",
+    "硅醚保护基": "[OX2][Si]",
+    "三苯甲基": "C(c1ccccc1)(c1ccccc1)c1ccccc1",
+    "邻苯二甲酰亚胺": "O=C1c2ccccc2C(=O)N1",
+    "THP 缩醛": "[OX2]C1CCCCO1",
+    "硼酸/硼酸酯": "[BX3]([OX2])[OX2]",
+    "芳基碘": "cI",
+    "苄酯": "[CX3](=O)OCc1ccccc1",
+}
+_SYNTHETIC_HANDLES = {
+    k: Chem.MolFromSmarts(v) for k, v in SYNTHETIC_HANDLE_SMARTS.items()
+}
+
 NUMERIC_FEATURES = (
     "mw",
     "clogp",
@@ -185,6 +210,8 @@ class FeatureSet:
     numeric: dict[str, float]
     boolean: dict[str, bool]
     warhead_types: list[str] = field(default_factory=list)
+    # Advisory data-quality signal, deliberately not a rule feature.
+    synthetic_handles: list[str] = field(default_factory=list)
 
     def get(self, name: str) -> Any:
         if name in self.numeric:
@@ -245,7 +272,7 @@ def compute_features(smiles: str, expected_formula: str | None = None) -> Featur
     if exotic:
         raise StructureError(
             f"含非常规元素 {exotic} —— 多半是 SMILES 打错。"
-            "例如 [Nh] 会被解析成鉨(113号元素)而不是报错，芳香 NH 的正确写法是 [nH]。"
+            "例如 [Nh] 会被解析成鉨(113号元素)而不是报错。N-H 该怎么写取决于位置：环内芳香氮用 [nH]，环外胺氮直接写 N（氢自动补足），都不要写 [Nh]。"
         )
 
     formula = rdMolDescriptors.CalcMolFormula(mol)
@@ -307,6 +334,9 @@ def compute_features(smiles: str, expected_formula: str | None = None) -> Featur
     numeric["strong_basic_amine_count"] = float(len(basic_idx - attenuated))
 
     warheads = [name for name, patt in _WARHEADS.items() if mol.HasSubstructMatch(patt)]
+    handles = [
+        name for name, patt in _SYNTHETIC_HANDLES.items() if mol.HasSubstructMatch(patt)
+    ]
 
     boolean = {
         "has_macrocycle": numeric["max_ring_size"] >= MACROCYCLE_MIN_RING_SIZE,
@@ -331,4 +361,5 @@ def compute_features(smiles: str, expected_formula: str | None = None) -> Featur
         numeric=numeric,
         boolean=boolean,
         warhead_types=warheads,
+        synthetic_handles=handles,
     )

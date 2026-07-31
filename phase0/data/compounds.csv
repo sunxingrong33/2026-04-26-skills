@@ -7,6 +7,6 @@ lorlatinib,洛拉替尼 (lorlatinib / PF-06463922),C[C@H]1Oc2cc(-c3c(C#N)n(C)nc3
 pf-int-2a,无环中间体 A,待补,,待补,unverified,退回：这是合成中间体(乙酯+游离苄醇的砌块)，缺氨基吡唑铰链结合基团，不是受测类似物。需从论文正文 SAR 表里挑真正测过的化合物。
 pf-int-2b,无环中间体 B,待补,,待补,unverified,退回：同 2a，合成砌块而非受测类似物。
 pf-int-2c,无环中间体 C,待补,,待补,unverified,退回：同 2a，合成砌块而非受测类似物。
-pf-int-3a,早期大环 A,待补,,待补,unverified,退回：两处问题 —— (1) SMILES 里 [Nh] 非法，被 RDKit 解析成鉨(113号元素)，应为 [nH]；(2) 含两个芳基碘，是 Suzuki/Sonogashira 偶联前体，属合成中间体。
+pf-int-3a,早期大环 A,待补,,待补,unverified,"退回(结构本身已修正，但仍是合成前体)。原写法 [Nh] 意为环外胺 N-H，但 RDKit 解析成鉨(113号元素)；该位置正确写法是普通 N。按 Boc 修正后为 C(C1NN=C(I)C=1CCCOC1=CC=C(F)C=C1COC1=C(NC(=O)OC(C)(C)C)N=CC(I)=C1)#N (C24H24FI2N5O4, MW 719.29)。仍不入库：含 Boc 保护基与两个芳基碘，是偶联前体而非受测类似物。"
 pf-int-3b,早期大环 B,Nc1ncc2cc1OCc1cc(F)ccc1OCCCCc1cnn(C)c21,C20H21FN4O2,用户录入(论文 SI)；RDKit 分子式/MW 校验通过 (368.41)，14 元大环被识别,unverified,醚连大环，尚无酰胺、无苄位甲基。与 3c 构成环大小 SAR 对。待核对: 论文化合物编号。
 pf-int-3c,早期大环 C,Nc1ncc2cc1OCc1cc(F)ccc1OCCCc1cnn(C)c21,C19H19FN4O2,用户录入(论文 SI)；RDKit 分子式/MW 校验通过 (354.39)，13 元大环被识别,unverified,同 3b，环缩小一个 CH2。待核对: 论文化合物编号。
