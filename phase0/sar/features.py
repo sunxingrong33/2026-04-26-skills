@@ -18,6 +18,15 @@ RDLogger.DisableLog("rdApp.*")
 
 MACROCYCLE_MIN_RING_SIZE = 12
 
+# Elements a small molecule in this domain may contain. RDKit accepts [Nh] as
+# nihonium (element 113) rather than rejecting an obvious typo for [nH], so a
+# mis-typed SMILES parses cleanly and silently yields a ~900 Da "molecule" whose
+# descriptors are all meaningless. This gate sits in the loading path, not just
+# in the curation tool, because nothing downstream can detect the problem.
+ALLOWED_ELEMENTS = {
+    "H", "B", "C", "N", "O", "F", "Si", "P", "S", "Cl", "Se", "Br", "I",
+}
+
 # --- SMARTS library -------------------------------------------------------
 # Kept as module constants so tests can assert against individual patterns.
 
@@ -58,6 +67,32 @@ _N_ALKYL_C = Chem.MolFromSmarts("[CX4;!H0][n]")
 # sp3 carbon bearing at least one H, alpha to O/N/S (classic CYP soft spot)
 _ALPHA_HETERO_C = Chem.MolFromSmarts("[CX4;!H0][O,N,S]")
 
+# Functional-group counts. Whole-molecule descriptors are blind to a linker
+# swap: replacing an ether linker with an amide and adding a nitrile moves MW,
+# TPSA and HBA a little, and nothing in the descriptor set says "the linker
+# changed". These make that change visible as citable evidence.
+FUNCTIONAL_GROUP_SMARTS: dict[str, str] = {
+    # Amide: the carbonyl carbon must carry a carbon substituent, which excludes
+    # urea (C bonded to two N) and carbamate (C bonded to N and O) without
+    # excluding the amide bond itself. Constraining the *nitrogen* instead
+    # rejects every amide, since an amide N is by definition bonded to a C=O.
+    "amide_count": "[CX3](=[OX1])([#6])[NX3]",
+    "ester_count": "[CX3](=[OX1])[OX2][#6]",
+    "carboxylic_acid_count": "[CX3](=[OX1])[OX2H1]",
+    "urea_count": "[NX3][CX3](=[OX1])[NX3]",
+    "carbamate_count": "[NX3][CX3](=[OX1])[OX2][#6]",
+    "ketone_count": "[#6][CX3](=[OX1])[#6]",
+    # ether excludes the C-O of esters/carbamates
+    "ether_count": "[OX2;!$(O[CX3]=[OX1]);!$(OC#N)]([#6])[#6]",
+    "nitrile_count": "[NX1]#[CX2]",
+    "sulfonamide_count": "[SX4](=[OX1])(=[OX1])[NX3]",
+    "sulfone_count": "[SX4](=[OX1])(=[OX1])([#6])[#6]",
+    "hydroxyl_count": "[OX2H]",
+}
+_FUNCTIONAL_GROUPS = {
+    k: Chem.MolFromSmarts(v) for k, v in FUNCTIONAL_GROUP_SMARTS.items()
+}
+
 NUMERIC_FEATURES = (
     "mw",
     "clogp",
@@ -84,7 +119,7 @@ NUMERIC_FEATURES = (
     "chiral_centers_defined",
     "chiral_centers_total",
     "max_ring_size",
-)
+) + tuple(FUNCTIONAL_GROUP_SMARTS)
 
 BOOLEAN_FEATURES = (
     "has_macrocycle",
@@ -122,6 +157,17 @@ FEATURE_LABELS: dict[str, str] = {
     "has_macrocycle": "大环",
     "has_warhead": "共价弹头",
     "has_strong_basic_center": "强碱性中心",
+    "amide_count": "酰胺数",
+    "ester_count": "酯基数",
+    "carboxylic_acid_count": "羧酸数",
+    "urea_count": "脲基数",
+    "carbamate_count": "氨基甲酸酯数",
+    "ketone_count": "酮羰基数",
+    "ether_count": "醚键数",
+    "nitrile_count": "腈基数",
+    "sulfonamide_count": "磺酰胺数",
+    "sulfone_count": "砜基数",
+    "hydroxyl_count": "羟基数",
 }
 
 
@@ -193,6 +239,15 @@ def compute_features(smiles: str, expected_formula: str | None = None) -> Featur
     if mol is None:
         raise StructureError(f"SMILES 无法解析: {smiles!r}")
 
+    exotic = sorted(
+        {a.GetSymbol() for a in mol.GetAtoms() if a.GetSymbol() not in ALLOWED_ELEMENTS}
+    )
+    if exotic:
+        raise StructureError(
+            f"含非常规元素 {exotic} —— 多半是 SMILES 打错。"
+            "例如 [Nh] 会被解析成鉨(113号元素)而不是报错，芳香 NH 的正确写法是 [nH]。"
+        )
+
     formula = rdMolDescriptors.CalcMolFormula(mol)
     if expected_formula:
         want = expected_formula.strip()
@@ -243,6 +298,9 @@ def compute_features(smiles: str, expected_formula: str | None = None) -> Featur
         "chiral_centers_total": float(len(stereo_all)),
         "max_ring_size": float(_max_ring_size(mol)),
     }
+
+    for name, patt in _FUNCTIONAL_GROUPS.items():
+        numeric[name] = float(len(mol.GetSubstructMatches(patt)))
 
     attenuated = {m[0] for m in mol.GetSubstructMatches(_ATTENUATED_AMINE)}
     basic_idx = {m[0] for m in mol.GetSubstructMatches(_BASIC_AMINE)}

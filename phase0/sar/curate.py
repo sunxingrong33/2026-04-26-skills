@@ -22,14 +22,76 @@ from pathlib import Path
 from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors
 
-from .features import StructureError, compute_features
+from .features import ALLOWED_ELEMENTS, StructureError, compute_features
 from .schema import CHECKABLE_PROVENANCE
 
 PLACEHOLDERS = {"待补", "TODO", "todo", "?", "??", "-", "n/a", "N/A", ""}
 
-
 def _is_blank(v: str) -> bool:
     return (v or "").strip() in PLACEHOLDERS
+
+
+def exotic_elements(mol: Chem.Mol) -> list[str]:
+    """Elements outside the small-molecule whitelist, e.g. a [Nh] typo for [nH]."""
+    return sorted(
+        {a.GetSymbol() for a in mol.GetAtoms() if a.GetSymbol() not in ALLOWED_ELEMENTS}
+    )
+
+
+def core_ring_report(data_dir: Path) -> list[str]:
+    """Flag compounds missing their programme's consensus core ring systems.
+
+    Motivation: a discovery paper's SI numbers its *synthetic* intermediates
+    (protected esters, halide coupling precursors) alongside the tested analogues,
+    and it is very easy to curate the wrong ones. Those building blocks lack the
+    pharmacophore -- here, the aminopyridine hinge binder -- while still sharing
+    the peripheral rings, so a plain ring-overlap test does not catch them.
+
+    Comparing against the consensus core of the programme's *already verified*
+    compounds does. This is advisory, not fatal: a genuine core hop looks the
+    same, and telling those apart is a human judgement.
+    """
+    from .align import GENERIC_RINGS, consensus_ring_set, ring_systems
+
+    compounds: dict[str, str] = {}
+    with (data_dir / "compounds.csv").open(newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            cid = row.get("compound_id", "").strip()
+            smi = row.get("smiles", "").strip()
+            if cid and not _is_blank(smi):
+                compounds[cid] = smi
+
+    members: dict[str, list[str]] = {}
+    with (data_dir / "program_members.csv").open(newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            pid, cid = row.get("program_id", "").strip(), row.get("compound_id", "").strip()
+            if pid and cid:
+                members.setdefault(pid, []).append(cid)
+
+    todos: list[str] = []
+    for pid, cids in sorted(members.items()):
+        mols = {}
+        for cid in cids:
+            if cid in compounds:
+                m = Chem.MolFromSmiles(compounds[cid])
+                if m is not None:
+                    mols[cid] = m
+        if len(mols) < 2:
+            continue
+
+        core = consensus_ring_set(list(mols.values())) - GENERIC_RINGS
+        if not core:
+            continue
+        print(f"  {pid}  核心环系: {'、'.join(sorted(core))}")
+        for cid, m in mols.items():
+            missing = core - ring_systems(m)
+            if missing:
+                print(
+                    f"    ! {cid:14s} 缺少核心环系: {'、'.join(sorted(missing))}"
+                    "  —— 可能录成了合成中间体，也可能是真实骨架跃迁，需人工判断"
+                )
+                todos.append(f"{cid}: 缺少 {pid} 的核心环系 {'、'.join(sorted(missing))}")
+    return todos
 
 
 def check(data_dir: Path) -> int:
@@ -65,6 +127,15 @@ def check(data_dir: Path) -> int:
             mol = Chem.MolFromSmiles(smiles)
             if mol is None:
                 print(f"  ✗ {cid:22s} SMILES 无法解析")
+                problems += 1
+                continue
+
+            exotic = exotic_elements(mol)
+            if exotic:
+                print(
+                    f"  ✗ {cid:22s} 含非常规元素 {exotic} —— "
+                    "多半是 SMILES 打错（如 [Nh] 被当成鉨/113号元素，正确写法是 [nH]）"
+                )
                 problems += 1
                 continue
 
@@ -154,6 +225,12 @@ def check(data_dir: Path) -> int:
                 f"    ! Gen{singles} 只有 1 个化合物，中位值等同单点值，"
                 "置信度会被打折"
             )
+
+    print()
+    print("=" * 78)
+    print("程序核心环系一致性")
+    print("=" * 78)
+    todos += core_ring_report(data_dir)
 
     print()
     print("=" * 78)

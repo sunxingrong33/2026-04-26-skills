@@ -4,9 +4,9 @@ ceritinib,色瑞替尼 (ceritinib / LDK378),CC(C)Oc1cc(C2CCNCC2)c(C)cc1Nc1ncc(Cl
 alectinib,阿来替尼 (alectinib / CH5424802),CCc1cc2c(cc1N1CCC(N3CCOCC3)CC1)[nH]c1c2C(=O)c2ccc(C#N)cc2C1(C)C,C30H34N4O2,手工绘制，RDKit 分子式/MW 双向校验通过 (482.63),unverified,待核对: PubChem CID / InChIKey。四环骈合方式为重点核对项。
 brigatinib,布格替尼 (brigatinib / AP26113),COc1cc(N2CCC(N3CCN(C)CC3)CC2)ccc1Nc1ncc(Cl)c(Nc2ccccc2P(C)(C)=O)n1,C29H39ClN7O2P,手工绘制，RDKit 分子式/MW 双向校验通过 (584.11),unverified,待核对: PubChem CID / InChIKey
 lorlatinib,洛拉替尼 (lorlatinib / PF-06463922),C[C@H]1Oc2cc(-c3c(C#N)n(C)nc3CN(C)C(=O)c3cc(F)ccc13)cnc2N,C21H19FN6O2,手工绘制，RDKit 分子式/MW 双向校验通过 (406.42)，12 元大环被正确识别,unverified,待核对: PubChem CID / InChIKey。大环连接方式与氟位置为重点核对项。
-pf-int-2a,无环中间体 A,待补,,待补：填你从哪里画的（论文图/SI/ChemDraw）,unverified,从论文挑：去哌啶/降碱性的无环类似物
-pf-int-2b,无环中间体 B,待补,,待补：填你从哪里画的（论文图/SI/ChemDraw）,unverified,同上，选与 A 在同一优化轮次的类似物
-pf-int-2c,无环中间体 C,待补,,待补：填你从哪里画的（论文图/SI/ChemDraw）,unverified,同上；只想录 2 个就把这行整行删掉
-pf-int-3a,早期大环 A,待补,,待补：填你从哪里画的（论文图/SI/ChemDraw）,unverified,从论文挑：首批大环化合物，效价或渗透性尚未达标的
-pf-int-3b,早期大环 B,待补,,待补：填你从哪里画的（论文图/SI/ChemDraw）,unverified,同上
-pf-int-3c,早期大环 C,待补,,待补：填你从哪里画的（论文图/SI/ChemDraw）,unverified,同上；不需要就整行删掉
+pf-int-2a,无环中间体 A,待补,,待补,unverified,退回：这是合成中间体(乙酯+游离苄醇的砌块)，缺氨基吡唑铰链结合基团，不是受测类似物。需从论文正文 SAR 表里挑真正测过的化合物。
+pf-int-2b,无环中间体 B,待补,,待补,unverified,退回：同 2a，合成砌块而非受测类似物。
+pf-int-2c,无环中间体 C,待补,,待补,unverified,退回：同 2a，合成砌块而非受测类似物。
+pf-int-3a,早期大环 A,待补,,待补,unverified,退回：两处问题 —— (1) SMILES 里 [Nh] 非法，被 RDKit 解析成鉨(113号元素)，应为 [nH]；(2) 含两个芳基碘，是 Suzuki/Sonogashira 偶联前体，属合成中间体。
+pf-int-3b,早期大环 B,Nc1ncc2cc1OCc1cc(F)ccc1OCCCCc1cnn(C)c21,C20H21FN4O2,用户录入(论文 SI)；RDKit 分子式/MW 校验通过 (368.41)，14 元大环被识别,unverified,醚连大环，尚无酰胺、无苄位甲基。与 3c 构成环大小 SAR 对。待核对: 论文化合物编号。
+pf-int-3c,早期大环 C,Nc1ncc2cc1OCc1cc(F)ccc1OCCCc1cnn(C)c21,C19H19FN4O2,用户录入(论文 SI)；RDKit 分子式/MW 校验通过 (354.39)，13 元大环被识别,unverified,同 3b，环缩小一个 CH2。待核对: 论文化合物编号。

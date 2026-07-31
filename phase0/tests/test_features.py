@@ -82,3 +82,46 @@ def test_tpsa_rises_from_crizotinib_to_lorlatinib():
     criz = compute_features(SMILES["crizotinib"]).numeric["tpsa"]
     lorl = compute_features(SMILES["lorlatinib"]).numeric["tpsa"]
     assert lorl > criz
+
+
+def test_nihonium_typo_is_rejected():
+    """[Nh] parses as element 113 instead of failing -- the gate must catch it.
+
+    Regression: a curated row used [Nh] where [nH] was meant. RDKit accepted it
+    silently and produced a 902 Da structure whose every descriptor was garbage.
+    """
+    with pytest.raises(StructureError, match="非常规元素"):
+        compute_features("C(C1NN=C(I)C=1CCCOC1=CC=C(F)C=C1COC1=C([Nh]C)N=CC(I)=C1)#N")
+
+
+def test_ordinary_elements_pass():
+    for name in ("crizotinib", "brigatinib", "ceritinib"):
+        compute_features(SMILES[name])
+
+
+def test_amide_count_recognises_a_real_amide():
+    """Regression: constraining the amide N excluded every amide (lorlatinib -> 0)."""
+    assert compute_features(SMILES["lorlatinib"]).numeric["amide_count"] == 1
+
+
+def test_amide_count_excludes_urea_ester_and_carbamate():
+    assert compute_features("CNC(=O)NC").numeric["amide_count"] == 0
+    assert compute_features("CNC(=O)NC").numeric["urea_count"] == 1
+    assert compute_features("CNC(=O)OC").numeric["amide_count"] == 0
+    assert compute_features("CNC(=O)OC").numeric["carbamate_count"] == 1
+    assert compute_features("CC(=O)OCC").numeric["amide_count"] == 0
+    assert compute_features("CC(=O)OCC").numeric["ester_count"] == 1
+
+
+def test_ether_count_excludes_ester_oxygen():
+    assert compute_features("CC(=O)OCC").numeric["ether_count"] == 0
+    assert compute_features(SMILES["crizotinib"]).numeric["ether_count"] == 1
+
+
+def test_linker_swap_is_visible_as_a_feature_delta():
+    """Ether-linked macrocycle -> amide-linked + nitrile, the change descriptors miss."""
+    early = compute_features("Nc1ncc2cc1OCc1cc(F)ccc1OCCCCc1cnn(C)c21").numeric
+    lorl = compute_features(SMILES["lorlatinib"]).numeric
+    assert early["ether_count"] - lorl["ether_count"] == 1
+    assert lorl["amide_count"] - early["amide_count"] == 1
+    assert lorl["nitrile_count"] - early["nitrile_count"] == 1

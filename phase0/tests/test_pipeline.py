@@ -20,8 +20,11 @@ def rules():
 
 
 def test_seed_data_loads_and_passes_formula_gate(dataset):
-    assert len(dataset.compounds) == 5
+    """Every loadable compound cleared the formula gate; parked rows are absent."""
     assert len(dataset.programs) == 2
+    assert dataset.compounds
+    for c in dataset.compounds.values():
+        assert c.features.formula == c.expected_formula
 
 
 def test_unverified_provenance_is_surfaced(dataset):
@@ -31,21 +34,38 @@ def test_unverified_provenance_is_surfaced(dataset):
 
 
 def test_pfizer_program_generations_ordered(dataset):
-    """Gen2/Gen3 skeleton rows are unfilled, so only Gen1 and Gen4 are loaded.
+    """Gen2 is still unfilled, so the loaded generations are 1, 3, 4.
 
-    A gap in generation numbering must still produce a usable adjacent pair --
+    A gap in generation numbering must still produce usable adjacent pairs --
     that is what lets the intermediate generations be filled in incrementally.
     """
     summaries, deltas = compute_program_deltas(dataset, "pfizer-alk", run_mcs=False)
-    assert [s.generation for s in summaries] == [1, 4]
-    assert len(deltas) == 1
-    assert deltas[0].years_elapsed and deltas[0].years_elapsed > 7
+    gens = [s.generation for s in summaries]
+    assert gens == sorted(gens), "代际必须按 generation 排序"
+    assert gens[0] == 1 and gens[-1] == 4
+    assert len(deltas) == len(gens) - 1
 
 
 def test_unfilled_skeleton_rows_are_skipped_not_fatal(dataset):
     assert "pf-int-2a" not in dataset.compounds
     assert any("骨架行" in w for w in dataset.warnings)
     assert not [m for m in dataset.memberships if m.compound_id == "pf-int-2a"]
+
+
+def test_curated_macrocycle_generation_loaded(dataset):
+    """The two validated early macrocycles form a populated Gen3."""
+    gens = dataset.generations("pfizer-alk")
+    assert sorted(m.compound_id for m in gens[3]) == ["pf-int-3b", "pf-int-3c"]
+    for cid in ("pf-int-3b", "pf-int-3c"):
+        assert dataset.compounds[cid].features.boolean["has_macrocycle"]
+
+
+def test_macrocycle_ring_sizes_differ_across_the_pair(dataset):
+    sizes = {
+        dataset.compounds[c].features.numeric["max_ring_size"]
+        for c in ("pf-int-3b", "pf-int-3c")
+    }
+    assert len(sizes) == 2, "环大小 SAR 对必须是两个不同环大小"
 
 
 def test_landscape_generation_two_aggregates_three_compounds(dataset):
@@ -69,15 +89,18 @@ def test_cross_assay_comparison_is_flagged(dataset):
 
 def test_macrocyclisation_hypothesis_fires_on_pfizer_program(dataset, rules):
     _, deltas = compute_program_deltas(dataset, "pfizer-alk", run_mcs=False)
-    hits = {h.rule_id for h in evaluate(deltas[0], rules)}
+    first = deltas[0]
+    hits = {h.rule_id for h in evaluate(first, rules)}
     assert "macrocyclization" in hits
     assert "pgp_efflux_mitigation" in hits
 
 
-def test_core_hop_not_claimed_between_crizotinib_and_lorlatinib(dataset, rules):
+def test_core_hop_never_claimed_within_the_pfizer_program(dataset, rules):
+    """Every step of this programme keeps the aminopyridine + pyrazole core."""
     _, deltas = compute_program_deltas(dataset, "pfizer-alk", run_mcs=False)
-    hits = {h.rule_id for h in evaluate(deltas[0], rules)}
-    assert "core_hopping" not in hits
+    for d in deltas:
+        hits = {h.rule_id for h in evaluate(d, rules)}
+        assert "core_hopping" not in hits, f"Gen{d.gen_from}->Gen{d.gen_to} 误判骨架跃迁"
 
 
 def test_every_hypothesis_confidence_is_bounded(dataset, rules):

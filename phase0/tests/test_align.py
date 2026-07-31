@@ -74,3 +74,23 @@ def test_alignment_is_symmetric():
 
 def test_empty_generation_returns_none():
     assert align_generations([], [_mol("crizotinib")]) is None
+
+
+def test_ring_identity_ignores_substitution_state():
+    """N-methylpyrazole and NH-pyrazole are the same ring system.
+
+    Regression: without normalisation, methylating a ring NH read as losing one
+    ring and gaining another, deflating the core-hop Jaccard for an unchanged core.
+    """
+    n_methyl = Chem.MolFromSmiles("Cn1cccn1")
+    free_nh = Chem.MolFromSmiles("c1cc[nH]n1")
+    assert ring_systems(n_methyl) == ring_systems(free_nh)
+
+
+def test_early_macrocycles_retain_the_crizotinib_core():
+    """The curated Gen3 macrocycles must not read as a core hop vs crizotinib."""
+    criz = Chem.MolFromSmiles(SMILES["crizotinib"])
+    mac = Chem.MolFromSmiles("Nc1ncc2cc1OCc1cc(F)ccc1OCCCCc1cnn(C)c21")
+    al = align_generations([criz], [mac], run_mcs=False)
+    assert al.is_core_hop is False
+    assert "c1ccncc1" in al.shared and "c1cnnc1" in al.shared

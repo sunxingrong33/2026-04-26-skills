@@ -51,8 +51,26 @@ MCS_TIMEOUT_SECONDS = 10
 GENERIC_RINGS = {"c1ccccc1", "C1CCNCC1", "C1CCCCC1", "C1CCOCC1", "C1COCCN1", "C1CNCCN1"}
 
 
+def _normalise_ring(sub: Chem.Mol) -> str:
+    """Canonical SMILES of a ring skeleton, independent of its substitution state.
+
+    Without this an N-methylpyrazole yields ``c1cnnc1`` while a free NH pyrazole
+    yields ``c1cn[nH]c1``, so methylating a ring NH reads as losing one ring
+    system and gaining another -- deflating the core-hop Jaccard for what is
+    actually the same core. Ring identity here means the ring skeleton (atoms +
+    aromaticity); what hangs off it is the substituent layer's business.
+    """
+    rw = Chem.RWMol(sub)
+    for atom in rw.GetAtoms():
+        atom.SetNumExplicitHs(0)
+        atom.SetNoImplicit(True)
+        atom.SetFormalCharge(0)
+        atom.SetIsotope(0)
+    return Chem.MolToSmiles(rw)
+
+
 def ring_systems(mol: Chem.Mol) -> set[str]:
-    """Canonical SMILES of each non-macrocyclic SSSR ring."""
+    """Canonical skeletons of each non-macrocyclic SSSR ring."""
     out: set[str] = set()
     for ring in Chem.GetSymmSSSR(mol):
         idx = set(ring)
@@ -66,8 +84,7 @@ def ring_systems(mol: Chem.Mol) -> set[str]:
         if not bonds:
             continue
         try:
-            sub = Chem.PathToSubmol(mol, bonds)
-            out.add(Chem.MolToSmiles(sub))
+            out.add(_normalise_ring(Chem.PathToSubmol(mol, bonds)))
         except Exception:  # pragma: no cover - degenerate fragments
             continue
     return out
