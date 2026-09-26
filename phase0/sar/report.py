@@ -19,7 +19,7 @@ from .schema import load_dataset
 from .validate import pair_dataset, candidates
 
 ROOT = Path(__file__).resolve().parents[2]
-TEMPLATE = Path(__file__).resolve().parents[1] / "web" / "index.html"
+TEMPLATE = Path(__file__).resolve().parents[1] / "web" / "report.template.html"
 
 
 def molecule_svg(smiles, highlighted=()):

@@ -15,7 +15,7 @@ python -m pytest -q
 python -m phase0.sar.demo
 ```
 
-打开 `artifacts/sar-explorer.html`。自包含页面可离线查看，生成过程不需要 API key，不调用大模型。包含论文系列浏览、结构差异高亮、同 assay 测量对照、证据抽屉、来源链接和验证状态。
+打开 `artifacts/sar-explorer.html`，或通过 `phase0/web/index.html` 的入口进入。自包含页面可离线查看，生成过程不需要 API key，不调用大模型。包含论文系列浏览、结构差异高亮、同 assay 测量对照、证据抽屉、来源链接和验证状态。
 
 ## 数据
 
