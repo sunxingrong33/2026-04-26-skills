@@ -10,6 +10,7 @@ from .patents import retrieve, normalize_id
 from .report import ROOT, structure_pair
 from .features import FEATURE_LABELS
 from .lineage import build_lineage
+from .discovery import discover
 from .patent_evidence import compare_measurements, provisional_direction
 
 class Handler(BaseHTTPRequestHandler):
@@ -39,6 +40,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         if url.path in ('/', '/index.html'):
             return self.reply(200, (ROOT/'phase0/web/patents.html').read_bytes(), 'text/html; charset=utf-8')
+        if url.path == '/discovery.js':
+            return self.reply(200, (ROOT/'phase0/web/discovery.js').read_bytes(), 'text/javascript; charset=utf-8')
         if url.path == '/examples':
             path = ROOT/'artifacts/sar-explorer.html'
             return self.reply(200, path.read_bytes(), 'text/html; charset=utf-8') if path.exists() else self.reply(404, {'error':'请先运行 python -m phase0.sar.demo'})
@@ -74,6 +77,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.allowed():
             return self.reply(403, {'error':'仅接受本机同源请求。'})
+        if self.path == '/api/discover':
+            return self.discover_request()
         if self.path != '/api/compare':
             return self.reply(404, {'error':'未找到接口。'})
         try:
@@ -115,6 +120,28 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(200,result)
         except (KeyError, IndexError, TypeError, ValueError):
             self.reply(400, {'error':'请选择两项已检索的结构；服务重启后需要重新检索。'})
+
+    def discover_request(self):
+        try:
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 16000:
+                raise ValueError('请求大小无效。')
+            request = json.loads(self.rfile.read(size))
+            if not isinstance(request, dict):
+                raise ValueError('请求格式无效。')
+        except (ValueError, TypeError):
+            return self.reply(400, {'error': '请输入有效的检索内容。'})
+        if not self.server.work_lock.acquire(blocking=False):
+            return self.reply(429, {'error': '正在检索，请稍后重试。'})
+        try:
+            self.reply(200, discover(request, self.server.cache.parent / 'discovery-cache'))
+        except ValueError as exc:
+            self.reply(400, {'error': str(exc)})
+        except Exception:
+            self.reply(502, {'error': 'ChEMBL 暂不可用或解析失败，请稍后重试；未返回样例。'})
+        finally:
+            self.server.work_lock.release()
+
 
 
 def create_server(port=8766, cache=None):
