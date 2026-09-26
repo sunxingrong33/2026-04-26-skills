@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urlsplit
 from .patents import retrieve, normalize_id
 from .report import ROOT, structure_pair
 from .features import FEATURE_LABELS
+from .lineage import build_lineage
 from .patent_evidence import compare_measurements, provisional_direction
 
 class Handler(BaseHTTPRequestHandler):
@@ -42,6 +43,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, path.read_bytes(), 'text/html; charset=utf-8') if path.exists() else self.reply(404, {'error':'请先运行 python -m phase0.sar.demo'})
         if url.path == '/api/health':
             return self.reply(200, {'service':'SAR patent explorer'})
+        if url.path == '/api/lineage':
+            ids = parse_qs(url.query).get('id', [])
+            if not ids or len(ids) > 16 or any(pid not in self.server.results for pid in ids):
+                return self.reply(400, {'error':'请先检索所选专利；服务重启后需重新检索。'})
+            return self.reply(200, build_lineage([self.server.results[pid] for pid in ids]))
         if url.path != '/api/patent':
             return self.reply(404, {'error':'未找到页面。'})
         query = parse_qs(url.query)
@@ -93,10 +99,15 @@ class Handler(BaseHTTPRequestHandler):
                 'delta':round(selected[1]['features'][key]-value,4)} for key,value in selected[0]['features'].items()
                 if key in selected[1]['features'] and selected[1]['features'][key] != value]
             result['interpretation'] = '这是用户选择的索引结构对照；尚无实施例映射和同协议实验数据，不能推断真实研发意图或改善效果。'
-            if kinds == ['evidence','evidence'] and publications[0] == publications[1]:
+            if kinds == ['evidence','evidence']:
                 result['measurements']=compare_measurements(*selected)
                 result['candidate']=provisional_direction(result['measurements'])
                 result['interpretation']='结构与测量已关联至明确实施例，助手已核对 PDF；独立复核尚未完成。这是指定分子对照，不是已证实的历史步骤。'
+                result['measurement_title']='同专利协议实测对照（转录待独立复核）'
+                if publications[0] != publications[1]:
+                    result['measurement_title']='跨专利测量并列（可比性待核实）'
+                    result['interpretation']='来自不同专利的实施例；结构差异与原始测量并列展示，不计算跨专利改善倍数，不认定直接演化。'
+                    result['candidate']={'status':'insufficient_evidence','claim':'跨专利测量可比性未核实，不能据此确认活性改善或研发动机。','evidence':[]}
             self.reply(200,result)
         except (KeyError, IndexError, TypeError, ValueError):
             self.reply(400, {'error':'请选择两项已检索的结构；服务重启后需要重新检索。'})

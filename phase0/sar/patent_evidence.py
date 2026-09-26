@@ -19,6 +19,7 @@ def attach_evidence(result):
     assays={a['id']:a for a in package['assays']}
     for card in package['cards']:
         features=compute_features(card['smiles'])
+        card['publication']=result['publication']
         card['formula']=features.formula
         card['inchikey']=features.inchikey
         card['features']=features.numeric
@@ -29,26 +30,35 @@ def attach_evidence(result):
             m['source_url']=card['table_source']['url']
             m['locator']=card['table_source']['locator']
         result['evidence_cards'].append(card)
-    result['evidence_status']='3 个实施例已由助手对照原始 PDF 图表转录；尚未经过独立化学家复核。'
+    result['evidence_status']=f"{len(result['evidence_cards'])} 个实施例已由助手对照原始 PDF 图表转录；尚未经过独立化学家复核。"
     result['evidence_review']=package['review']
     result['evidence_pdf_sha256']=package['source_pdf_sha256']
 
 def compare_measurements(a,b):
     """Only matching patent protocols; censored numbers never enter ratios."""
     output=[]
+    left={m['assay_id']:m for m in a['measurements']}
     right={m['assay_id']:m for m in b['measurements']}
-    for m in a['measurements']:
-        n=right.get(m['assay_id'])
-        if not n:continue
-        x,u=normalise(m['value'],m['unit']);y,v=normalise(n['value'],n['unit'])
-        exact=m['relation']=='=' and n['relation']=='='
-        comparable=u==v and m['assay']==n['assay']
-        output.append({'assay_id':m['assay_id'],'label':m['assay']['label'],
-            'from':m['raw'],'to':n['raw'],'unit':u,
-            'ratio':y/x if exact and comparable and x>0 else None,
-            'note':'精确值 B/A；不是改善倍数' if exact and comparable else '限定值或协议不一致，不计算倍数',
-            'source_from':{'url':m['source_url'],'locator':m['locator']},
-            'source_to':{'url':n['source_url'],'locator':n['locator']}})
+    same_source=bool(a.get('publication')) and a.get('publication')==b.get('publication')
+    for key in dict.fromkeys([*left,*right]):
+        m,n=left.get(key),right.get(key)
+        reference=m or n
+        ratio=None
+        note='缺失测量，不计算倍数'
+        if m and n:
+            x,u=normalise(m['value'],m['unit']);y,v=normalise(n['value'],n['unit'])
+            exact=m['relation']=='=' and n['relation']=='='
+            comparable=same_source and u==v and m['assay']==n['assay']
+            if exact and comparable and x>0:
+                ratio=y/x
+                note='精确值 B/A；不是改善倍数'
+            else:
+                note='跨专利实验可比性未核实，不计算倍数' if not same_source else '限定值或协议不一致，不计算倍数'
+        output.append({'assay_id':key,'label':reference['assay']['label'],
+            'from':m['raw'] if m else '未报告 / 未测',
+            'to':n['raw'] if n else '未报告 / 未测','unit':reference['unit'],
+            'ratio':ratio,'note':note,
+            'source_from':a['table_source'], 'source_to':b['table_source']})
     return output
 
 def provisional_direction(rows):
