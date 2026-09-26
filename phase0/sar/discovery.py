@@ -70,6 +70,8 @@ def chembl_id(value):
 def discover(request, cache):
     mode = request.get('mode')
     result = {'mode': mode, 'sources': [], 'local_matches': []}
+    if mode == 'documents':
+        return discover_documents(request, cache)
     if mode == 'smiles':
         result['structure'] = structure(request.get('query'))
         result['local_matches'] = local_matches(result['structure']['smiles'])
@@ -120,4 +122,48 @@ def discover(request, cache):
             raise RuntimeError('ChEMBL 暂不可用或响应无法解析，请稍后重试；未返回样例结果。') from None
         result['external_status'] = 'failed'
         result['warning'] = 'ChEMBL 查询失败；以下仅为本地结构解析及本地证据匹配，不代表数据库无结果。'
+    return result
+
+
+def discover_documents(request, cache):
+    """Resolve only documents linked by a freshly validated activity-page query."""
+    from .patents import normalize_id
+    page = discover({**request, 'mode': 'activities'}, cache)
+    grouped = {}
+    for activity in page['activities']:
+        did = activity.get('document_chembl_id')
+        if isinstance(did, str) and re.fullmatch(r'CHEMBL\d+', did):
+            grouped.setdefault(did, []).append({k: activity.get(k) for k in
+                ('activity_id', 'molecule_chembl_id', 'target_chembl_id', 'assay_chembl_id')})
+    result = {**page, 'mode': 'documents', 'documents': [],
+        'notice': '仅解析当前测量页关联的文档，按文档 ID 去重。数据库文档关联不证明具体实施例、权利要求覆盖或历史演化；专利加载后才核实公开号与家族。'}
+    if not grouped:
+        return result
+    try:
+        payload, source = fetch('document', {'document_chembl_id__in': ','.join(grouped), 'limit': LIMIT}, cache)
+        records = payload['documents']
+        if not isinstance(records, list):
+            raise ValueError('Invalid document response')
+        by_id = {r['document_chembl_id']: r for r in records if isinstance(r, dict) and r.get('document_chembl_id') in grouped}
+        result['sources'].append(source)
+    except Exception:
+        by_id = {}
+        result['warning'] = '文档来源查询失败；保留测量关联，文档标为待核实，不当作零命中。'
+    for did, chain in grouped.items():
+        record = by_id.get(did)
+        item = {'id': did, 'activities': chain, 'document': record,
+                'publication': None, 'kind': 'unresolved', 'status': '文档未返回，待核实'}
+        if record:
+            kind = str(record.get('doc_type') or '').upper()
+            item['kind'] = 'patent' if kind == 'PATENT' else 'paper' if kind == 'PUBLICATION' else 'other'
+            item['status'] = '未提供可加载的专利公开号'
+            patent = record.get('patent_id')
+            if item['kind'] == 'patent' and isinstance(patent, str):
+                try:
+                    item['publication'] = normalize_id(patent)
+                    item['status'] = '数据库专利公开号；待原始专利页面核验'
+                except ValueError:
+                    item['status'] = '专利编号缺少有效公开号格式；不猜测 A1/B2 后缀'
+        result['documents'].append(item)
+    result.pop('activities', None)
     return result

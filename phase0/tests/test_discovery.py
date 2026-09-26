@@ -84,3 +84,39 @@ def test_http_discovery_validation_and_origin(tmp_path):
             with pytest.raises(HTTPError) as exc:urlopen(Request(url,data=raw,headers=headers))
             assert exc.value.code==code
     finally:server.shutdown();server.server_close();thread.join()
+
+
+def test_document_chain_uses_activity_links_and_deduplicates(tmp_path,monkeypatch):
+    def fetch(endpoint,params,cache):
+        if endpoint=='activity':
+            return {'activities':[{'activity_id':1,'document_chembl_id':'CHEMBL1','molecule_chembl_id':'CHEMBL2'}, {'activity_id':2,'document_chembl_id':'CHEMBL1','molecule_chembl_id':'CHEMBL3'}],'page_meta':{}},{'url':'activity-source'}
+        assert params['document_chembl_id__in']=='CHEMBL1'
+        return {'documents':[{'document_chembl_id':'CHEMBL1','doc_type':'PATENT','patent_id':'US-20130089624-A1','title':'Patent'}, {'document_chembl_id':'CHEMBL999','doc_type':'PATENT','patent_id':'WO2013132376A1'}]},{'url':'document-source'}
+    monkeypatch.setattr(d,'fetch',fetch)
+    result=d.discover({'mode':'documents','entity':'target','id':'CHEMBL4247'},tmp_path)
+    assert len(result['documents'])==1
+    item=result['documents'][0]
+    assert item['publication']=='US20130089624A1'
+    assert len(item['activities'])==2
+    assert len(result['sources'])==2
+
+
+@pytest.mark.parametrize('doc_type,patent,expected',[('PUBLICATION','WO2013132376A1',None),('PATENT','US20130089624',None),('PATENT',None,None),('PATENT','WO2013132376A1','WO2013132376A1')])
+def test_document_type_and_complete_number_required(doc_type,patent,expected,tmp_path,monkeypatch):
+    def fetch(endpoint,params,cache):
+        if endpoint=='activity':return {'activities':[{'document_chembl_id':'CHEMBL1','activity_id':1}],'page_meta':{}},{}
+        return {'documents':[{'document_chembl_id':'CHEMBL1','doc_type':doc_type,'patent_id':patent}]},{}
+    monkeypatch.setattr(d,'fetch',fetch)
+    result=d.discover({'mode':'documents','entity':'molecule','id':'CHEMBL2'},tmp_path)
+    assert result['documents'][0]['publication']==expected
+
+
+def test_document_failure_retains_unresolved_chain(tmp_path,monkeypatch):
+    def fetch(endpoint,params,cache):
+        if endpoint=='activity':return {'activities':[{'document_chembl_id':'CHEMBL1','activity_id':1}],'page_meta':{}},{}
+        raise OSError('offline')
+    monkeypatch.setattr(d,'fetch',fetch)
+    result=d.discover({'mode':'documents','entity':'molecule','id':'CHEMBL2'},tmp_path)
+    assert 'warning' in result
+    assert result['documents'][0]['kind']=='unresolved'
+    assert result['documents'][0]['activities'][0]['activity_id']==1
