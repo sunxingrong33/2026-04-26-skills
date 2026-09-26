@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import threading
+from rdkit import Chem
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 from .patents import retrieve, normalize_id
@@ -94,6 +95,9 @@ class Handler(BaseHTTPRequestHandler):
                 selected.append(self.server.results[pid]['evidence_cards' if kind=='evidence' else 'structures'][index])
                 kinds.append(kind)
                 publications.append(pid)
+            identities = [Chem.MolToSmiles(Chem.MolFromSmiles(c['smiles']), isomericSmiles=True) for c in selected]
+            if identities[0] == identities[1]:
+                return self.reply(400, {'error':'A 和 B 是同一个分子，请选择两个不同的分子。'})
             result = structure_pair(selected[0]['smiles'],selected[1]['smiles'])
             result['deltas'] = [{'name':FEATURE_LABELS.get(key,key),'from':value,'to':selected[1]['features'][key],
                 'delta':round(selected[1]['features'][key]-value,4)} for key,value in selected[0]['features'].items()

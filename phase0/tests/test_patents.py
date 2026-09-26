@@ -82,9 +82,16 @@ def test_http_retrieval_and_structure_comparison(service):
     assert result['publication']=='WO2013132376A1'
     chosen={'publication':result['publication'],'index':0}
     body=json.dumps({'a':chosen,'b':chosen}).encode()
-    response=json.load(urlopen(Request(url+'/api/compare',data=body,headers={'Content-Type':'application/json'})))
-    assert response['deltas']==[]
-    assert response['from_svg'].startswith('data:image/svg+xml;base64,')
+    with pytest.raises(HTTPError) as exc:
+        urlopen(Request(url+'/api/compare',data=body,headers={'Content-Type':'application/json'}))
+    assert exc.value.code==400
+    assert '同一个分子' in json.load(exc.value)['error']
+    # A duplicate record with equivalent SMILES must also be rejected.
+    server.results[result['publication']]['structures'].append({**result['structures'][0], 'smiles':'OCC'})
+    body=json.dumps({'a':chosen,'b':{**chosen,'index':1}}).encode()
+    with pytest.raises(HTTPError) as exc:
+        urlopen(Request(url+'/api/compare',data=body))
+    assert '同一个分子' in json.load(exc.value)['error']
     with pytest.raises(HTTPError) as exc:
         urlopen(Request(url+'/api/compare',data=b'{"a":{"index":-1}}'))
     assert exc.value.code==400
