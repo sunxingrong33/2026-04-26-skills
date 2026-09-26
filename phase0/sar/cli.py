@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from .deltas import GenerationDelta, compute_program_deltas
-from .narrate import DEFAULT_MODEL, audit_response, build_facts, call_claude
+from .narrate import DEFAULT_MODEL, build_facts, narrate
 from .rules import Hypothesis, evaluate, load_rules
 from .schema import Dataset, load_dataset
 
@@ -112,7 +112,7 @@ def _print_delta(delta: GenerationDelta, hypotheses: list[Hypothesis]) -> None:
 
     if delta.activity_ratio is not None:
         flag = "" if delta.activity_comparable else "  [跨 assay，仅供趋势参考]"
-        print(f"  活性: 比值 {delta.activity_ratio:g} (约 {1/delta.activity_ratio:.1f} 倍提升){flag}")
+        print(f"  活性: 后/前比值 {delta.activity_ratio:g}{flag}")
     elif delta.activity_note:
         print(f"  活性: {delta.activity_note}")
 
@@ -169,6 +169,7 @@ def run(args: argparse.Namespace) -> int:
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+    failed = False
 
     for pid in program_ids:
         summaries, deltas = compute_program_deltas(dataset, pid, run_mcs=not args.no_mcs)
@@ -197,6 +198,8 @@ def run(args: argparse.Namespace) -> int:
             pair = f"{pid}_gen{delta.gen_from}-{delta.gen_to}"
             prompt_path = out_dir / f"{pair}.prompt.txt"
             prompt_path.write_text(facts.render(), encoding="utf-8")
+            (out_dir / f"{pair}.facts.json").write_text(
+                json.dumps(_serialize(facts), ensure_ascii=False, indent=2), encoding="utf-8")
 
             entry: dict[str, Any] = {
                 "gen_from": delta.gen_from,
@@ -216,8 +219,7 @@ def run(args: argparse.Namespace) -> int:
             if args.dry_run:
                 print(f"  [dry-run] FACTS 已写入 {_rel(prompt_path)}")
             else:
-                raw = call_claude(facts, model=args.model)
-                audit = audit_response(raw, facts, strict_numbers=args.strict_numbers)
+                audit = narrate(facts, model=args.model, strict_numbers=args.strict_numbers)
                 entry["narrative"] = audit.parsed
                 entry["audit"] = {
                     "ok": audit.ok,
@@ -226,6 +228,10 @@ def run(args: argparse.Namespace) -> int:
                     "warnings": audit.warnings,
                 }
                 _print_narrative(audit)
+                failed = failed or not audit.ok
+                if audit.ok:
+                    (out_dir / f"{pair}.narrative.json").write_text(
+                        json.dumps(audit.parsed, ensure_ascii=False, indent=2), encoding="utf-8")
 
             bundle["transitions"].append(entry)
 
@@ -235,7 +241,7 @@ def run(args: argparse.Namespace) -> int:
         )
         print(f"\n结构化结果已写入 {_rel(bundle_path)}")
 
-    return 0
+    return 1 if failed else 0
 
 
 def _print_narrative(audit) -> None:
@@ -259,6 +265,11 @@ def _print_narrative(audit) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Windows redirected streams may default to GBK, which cannot encode the
+    # report's symbols. Emit a stable UTF-8 stream for terminals and saved logs.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description="竞对 SAR 演化时间线 — 阶段 0 验证管道")
     ap.add_argument("--data", default=str(DEFAULT_DATA), help="CSV 数据目录")
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="输出目录")
@@ -266,7 +277,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rules", help="规则库路径，默认 sar/rules.yaml")
     ap.add_argument("--model", default=DEFAULT_MODEL, help=f"叙述层模型，默认 {DEFAULT_MODEL}")
     ap.add_argument("--dry-run", action="store_true", help="只生成 FACTS prompt，不调用 API")
-    ap.add_argument("--strict-numbers", action="store_true",
+    ap.add_argument("--strict-numbers", action="store_true", default=True,
                     help="叙述中出现 FACTS 之外的数字时直接丢弃该假说，而不是仅警告")
     ap.add_argument("--no-mcs", action="store_true", help="跳过 MCS 骨架对齐")
     args = ap.parse_args(argv)

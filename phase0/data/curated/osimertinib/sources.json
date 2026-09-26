@@ -1,0 +1,115 @@
+{
+  "document_chembl_id": "CHEMBL3351341",
+  "doi": "10.1021/jm500973a",
+  "pubmed_id": 25271963,
+  "year": 2014,
+  "built_at": "2026-09-26T10:25:29.143227+00:00",
+  "structure_count": 2,
+  "observation_count": 49,
+  "exact_measurement_count": 38,
+  "excluded_from_numeric_aggregation": [
+    {
+      "activity_id": 15073018,
+      "reason": "data_validity_comment"
+    },
+    {
+      "activity_id": 15073022,
+      "reason": "data_validity_comment"
+    },
+    {
+      "activity_id": 15073042,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 15073043,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 15073051,
+      "reason": "data_validity_comment"
+    },
+    {
+      "activity_id": 15073052,
+      "reason": "data_validity_comment"
+    },
+    {
+      "activity_id": 15077805,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 15077806,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 15077807,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 15077808,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 15077809,
+      "reason": "censored_or_missing_relation"
+    }
+  ],
+  "source_snapshots": [
+    {
+      "url": "https://www.ebi.ac.uk/chembl/api/data/document/CHEMBL3351341.json",
+      "sha256": "56c3e3926ec3aa4864a11d47692e334349c6615b0e7413314c781c6839fea3d7",
+      "cache_file": "d9d687cfdea7e48d2819aa21fee86dcc27cb5ae497816340b252880a39d28a9f.json",
+      "retrieved_at": "2026-09-26T10:09:30.227656+00:00"
+    },
+    {
+      "url": "https://www.ebi.ac.uk/chembl/api/data/compound_record.json?document_chembl_id=CHEMBL3351341&limit=1000",
+      "sha256": "1e1ae9e89fb60186098886c0a33b0687a8744e79d6677076eb6b5469b96882c4",
+      "cache_file": "9d7ef15ae31e192ee4b06a2004a9073c856f02b8250ede0b82d067b3b51776d3.json",
+      "retrieved_at": "2026-09-26T10:07:29.001339+00:00"
+    },
+    {
+      "url": "https://www.ebi.ac.uk/chembl/api/data/activity.json?document_chembl_id=CHEMBL3351341&limit=1000",
+      "sha256": "3bf5e02aec06dd6f6ce81813996ec2b3162af695eb2d58e716e3eaef1cb2c31c",
+      "cache_file": "608d5b62baddcaf614146a212070133bb5f53b594b19922e833bf51f6f48985c.json",
+      "retrieved_at": "2026-09-26T10:07:34.908579+00:00"
+    }
+  ],
+  "plan": {
+    "document_chembl_id": "CHEMBL3351341",
+    "program_id": "osimertinib-holdout",
+    "program_name": "奥希替尼：独立文献留出对照",
+    "assignee": "AstraZeneca",
+    "target": "EGFR",
+    "ordering_note": "只比较论文中的 compound 9 与 compound 8；这是明确选定的结构对照，不宣称 9 直接演化为 8，也不将编号当作研发日期。此数据不用于调整规则阈值。",
+    "candidate": "CHEMBL3353410",
+    "stages": [
+      {
+        "generation": 1,
+        "label": "对照分子 · compound 9",
+        "compound_keys": [
+          "9"
+        ]
+      },
+      {
+        "generation": 2,
+        "label": "候选分子 · compound 8 / AZD9291",
+        "compound_keys": [
+          "8"
+        ]
+      }
+    ],
+    "assay_labels": {
+      "CHEMBL3389020": "EGFR_L858R_T790M_cell_IC50",
+      "CHEMBL3389021": "EGFR_ex19del_cell_IC50",
+      "CHEMBL3389022": "EGFR_WT_cell_IC50",
+      "CHEMBL3389023": "LogD_pH7.4",
+      "CHEMBL3389027": "solubility_pH7.4",
+      "CHEMBL3389028": "hERG_IC50"
+    }
+  },
+  "limitations": [
+    "结构、编号与数值来自 ChEMBL 对原始论文的整理，尚未逐项对照论文图表进行人工复核。",
+    "阶段由已声明的论文系列分组构成，不代表逐个化合物的真实研发先后或专利优先权时间。",
+    "不等式/缺失/质量标记数据保留在 observations.csv，不当作精确值参与中位数；精确值子集可能有选择偏差。",
+    "分子式由导入结构计算，仅验证内部一致性，不能代替原文结构身份核验。"
+  ]
+}

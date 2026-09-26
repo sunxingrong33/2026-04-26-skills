@@ -1,0 +1,30 @@
+program_id,compound_id,generation,patent_number,priority_date,example_ref,source_url,source_kind,activity_type,activity_value_nm,activity_assay,activity_source,activity_provenance,note
+lorlatinib-literature,CHEMBL601719,1,,,"CHEMBL3286195; paper compound 1, PF-02341066; record 2113997",https://www.ebi.ac.uk/chembl/api/data/compound_record/2113997.json,paper,,,,,chembl,参考分子 · crizotinib
+lorlatinib-literature,CHEMBL3128069,2,,,"CHEMBL3286195; paper compound 6a, PF-06439015; record 2113998",https://www.ebi.ac.uk/chembl/api/data/compound_record/2113998.json,paper,,,,,chembl,无环系列 · 6a–6i
+lorlatinib-literature,CHEMBL3286808,2,,,CHEMBL3286195; paper compound 6b; record 2113999,https://www.ebi.ac.uk/chembl/api/data/compound_record/2113999.json,paper,,,,,chembl,无环系列 · 6a–6i
+lorlatinib-literature,CHEMBL3128060,2,,,CHEMBL3286195; paper compound 6c; record 2114000,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114000.json,paper,,,,,chembl,无环系列 · 6a–6i
+lorlatinib-literature,CHEMBL3128075,2,,,CHEMBL3286195; paper compound 6d; record 2114001,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114001.json,paper,,,,,chembl,无环系列 · 6a–6i
+lorlatinib-literature,CHEMBL3286809,2,,,CHEMBL3286195; paper compound 6e; record 2114002,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114002.json,paper,,,,,chembl,无环系列 · 6a–6i
+lorlatinib-literature,CHEMBL3286810,2,,,CHEMBL3286195; paper compound 6f; record 2114003,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114003.json,paper,,,,,chembl,无环系列 · 6a–6i
+lorlatinib-literature,CHEMBL3286811,2,,,CHEMBL3286195; paper compound 6g; record 2114004,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114004.json,paper,,,,,chembl,无环系列 · 6a–6i
+lorlatinib-literature,CHEMBL3286812,2,,,CHEMBL3286195; paper compound 6h; record 2114005,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114005.json,paper,,,,,chembl,无环系列 · 6a–6i
+lorlatinib-literature,CHEMBL3286813,2,,,CHEMBL3286195; paper compound 6i; record 2114006,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114006.json,paper,,,,,chembl,无环系列 · 6a–6i
+lorlatinib-literature,CHEMBL3286814,3,,,CHEMBL3286195; paper compound 7a; record 2114007,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114007.json,paper,,,,,chembl,早期大环系列 · 7a–7f
+lorlatinib-literature,CHEMBL3286815,3,,,CHEMBL3286195; paper compound 7b; record 2114008,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114008.json,paper,,,,,chembl,早期大环系列 · 7a–7f
+lorlatinib-literature,CHEMBL3286816,3,,,CHEMBL3286195; paper compound 7c; record 2114009,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114009.json,paper,,,,,chembl,早期大环系列 · 7a–7f
+lorlatinib-literature,CHEMBL3286817,3,,,CHEMBL3286195; paper compound 7d; record 2114010,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114010.json,paper,,,,,chembl,早期大环系列 · 7a–7f
+lorlatinib-literature,CHEMBL3286818,3,,,CHEMBL3286195; paper compound 7e; record 2114011,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114011.json,paper,,,,,chembl,早期大环系列 · 7a–7f
+lorlatinib-literature,CHEMBL3286819,3,,,CHEMBL3286195; paper compound 7f; record 2114012,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114012.json,paper,,,,,chembl,早期大环系列 · 7a–7f
+lorlatinib-literature,CHEMBL3286820,4,,,CHEMBL3286195; paper compound 8a; record 2114013,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114013.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286821,4,,,CHEMBL3286195; paper compound 8b; record 2114014,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114014.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286822,4,,,CHEMBL3286195; paper compound 8c; record 2114015,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114015.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286823,4,,,CHEMBL3286195; paper compound 8d; record 2114016,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114016.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286824,4,,,CHEMBL3286195; paper compound 8e; record 2114017,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114017.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286825,4,,,CHEMBL3286195; paper compound 8f; record 2114018,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114018.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286826,4,,,CHEMBL3286195; paper compound 8g; record 2114019,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114019.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286827,4,,,CHEMBL3286195; paper compound 8h; record 2114020,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114020.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286828,4,,,CHEMBL3286195; paper compound 8i; record 2114021,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114021.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286829,4,,,CHEMBL3286195; paper compound 8j; record 2114022,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114022.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286830,4,,,"CHEMBL3286195; paper compound 8k, PF-06463922; record 2114023",https://www.ebi.ac.uk/chembl/api/data/compound_record/2114023.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286831,4,,,CHEMBL3286195; paper compound 8l; record 2114024,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114024.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）
+lorlatinib-literature,CHEMBL3286832,4,,,CHEMBL3286195; paper compound 8m; record 2114025,https://www.ebi.ac.uk/chembl/api/data/compound_record/2114025.json,paper,,,,,chembl,后续大环系列 · 8a–8m（8k 为洛拉替尼）

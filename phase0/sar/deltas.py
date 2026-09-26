@@ -17,6 +17,7 @@ from rdkit import Chem
 from .align import Alignment, align_generations
 from .features import BOOLEAN_FEATURES, FEATURE_LABELS, NUMERIC_FEATURES
 from .schema import Dataset, Membership
+from .units import normalise, assays_comparable
 
 
 @dataclass
@@ -29,6 +30,7 @@ class MeasureAggregate:
     unit: str
     assays: list[str]
     all_verified: bool
+    sources: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -41,6 +43,7 @@ class MeasureDelta:
     n_support: int
     comparable: bool
     note: str = ""
+    sources: list[str] = field(default_factory=list)
 
     @property
     def delta(self) -> float:
@@ -61,6 +64,7 @@ class GenerationSummary:
     activity_n: int
     n_compounds: int
     measures: dict[str, MeasureAggregate] = field(default_factory=dict)
+    activity_types: list[str] = field(default_factory=list)
 
     @property
     def patent_label(self) -> str:
@@ -133,7 +137,8 @@ def summarize_generation(
 
     dates = [m.priority_date for m in members if m.priority_date]
     acts = [m.activity_value_nm for m in members if m.activity_value_nm is not None]
-    assays = sorted({m.activity_assay for m in members if m.activity_assay})
+    measured_members = [m for m in members if m.activity_value_nm is not None]
+    assays = sorted({m.activity_assay for m in measured_members})
 
     by_type: dict[str, list] = {}
     for m in members:
@@ -141,19 +146,24 @@ def summarize_generation(
             by_type.setdefault(meas.measure_type, []).append(meas)
     measures: dict[str, MeasureAggregate] = {}
     for mtype, items in sorted(by_type.items()):
-        units = {i.unit for i in items if i.unit}
+        values_units = [normalise(i.value, i.unit) for i in items]
+        units = {unit for _, unit in values_units}
         if len(units) > 1:
             raise ValueError(
                 f"{mtype} 在 Gen{generation} 中混用了单位 {sorted(units)}，"
                 "无法聚合 —— 请统一单位后再录入"
             )
+        per_compound: dict[str, list[float]] = {}
+        for item, (value, _) in zip(items, values_units):
+            per_compound.setdefault(item.compound_id, []).append(value)
         measures[mtype] = MeasureAggregate(
             measure_type=mtype,
-            median=round(statistics.median(i.value for i in items), 4),
-            n=len(items),
+            median=statistics.median(statistics.median(vals) for vals in per_compound.values()),
+            n=len({i.compound_id for i in items}),
             unit=next(iter(units), ""),
-            assays=sorted({i.assay for i in items if i.assay}),
+            assays=sorted({i.assay for i in items}),
             all_verified=all(i.verified for i in items),
+            sources=sorted({i.source for i in items}),
         )
 
     return GenerationSummary(
@@ -164,11 +174,12 @@ def summarize_generation(
         boolean_fraction=boolean_fraction,
         earliest_priority=min(dates) if dates else None,
         patents=[m.patent_number for m in members],
-        activity_median_nm=round(statistics.median(acts), 3) if acts else None,
+        activity_median_nm=statistics.median(acts) if acts else None,
         activity_assays=assays,
         activity_n=len(acts),
         n_compounds=len(members),
         measures=measures,
+        activity_types=sorted({m.activity_type for m in measured_members}),
     )
 
 
@@ -219,18 +230,21 @@ def compute_program_deltas(
                 )
 
         ratio = None
-        comparable = True
+        activity_comparable = False
         note = ""
-        if prev.activity_median_nm and curr.activity_median_nm:
-            ratio = round(curr.activity_median_nm / prev.activity_median_nm, 3)
-            shared = set(prev.activity_assays) & set(curr.activity_assays)
-            if prev.activity_assays and curr.activity_assays and not shared:
-                comparable = False
+        if prev.activity_median_nm is not None and curr.activity_median_nm is not None:
+            activity_comparable = (
+                assays_comparable(prev.activity_assays, curr.activity_assays)
+                and assays_comparable(prev.activity_types, curr.activity_types)
+            )
+            if activity_comparable and prev.activity_median_nm > 0:
+                ratio = curr.activity_median_nm / prev.activity_median_nm
+            if not activity_comparable:
                 note = (
-                    f"活性来自不同 assay ({'/'.join(prev.activity_assays)} vs "
-                    f"{'/'.join(curr.activity_assays)})，只能看数量级趋势，不能做定量比较"
+                    f"活性 assay/类型缺失或不一致 ({'/'.join(prev.activity_assays)} vs "
+                    f"{'/'.join(curr.activity_assays)})，仅并列展示，不计算变化倍数或推断趋势"
                 )
-        elif prev.activity_median_nm or curr.activity_median_nm:
+        elif prev.activity_median_nm is not None or curr.activity_median_nm is not None:
             note = "仅一代有活性数据，无法计算变化倍数"
         else:
             note = "两代均无活性数据"
@@ -238,18 +252,22 @@ def compute_program_deltas(
         measure_deltas: dict[str, MeasureDelta] = {}
         for mtype in sorted(set(prev.measures) & set(curr.measures)):
             ma, mb = prev.measures[mtype], curr.measures[mtype]
-            shared_assay = set(ma.assays) & set(mb.assays)
-            comparable = not (ma.assays and mb.assays and not shared_assay)
+            if ma.unit != mb.unit:
+                raise ValueError(f"{mtype} 跨代混用了单位 {ma.unit!r} / {mb.unit!r}，无法比较")
+            measure_comparable = assays_comparable(ma.assays, mb.assays)
             measure_deltas[mtype] = MeasureDelta(
                 measure_type=mtype,
                 val_from=ma.median,
                 val_to=mb.median,
                 unit=ma.unit or mb.unit,
-                ratio=round(mb.median / ma.median, 3) if ma.median else None,
+                ratio=mb.median / ma.median if ma.median > 0 and measure_comparable
+                and not any(token in mtype.lower() for token in ("logd", "logp", "pka", "pic50", "pki", "pec50"))
+                and mtype.lower() != "ph" else None,
                 n_support=min(ma.n, mb.n),
-                comparable=comparable,
-                note="" if comparable
-                else f"assay 不同 ({'/'.join(ma.assays)} vs {'/'.join(mb.assays)})，仅趋势可读",
+                comparable=measure_comparable,
+                note="" if measure_comparable
+                else f"assay 缺失、混合或不同 ({'/'.join(ma.assays)} vs {'/'.join(mb.assays)})，仅并列展示",
+                sources=sorted(set(ma.sources + mb.sources)),
             )
 
         # Ring-system comparison always runs (it is what core-hop detection is
@@ -268,7 +286,7 @@ def compute_program_deltas(
                 features=feats,
                 alignment=alignment,
                 activity_ratio=ratio,
-                activity_comparable=comparable,
+                activity_comparable=activity_comparable,
                 activity_note=note,
                 n_support=n_support,
                 measures=measure_deltas,

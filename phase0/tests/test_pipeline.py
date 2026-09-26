@@ -77,9 +77,9 @@ def test_landscape_generation_two_aggregates_three_compounds(dataset):
     assert gen2.activity_median_nm == 0.62
 
 
-def test_same_assay_comparison_is_marked_comparable(dataset):
+def test_missing_activity_not_marked_comparable(dataset):
     _, deltas = compute_program_deltas(dataset, "pfizer-alk", run_mcs=False)
-    assert deltas[0].activity_comparable is True
+    assert deltas[0].activity_comparable is False
 
 
 def test_cross_assay_comparison_is_flagged(dataset):

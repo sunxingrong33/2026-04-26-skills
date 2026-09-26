@@ -1,380 +1,62 @@
-# 阶段 0：杀死性验证管道
+# Phase 0 操作说明
 
-方案里 §1 的三天验证。目的**不是**做出产品，是回答一个问题：
+项目状态与科学边界见[根目录说明](../README.md)。以下命令从仓库根目录执行。
 
-> 把专利里的结构演化算出来、讲成人话之后，化学家会不会说"这我早知道"？
+## 离线演示
 
-代码只做到能回答这个问题为止。任何超出这个目的的工程（BigQuery 摄取、
-程序聚类、前端）都不在这里。
-
----
-
-## 跑起来
-
-```bash
-pip install -r requirements.txt
-python -m phase0.sar.curate --check                      # 校验数据、报告缺什么
-python -m phase0.sar.cli --program pfizer-alk --dry-run   # 只算，不调 API
-python -m phase0.sar.cli --program pfizer-alk             # 需要 ANTHROPIC_API_KEY
-python -m phase0.sar.benchmark                            # §5 三项指标
-python -m pytest phase0/tests -q
+```sh
+python -m phase0.sar.demo
 ```
 
-`--dry-run` 会把喂给模型的 FACTS 块写到 `phase0/out/*.prompt.txt`，
-结构化结果写到 `phase0/out/<program>.json`。
+先运行冻结规则验证，再生成 `artifacts/sar-explorer.html`。已提交的数据足够生成页面，不需联网。
 
----
+## 数据导入
 
-## ⚠️ 数据可信度：先读这一段
-
-**本仓库自带的 5 个结构和全部专利号/优先权日/活性值，都是凭模型记忆填写的，
-没有经过任何数据库核对。** 本次开发环境的网络策略只放行 GitHub，
-PubChem / ChEMBL / EBI / Wikipedia 全部不可达，所以无法自动核对。
-
-已经做到的校验：每个结构都声明了分子式，`features.py` 用 RDKit 反算并强制比对，
-不一致直接拒绝入库。5 个化合物的分子式与分子量都与公开值一致
-（450.35 / 406.42 / 558.15 / 482.63 / 584.11），克唑替尼与洛拉替尼的手性也都算出 (R)。
-这能挡住"画错成另一个分子"，**但挡不住同分异构级别的画错**。
-
-**在给任何化学家看之前，必须逐行核对下面这张表**：
-
-| compound_id | 核对什么 | 去哪核对 |
-|---|---|---|
-| crizotinib | InChIKey | <https://pubchem.ncbi.nlm.nih.gov/compound/crizotinib> |
-| ceritinib | InChIKey | <https://pubchem.ncbi.nlm.nih.gov/compound/ceritinib> |
-| alectinib | InChIKey、**四环骈合方式** | <https://pubchem.ncbi.nlm.nih.gov/compound/alectinib> |
-| brigatinib | InChIKey | <https://pubchem.ncbi.nlm.nih.gov/compound/brigatinib> |
-| lorlatinib | InChIKey、**大环连接方式与氟位置** | <https://pubchem.ncbi.nlm.nih.gov/compound/lorlatinib> |
-| 全部 | 专利号、优先权日、实施例编号 | Espacenet / Google Patents |
-| 全部 | IC50 数值与 assay 条件 | 原始文献 |
-
-核对通过后，把 `compounds.csv` 的 `structure_provenance` 从 `unverified` 改成
-`pubchem`，`program_members.csv` 的 `activity_provenance` 同理。管道会自动
-撤掉警告横幅——横幅消失就是"这份数据可以拿出去"的信号。
-
-`example_ref` 目前全是"待补"。**方案里承诺的是"可点开看专利号 + 实施例编号"，
-实施例编号没有就等于这个承诺没兑现**，这是给化学家看之前必须补上的。
-
----
-
-## 怎么补中间代（需要你做的）
-
-骨架行已经建好了。`pfizer-alk` 现在是 Gen1(克唑替尼) → Gen2/Gen3(空) → Gen4(洛拉替尼)，
-六个空槽位在 `compounds.csv` 里等着填。
-
-**只有一件事必须你来做：把 SMILES 填进去。** 其余能自动算的都自动算。
-
-原因是本环境网络策略只放行 GitHub，我拿不到 J. Med. Chem. 2014, 57, 4720 的正文和 SI，
-凭记忆写中间体结构等于编数据 —— 这正是产品最不能碰的红线，所以我不写。
-
-### 步骤
-
-1. 打开论文（或它的 SI），挑代表性化合物：
-   - **Gen2 槽位**（`pf-int-2a/2b/2c`）：无环的、去哌啶或降碱性的那一批
-   - **Gen3 槽位**（`pf-int-3a/3b/3c`）：首批大环，效价或渗透性还没达标的
-   - 每代 2-3 个就够。**每代至少 2 个**，否则中位值等同单点值、置信度会被乘 0.8。
-     只想录 2 个就把 `c` 那行整行删掉。
-
-2. ChemDraw 里画出来 → 右键 Copy As → SMILES → 粘到 `compounds.csv` 的 `smiles` 列。
-   顺手把 `structure_source` 改成你从哪儿画的（哪张图、哪个化合物编号）。
-
-3. ```bash
-   python -m phase0.sar.curate --fill-formula   # 自动回写 expected_formula
-   python -m phase0.sar.curate --check          # 看还差什么
-   ```
-   `--check` 会打出每个结构的分子式、MW、以及大环/共价弹头/未定义手性中心这些标志。
-   **拿 MW 跟论文对一遍** —— 这是发现画错的最快办法。
-
-4. `program_members.csv` 里补 `example_ref`（论文里的化合物编号，如"化合物 22"）
-   和 `source_url`。文献来源的中间体没有优先权日，`priority_date` 留空即可，
-   代际顺序由 `generation` 列决定。`source_kind` 已预填为 `paper`。
-
-5. 核对完把 `structure_provenance` 从 `unverified` 改掉。警告横幅消失就是可以拿出去的信号。
-
-### 想把多维数据一起录进去
-
-中间代的故事本质是**权衡**——效价上去了但脑暴露没上去，或者反过来。
-单一个 IC50 列表达不了这个，所以有 `measurements.csv`（可选，不建也能跑）：
-
-```csv
-compound_id,measure_type,value,unit,assay,source,provenance,note
-pf-int-2a,pgp_efflux_ratio,6.2,,MDR1-MDCK,J. Med. Chem. 2014 57 4720 Table 3,paper,
-pf-int-2a,alk_l1196m_ic50,210,nM,ALK L1196M enzymatic,同上,paper,
+```sh
+python -m phase0.sar.ingest --plan phase0/plans/lorlatinib.json --out phase0/data/curated/lorlatinib
+python -m phase0.sar.ingest --plan phase0/plans/osimertinib.json --out phase0/data/curated/osimertinib
 ```
 
-`measure_type` 自己定，只要前后一致。建议的几个：
-`alk_ic50_wt` `alk_l1196m_ic50` `alk_g1202r_ic50` `pgp_efflux_ratio` `kpuu_rat`
-`hlm_clint` `solubility_ph68` `ppb_free_fraction`
+只读取 ChEMBL 公开 API，按文献查询；缓存位于 `artifacts/chembl-cache`。已有缓存优先复用；`--offline` 禁止网络且缺少响应时失败。重新读取上游时使用新的 `--cache` 目录。`sources.json` 保存响应 SHA-256、读取时间与 URL，原始缓存未提交到 Git。
 
-同一 `measure_type` 在一代里**单位必须统一**，混用 nM 和 uM 会直接报错而不是
-悄悄算出一个错的中位值。这些数字会进入 FACTS 成为可引用证据，
-但目前**没有规则引用它们** —— 规则库还只跑在结构描述符和主活性上。
+`plans/*.json` 明确指定论文分子编号、系列分组和 assay 标签。不会从编号推断历史顺序。原始测量含限定符，保存在 `observations.csv`；限定值不参与精确中位数。结构的 chembl 标记表示可追溯，不表示原文人工核实完成。
 
-### 关于"专利时间线"还是"论文时间线"
+## CLI 与可选叙述层
 
-得说清楚一个模型上的紧张关系：论文里的中间体**没有优先权日**，
-所以补进来得到的是**结构演化顺序**，不是可辩护的专利时间线。
+```sh
+python -m phase0.sar.cli --data phase0/data/curated/lorlatinib --program lorlatinib-literature --dry-run
+python -m pip install -r requirements-llm.txt
+python -m phase0.sar.cli --data phase0/data/curated/lorlatinib --program lorlatinib-literature --model YOUR_AVAILABLE_MODEL_ID
+```
 
-产品最终要卖的是"从专利里读出教训"，那中间代应该来自 2006-2012 之间
-Pfizer 的中间专利，而不是论文。论文给的是"为什么"，专利给的是"什么时候"。
-两者都要，但别混为一谈。`source_kind` 列就是为了让这个区别留在数据里。
+真实模型调用还需要 `ANTHROPIC_API_KEY`；模型也可通过 `ANTHROPIC_MODEL` 设置。不内置猜测的模型名。未设置密钥会转为 dry-run。输出到 `phase0/out/`，包括 FACTS 文本/JSON、审计结果和通过格式审计的 narrative JSON。
 
----
+CLI 相邻“代”是计划的分组对照，不是历史先后。页面另外提供固定分子对，避免组中位数替代具体分子差异。
 
-## 开发过程中发现的十一件事
+## 验证
 
-这些都改变了方案里写的做法，值得单独说。前三条来自主线开发，
-第四条来自合成数据冒烟测试，后面几条来自第一次真实录入及其复盘。
+```sh
+python -m pytest -q
+python -m phase0.sar.validate
+python -m phase0.sar.report
+```
 
-### 1. MCS 覆盖率做不了骨架跃迁判定，会给出自信的错误答案
+`validation_baseline.json` 固定规则哈希，`validation_cases.json` 声明开发/留出范围和原始摘要中的程序目标，不证明所选分子对的具体研发意图。规则改变时验证命令拒绝沿用未调参留出的表述。
 
-方案 §3 难点② 的写法是 `rdFMCS` + `completeRingsOnly=True`，覆盖率 < 60%
-判为 core hopping。实测在克唑替尼→洛拉替尼上，这套参数给出 **7 个重原子、
-覆盖率 0.23** —— 一个高置信度的**假**骨架跃迁判定，而且恰好发生在整个产品
-最想讲对的旗舰案例上。
+人工复核表要求 supported/recovered 为 yes/no，并填写 reviewer、rationale。未完整复核时真实指标为空。重新运行保留相同 review_id 的内容，变化后旧表归档为 `.archived.csv`。
 
-原因有两个。一是 `completeRingsOnly=True` 在大环化面前是反向的：成环之后
-原来的吡啶原子同时属于 12 元大环，要求"完整环"就把大环一起拖进匹配，
-匹配随即崩塌。二是全分子 MCS 覆盖率被外围取代基主导，它回答的是"两个分子像不像"，
-不是"母核是不是同一个"。
+旧 `python -m phase0.sar.benchmark --narratives phase0/examples` 仍兼容种子样例。它报告编号有效率、自动标记候选比例和关键词代理指标，不是真实引用准确率或幻觉率。缺少 FACTS 快照时会警告编号漂移风险。
 
-在 5 个 ALK 抑制剂构成的 8 个化合物对上（已知母核归属）扫了参数：
+## 模块
 
-| 方法 | 判别间隔 (min正例 − max负例) |
+| 模块 | 作用 |
 |---|---|
-| 全分子 MCS，24 组参数里最好的一组 | **−0.03** |
-| Murcko 骨架 MCS | **−0.48** |
-| **环系 Jaccard（现在用的）** | **+0.35** |
-
-负数表示**不存在**能把两类分开的阈值。改成"把每个非大环 SSSR 环单独取出来，
-比较两代的环集合 Jaccard"之后，正例 0.75/0.75，负例 ≤ 0.40。而且它的输出
-本身就是人话：*保留苯环、吡啶、吡唑；消失哌啶* —— 这正是化学家描述母核变化的方式。
-
-MCS 仍然在算，但降级为描述性信息，没有任何规则依赖它。
-
-**这个阈值只在 8 个对、2 个正例上标定过。** 足够证伪 MCS，不足够信任 0.55 这个数。
-上了 §5 的 benchmark 必须重新拟合。
-
-### 2. 洛拉替尼的 TPSA 是升的，P-gp 规则不能按 TPSA 写
-
-洛拉替尼 TPSA 从 78 升到 110，却是公认的脑渗透改善案例。真正下降的是
-氢键给体（2→1）和碱性中心（1→0）。原先按 `TPSA <= 90` 写的
-`pgp_efflux_mitigation` 规则会把这个真阳性挡在门外。
-
-已改为以 HBD + 碱性为判据。这条修改是**看到案例之后做的**，虽然
-CNS MPO / Hitchcock-Pennington 那套文献本来就把 HBD 和碱性列为 P-gp 底物特征的
-主要驱动因素、TPSA 是次级项，但它仍然带着对单一案例过拟合的风险，
-必须在 benchmark 上独立验证。
-
-### 3. 苄位氢的 SMARTS 不能用 `[a]`
-
-`[CX4;!H0][a]` 会把吡唑上的 N-甲基算成苄位氢，克唑替尼→洛拉替尼被算成 2→6。
-N-甲基是 N-脱烷基化软点，不是苄位氧化软点，混在一起会让叙述层把一次
-N-甲基化说成"封堵苄位"。已拆成 `benzylic_h_count`（接芳碳 `[c]`）和
-`n_alkyl_h_count`（接芳氮 `[n]`），实际值 1→3 和 1→3。
-
-### 4. 每代多个化合物时，环系不能取并集
-
-这条是补中间代的过程中用合成数据做冒烟测试发现的。原来每代的环集合取并集，
-于是一代里探索了 5 个不同溶解性基团，环集合就膨胀，跟下一代的 Jaccard 被稀释 ——
-**数据越丰富的代际越容易被误判成骨架跃迁**，方向完全反了。冒烟数据上
-Gen2→Gen3 因此掉到 0.60，紧贴 0.55 阈值。
-
-改成"出现在该代 ≥50% 化合物里的环"（consensus core）之后同一对变成 1.00。
-单化合物代不受影响（golden test 里的 0.75 没变）。
-
-### 5. RDKit 会把 `[Nh]` 当成鉨(113 号元素)，而不是报错
-
-第一次录入里有一行把环外胺的 N-H 写成了 `[Nh]`。RDKit 静默接受，算出
-`C20H17FI2N4NhO2`、MW 902，所有描述符随之全错，而且**任何下游环节都发现不了**。
-现已在 `features.py` 的加载路径上加了元素白名单硬闸门（不只是校验工具里），
-非常规元素直接拒绝入库。
-
-写法上要区分位置：**环内芳香氮**用 `[nH]`，**环外胺氮**直接写 `N`（氢自动补足）。
-本例是 Boc 保护的氨基吡啶，属后者。（第一版报告里我笼统写成"应为 `[nH]`"，
-对这个位置是错的，已改。）
-
-### 6. 环系身份必须与取代状态无关
-
-原来 N-甲基吡唑得到 `c1cnnc1`、游离 NH 吡唑得到 `c1cn[nH]c1`，被当成两个不同环系。
-后果是**给环上的 NH 甲基化会被读成"少了一个环、多了一个环"**，
-母核未变却把 Jaccard 拉低。已在 `ring_systems()` 里做骨架归一化
-（清掉显式氢/电荷/同位素后再规范化）。
-
-### 7. 论文 SI 里的"中间体"多数是合成砌块，不是受测类似物
-
-第一次录入的 6 个化合物里有 4 个是合成路线上的砌块（乙酯、游离苄醇、
-双碘偶联前体），不是做过活性测试的类似物。它们**共享外围环(苯环、吡唑)**，
-所以简单的环重叠检查抓不到，但缺少氨基吡啶铰链结合基团。
-
-已加"程序核心环系一致性"检查：拿新化合物比对该程序的 consensus core，
-缺失核心环系就告警。这条是**提示而非硬错误** —— 真实的骨架跃迁长得一模一样，
-两者的区分是人的判断。
-
-### 8. 规则库看不见官能团层面的改动
-
-Gen3→Gen4（醚连大环 → 酰胺连大环 + 腈基）这一步，原来只能看到
-"手性中心 +1、TPSA +35、MW +45"，**连接子从醚换成酰胺这件事完全不可见**。
-全分子描述符回答不了"哪个官能团变了"。
-
-已补 11 个官能团计数特征（酰胺/酯/脲/氨基甲酸酯/酮/醚/腈/磺酰胺/砜/羧酸/羟基）。
-现在同一步显示 `醚键数 2→1、酰胺数 0→1、腈基数 0→1`。
-**只加了特征，没加规则** —— 等真实数据多了、看清哪些官能团变化真有判别力再写，
-比现在凭想象写靠谱。
-
-### 9. 保护基和偶联把手是"砌块混入"最可靠的自动信号
-
-把上面那行按 Boc 修正之后得到 `C24H24FI2N5O4`(MW 719.29)，是个完全合法的分子，
-**而且通过了前面所有闸门** —— 元素合规，核心环系(吡啶、吡唑)俱在。
-真正把它和受测类似物区分开的，是 **Boc 保护基**和**两个芳基碘**：
-受测化合物基本不会带这些，SI 实验部分的砌块几乎一定带。
-
-已加 10 个保护基/偶联把手的 SMARTS（Boc/Cbz/Fmoc/硅醚/三苯甲基/邻苯二甲酰亚胺/
-THP 缩醛/硼酸酯/芳基碘/苄酯），在录入校验和管道横幅上都会提示。
-5 个真实药物零误报。
-
-同样是**提示级不是硬错误** —— 判断权留给人。
-
-### 10. FACTS 块用白名单挑特征，会把新特征静默丢掉
-
-补完官能团计数之后，终端确实打印了 `醚 2→1、酰胺 0→1、腈 0→1`，
-但**喂给模型的 FACTS 块里一条都没有**。`build_facts` 当时按一份固定白名单挑特征，
-新加的特征既不在任何规则里、也不在白名单里，于是被静默跳过 ——
-这一步最有信息量的事实，模型根本看不到。
-
-改成遍历所有实际发生变化的特征，规则引用的优先、其余按相对变化幅度排序，
-上限 20 条。**分析层算了却没进 FACTS 的特征，比没算还糟** ——
-终端上看得见，会让人误以为模型也看见了。
-
-### 11. 评测指标自己会作弊：免责声明被算成了命中
-
-`benchmark.py` 第一版把 `what_we_cannot_tell` 也纳入 recall 匹配。结果是
-工具说"**无法判断**动机是效价还是渗透性"，因为含"渗透"二字被记成
-"命中脑渗透挑战"。**工具越是老实承认不知道，recall 越高** —— 方向完全反了。
-
-已改为只统计 `headline` 与 `hypotheses[].claim`，即只算断言不算免责。
-
-这条要单独记下来，是因为它示范了评测集自身的失败模式：
-**一个偏向讨好工具的指标，比没有指标更糟**，它会让你在错误的方向上加速。
-
----
-
-## §5 评测
-
-`benchmark.py` 算三个指标，并且对三者的可自动化程度不打马虎眼：
-
-| 指标 | 可自动化程度 | 现状 |
-|---|---|---|
-| Citation accuracy | 完全可自动化 | 两条叙述均 1.000（目标 ≥0.95） |
-| Hallucination rate | **只能算下界** | 自动下界 0.000，但只覆盖伪造引用与凭空数字 |
-| Recall | 依赖 ground truth | **拒绝给分** —— ground truth 未核实 |
-
-**Hallucination 的自动值是下界，不是答案。** 程序抓得到"引用了不存在的 E9"和
-"冒出 FACTS 里没有的数字"，抓不到"引用真实证据但推出无据结论"。后者只能人工判，
-所以脚本会导出 `out/review.csv` 复核工作表，每条假说附上它引用的证据原文，
-填完"人工判定_有据"列才能算出真实幻觉率。
-
-方案 §5 说 hallucination 是生死线 —— 而它恰恰是最不能自动测的那个。
-**任何声称"幻觉率 0.03"的纯自动化数字都应该被怀疑。**
-
-**Recall 目前拒绝计分**，因为 `benchmark.yaml` 里所有 ground truth 都是
-`verified: false` 的占位。ground truth 必须从 discovery paper 里**原文明确写出**的
-障碍陈述逐条抄录并附页码 —— 凭印象写会让 recall 变成自证预言：
-人会不自觉地按工具的输出来写挑战列表。
-
-即便如此，命中数已经能看出数据密度的影响：
-
-| 程序 | 数据情况 | 命中挑战 |
-|---|---|---|
-| `pfizer-alk` Gen3→Gen4 | 无活性、无 ADME | 1 / 4 |
-| `alk-landscape` Gen1→Gen2 | 每代 n=3、有活性 | 2 / 3 |
-
-只有两个转换，样本太小，当方向性信号看。
-
----
-
-## 设计原则（和方案一致的部分）
-
-**分析层确定性，LLM 只做翻译。** 所有数字都出自 `features.py` / `deltas.py` /
-`rules.py`。模型只拿到 FACTS 块，块里每一条都带 `[Ex]` 编号。
-
-**防幻觉靠代码而不是靠 prompt。** `audit_response()` 做后验校验：
-
-- 引用了不存在的 `[Ex]` → **丢弃该假说**
-- 一条引用都没有 → **丢弃该假说**
-- 出现 FACTS 里没有的数字 → 默认告警，`--strict-numbers` 下丢弃
-- 输出不是合法 JSON → 整轮重试
-
-`test_narrate.py` 把"伪造引用能活下来"当作最严重的失败来测。
-
-**证据不足要能说出来。** 规则引擎在特征缺失时永不发射（`test_missing_feature_never_fires_a_rule`），
-prompt 要求证据不足时输出空数组并置 `insufficient_evidence`。
-
-**支撑数少要降级而不是报错。** 每条 delta 带 `n_support`，n=1 时置信度乘 0.8
-并在 FACTS 里显式写明"中位值等同于单点值"。跨 assay 的活性比较乘 0.75
-并标注不可定量比较——这就是方案 §8 说的"优雅降级"。
-
----
-
-## 目录
-
-```
-phase0/
-  data/
-    programs.csv          程序定义
-    compounds.csv         结构 + 分子式声明 + provenance（含 6 个待填骨架行）
-    program_members.csv   代际归属 + 引用 + 主活性
-    measurements.csv      可选：多维实测数据（外排比、突变体效价、Kp,uu…）
-    benchmark.yaml        §5 ground truth 与指标目标（当前全部待核实）
-  sar/
-    features.py   RDKit 描述符 + 分子式闸门
-    align.py      环系比对 / 骨架跃迁判定（含实测记录）
-    deltas.py     代际聚合 + delta + 多维数据聚合
-    rules.py      规则引擎
-    rules.yaml    规则库（20 条）
-    narrate.py    FACTS 构建 + Claude 调用 + 引用审计
-    curate.py     录数据的校验与自动补全
-    benchmark.py  §5 三项指标打分 + 人工复核工作表
-    cli.py        跑批入口
-  tests/          100 个测试，含骨架判定的 golden test
-```
-
----
-
-## 现在缺什么
-
-按重要性排序：
-
-1. **结构与专利数据核对**（见上文表格）。没做完之前不能给化学家看。
-2. **实施例编号**。`example_ref` 全是"待补"，产品承诺的可点开证据现在点不开。
-3. **Gen2 的 SMILES**。第一次录入交付了 6 个，其中 2 个（早期醚连大环，
-   14 元与 13 元，构成环大小 SAR 对）通过校验并已入库为 Gen3；
-   另外 4 个是合成砌块，已退回并在 `compounds.csv` 的 note 里写明原因。
-   现在的时间线是 Gen1 → Gen3 → Gen4，**Gen2(无环/降碱性那一轮)仍然是空的**。
-4. **叙述层没跑过真实 API 调用**。环境无 `ANTHROPIC_API_KEY`。已经手工产出过一条
-   叙述（`examples/pfizer-alk_gen3-4.narrative.json`）并通过了 `audit_response`
-   的严格模式校验，证明端到端链路是通的；但那条是我自己写的，写的人看过全部上下文，
-   不能替代一次干净的模型调用。
-5. **碱性 pKa**。方案里列了"最强碱性 pKa"，开源没有靠谱的预测器，
-   硬造一个数字比没有更糟。现在用 `strong_basic_amine_count`
-   （子结构计数，可解释）代替。要真 pKa 就得接 ChemAxon，或者在 CSV 里加一列人工填。
-6. **死路规则**（`dead_end`）没实现。它需要按位点的 R 基团拆解，
-   阶段 0 的化合物级数据支撑不了。
-7. **规则库还没用上 measurements**。多维数据现在只作为可引用证据进 FACTS，
-   没有规则读它。等真实数据进来、看清哪些维度真的有判别力之后再写规则，
-   比现在凭想象写更靠谱。
-8. **多代际路径只用合成数据验证过**。四代 + 多维数据的代码路径跑通了，
-   但用的是我手工改出来的类似物，不是真实中间体。
-
----
-
-## 第三天怎么用
-
-方案说得对：判据是"三个人里有两个说有意思"。
-
-跑完之后拿到手的是 `phase0/out/pfizer-alk.json` 和终端时间线。给化学家看的时候
-**先把数据可信度那段说清楚**，否则他们会去挑数据的错，而不是回答你真正想问的问题。
-
-只问一句：**"这里面有你不知道的吗？"**
-
-如果三个人都说知道，方案 §1 给的动作是往冷门靶点 / 中文专利调，而不是继续做通用的。
+| schema/features | 数据加载、结构内部一致性、RDKit 描述符 |
+| units/deltas/align | 单位、assay 可比性、聚合与结构对照 |
+| rules | 既有启发式规则，分值不是概率 |
+| narrate/cli | 有限证据叙述、响应校验、快照 |
+| ingest | 公开文献数据导入与缓存 |
+| validate/benchmark | 冻结规则诊断与人工复核 |
+| report/web | 离线证据界面 |
+
+导入止于 ChEMBL 文献范围。专利全文解析、结构 OCR、任意竞对程序聚类及通用历史时间线尚未实现。

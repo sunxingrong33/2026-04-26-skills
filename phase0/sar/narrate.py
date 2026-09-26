@@ -23,7 +23,7 @@ from .rules import Hypothesis
 EVIDENCE_RE = re.compile(r"\[E(\d+)\]")
 NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?")
 
-DEFAULT_MODEL = "claude-opus-5"
+DEFAULT_MODEL = os.environ.get("ANTHROPIC_MODEL", "")
 
 SYSTEM_PROMPT = """你是一名分析竞品专利的药物化学家。你的任务是把已经算好的结构与属性变化，翻译成研发意图的推断。
 
@@ -63,10 +63,12 @@ class Evidence:
     # back out of ``text`` -- label-matching silently left activity-driven rules
     # with no citable evidence.
     features: tuple[str, ...] = ()
+    source_urls: tuple[str, ...] = ()
 
     def render(self) -> str:
         cite = f"  <来源: {self.citation}>" if self.citation else ""
-        return f"[{self.eid}] {self.text}{cite}"
+        links = f" <链接: {'; '.join(self.source_urls)}>" if self.source_urls else ""
+        return f"[{self.eid}] {self.text}{cite}{links}"
 
 
 @dataclass
@@ -134,11 +136,12 @@ def build_facts(
     counter = 0
 
     def add(
-        kind: str, text: str, citation: str = "", features: tuple[str, ...] = ()
+        kind: str, text: str, citation: str = "", features: tuple[str, ...] = (),
+        source_urls: tuple[str, ...] = (),
     ) -> Evidence:
         nonlocal counter
         counter += 1
-        item = Evidence(f"E{counter}", kind, text, citation, features)
+        item = Evidence(f"E{counter}", kind, text, citation, features, source_urls)
         ev.append(item)
         return item
 
@@ -165,6 +168,7 @@ def build_facts(
                 "compound",
                 f"Gen{gen} 化合物 {m.compound_id}",
                 f"{m.citation}",
+                source_urls=(m.source_url,) if m.source_url.startswith(("https://", "http://")) else (),
             )
 
     # --- structural / boolean transitions ---
@@ -229,12 +233,12 @@ def build_facts(
                 f"; assay: {'/'.join(a.activity_assays) or '未标注'}"
                 f" vs {'/'.join(b.activity_assays) or '未标注'}"
             )
-        fold = f"，约 {1/delta.activity_ratio:.1f} 倍提升" if delta.activity_ratio else ""
+        ratio_text = f"，后/前比值 {_fmt(delta.activity_ratio)}" if delta.activity_ratio is not None else "，不可定量比较"
         add(
             "activity",
             f"中位活性: {_fmt(a.activity_median_nm)} nM (n={a.activity_n}) → "
             f"{_fmt(b.activity_median_nm)} nM (n={b.activity_n})"
-            f"，比值 {delta.activity_ratio}{fold}{assay_txt}",
+            f"{ratio_text}{assay_txt}",
             features=("activity_ratio",),
         )
     elif delta.activity_note:
@@ -254,8 +258,11 @@ def build_facts(
         add(
             "measurement",
             f"{mtype}: 中位 {_fmt(md.val_from)}{unit} → {_fmt(md.val_to)}{unit} "
-            f"(Δ {md.delta:+g}{unit}){fold}, n={md.n_support}{caveat}",
+            + (f"(Δ {md.delta:+g}{unit})" if md.comparable else "")
+            + f"{fold}, n={md.n_support}{caveat}",
+            citation="; ".join(md.sources),
             features=(f"measure:{mtype}",),
+            source_urls=tuple(s for s in md.sources if s.startswith(("https://", "http://"))),
         )
 
     # --- rule hits ---
@@ -279,13 +286,22 @@ def build_facts(
         )
 
     caveats = list(data_caveats or [])
+    caveats.append("规则分数是未校准的启发式支持度，不是研发意图的概率；描述符变化不证明因果关系。")
+    if delta.gen_to != delta.gen_from + 1:
+        caveats.append("代际编号不连续：中间步骤缺失，不能把本次比较解释成一次直接优化。")
     if not delta.activity_comparable and delta.activity_note:
         caveats.append(delta.activity_note)
     if delta.n_support <= 1:
         caveats.append(
-            f"每代仅 {delta.n_support} 个化合物支撑，属性中位值等同于单点值，"
+            f"至少一代仅 {delta.n_support} 个化合物支撑，该代属性中位值等同于单点值，"
             "不能代表整代的 SAR 趋势"
         )
+
+    compound_sources = tuple(sorted({m.source_url for s in (a, b) for m in s.members
+                                    if m.source_url.startswith(("https://", "http://"))}))
+    for item in ev:
+        if not item.source_urls and item.kind in ("structure", "property", "scaffold"):
+            item.source_urls = compound_sources
 
     return FactsBlock(program_name, header, ev, rule_lines, caveats)
 
@@ -318,9 +334,21 @@ def audit_response(raw: str, facts: FactsBlock, strict_numbers: bool = False) ->
     except json.JSONDecodeError as exc:
         return AuditResult(False, None, errors=[f"输出不是合法 JSON: {exc}"])
 
+    if not isinstance(parsed, dict):
+        return AuditResult(False, None, errors=["输出 schema 错误：必须是 JSON 对象"])
+    for key, expected in (("headline", str), ("hypotheses", list),
+                          ("what_we_cannot_tell", str), ("insufficient_evidence", bool)):
+        if not isinstance(parsed.get(key), expected):
+            return AuditResult(False, None, errors=[f"输出 schema 错误：{key} 类型不正确或缺失"])
+    for hyp in parsed["hypotheses"]:
+        if (not isinstance(hyp, dict) or not isinstance(hyp.get("claim"), str)
+                or not hyp["claim"].strip()
+                or hyp.get("confidence") not in ("high", "medium", "low")
+                or not isinstance(hyp.get("evidence_refs"), list)
+                or not all(isinstance(r, str) for r in hyp["evidence_refs"])):
+            return AuditResult(False, None, errors=["输出 schema 错误：hypotheses 条目不合法"])
+
     index = facts.index
-    facts_text = facts.render()
-    facts_numbers = set(NUMBER_RE.findall(facts_text))
 
     kept: list[dict[str, Any]] = []
     dropped: list[dict[str, Any]] = []
@@ -341,7 +369,10 @@ def audit_response(raw: str, facts: FactsBlock, strict_numbers: bool = False) ->
             dropped.append(hyp)
             continue
 
-        stray = [n for n in NUMBER_RE.findall(claim) if n not in facts_numbers]
+        # Numbers must occur in the cited evidence text, not in unrelated
+        # evidence IDs, dates, source URLs or heuristic rule scores.
+        facts_numbers = set(NUMBER_RE.findall(" ".join(index[r].text for r in refs)))
+        stray = [n for n in NUMBER_RE.findall(EVIDENCE_RE.sub("", claim)) if n not in facts_numbers]
         if stray:
             msg = f"claim 中出现 FACTS 未包含的数字 {stray}: {claim[:40]}..."
             if strict_numbers:
@@ -355,13 +386,17 @@ def audit_response(raw: str, facts: FactsBlock, strict_numbers: bool = False) ->
 
     parsed["hypotheses"] = kept
 
-    headline = str(parsed.get("headline", ""))
-    stray_head = [n for n in NUMBER_RE.findall(headline) if n not in facts_numbers]
-    if stray_head:
-        warnings.append(f"headline 中出现 FACTS 未包含的数字 {stray_head}")
-
-    if not kept and not parsed.get("insufficient_evidence"):
-        warnings.append("所有假说都被审计丢弃，但模型未声明证据不足")
+    # An uncited free-form headline must not survive deletion of its claims.
+    # Derive the displayed summary from an audited claim instead.
+    parsed["headline"] = kept[0]["claim"] if kept else "无法从现有数据判断"
+    if not kept:
+        if not parsed["insufficient_evidence"]:
+            warnings.append("证据不足：没有通过审计的假说，已替换标题并设置证据不足标志")
+        parsed["insufficient_evidence"] = True
+    else:
+        parsed["insufficient_evidence"] = False
+    # Free-form limitations are not a back door for unaudited factual claims.
+    parsed["what_we_cannot_tell"] = "研发意图及因果关系仍需原文和人工复核；引用编号有效不等于结论有据。"
 
     return AuditResult(True, parsed, dropped, errors, warnings)
 
@@ -379,6 +414,8 @@ def call_claude(
         raise RuntimeError(
             "未设置 ANTHROPIC_API_KEY。用 --dry-run 只生成 prompt，不调用 API。"
         )
+    if not model:
+        raise RuntimeError("请用 --model 或 ANTHROPIC_MODEL 指定账户可用的模型 ID。")
     client = anthropic.Anthropic(api_key=key)
     resp = client.messages.create(
         model=model,

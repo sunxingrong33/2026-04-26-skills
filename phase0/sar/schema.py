@@ -10,6 +10,8 @@ rather than silently mixed into the analysis.
 from __future__ import annotations
 
 import csv
+import math
+import json
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -180,7 +182,10 @@ def _parse_float(raw: str) -> float | None:
     raw = (raw or "").strip()
     if not raw:
         return None
-    return float(raw)
+    value = float(raw)
+    if not math.isfinite(value):
+        raise ValueError("测量值必须是有限数值")
+    return value
 
 
 def load_dataset(data_dir: str | Path) -> Dataset:
@@ -215,6 +220,8 @@ def load_dataset(data_dir: str | Path) -> Dataset:
             cid = row.get("compound_id", "").strip()
             if not cid:
                 continue
+            if cid in compounds or cid in pending:
+                raise ValueError(f"重复 compound_id: {cid}")
             if row.get("smiles", "").strip() in PLACEHOLDER_SMILES:
                 pending.append(cid)
                 continue
@@ -317,6 +324,14 @@ def load_dataset(data_dir: str | Path) -> Dataset:
                 )
 
     dataset = Dataset(programs, compounds, memberships, warnings, measurements)
+    metadata_path = data_dir / "sources.json"
+    if metadata_path.exists():
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        warnings.extend(metadata.get("limitations", []))
+    incomplete_citations = [m for m in memberships if m.example_ref in PLACEHOLDER_SMILES
+                           or not m.source_url.startswith(("https://", "http://"))]
+    if incomplete_citations:
+        warnings.append(f"{len(incomplete_citations)} 条来源缺少可定位的编号或有效链接；不能作为已核实引用。")
 
     if pending:
         warnings.append(

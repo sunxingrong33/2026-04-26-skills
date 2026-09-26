@@ -1,0 +1,25 @@
+{
+  "document_chembl_id": "CHEMBL3286195",
+  "program_id": "lorlatinib-literature",
+  "program_name": "洛拉替尼：论文系列与实测权衡",
+  "assignee": "Pfizer",
+  "target": "ALK / ROS1",
+  "ordering_note": "按论文 compound 1、series 6、series 7、series 8 分组展示；这是结构系列对照，不是专利时间线或已证实的单一线性优化路径。",
+  "candidate": "CHEMBL3286830",
+  "stages": [
+    {"generation": 1, "label": "参考分子 · crizotinib", "compound_keys": ["1"]},
+    {"generation": 2, "label": "无环系列 · 6a–6i", "compound_keys": ["6a", "6b", "6c", "6d", "6e", "6f", "6g", "6h", "6i"]},
+    {"generation": 3, "label": "早期大环系列 · 7a–7f", "compound_keys": ["7a", "7b", "7c", "7d", "7e", "7f"]},
+    {"generation": 4, "label": "后续大环系列 · 8a–8m（8k 为洛拉替尼）", "compound_keys": ["8a", "8b", "8c", "8d", "8e", "8f", "8g", "8h", "8i", "8j", "8k", "8l", "8m"]}
+  ],
+  "assay_labels": {
+    "CHEMBL3293161": "ALK_WT_Ki",
+    "CHEMBL3293162": "ALK_L1196M_Ki",
+    "CHEMBL3293163": "cell_ALK_WT_IC50",
+    "CHEMBL3293164": "cell_ALK_L1196M_IC50",
+    "CHEMBL3293165": "LogD_pH7.4",
+    "CHEMBL3293391": "MDR1_efflux_ratio",
+    "CHEMBL3293390": "human_microsome_clearance",
+    "CHEMBL3293393": "TRKB_Ki"
+  }
+}
