@@ -9,6 +9,7 @@
 <body>
 <header><div class="brand">SAR ATLAS <small>结构演化与证据</small></div><label>研究程序 <select id="program" aria-label="研究程序"></select></label></header>
 <main>
+<div class="panel"><h2>从专利号开始新的检索</h2><p>这里是固定文献案例浏览器。检索新专利，请进入专利工作台。</p><a href="http://127.0.0.1:8766/">输入专利号 →</a><p class="meta">若工作台未启动，在仓库根目录运行 python -m phase0.sar.serve</p></div>
 <section class="hero"><div><div class="eyebrow">EVIDENCE FIRST / 研究原型</div><h1 id="title"></h1><p id="subtitle" class="sub"></p></div><div class="stats"><div class="stat"><strong id="ncomp"></strong><span>可追溯结构</span></div><div class="stat"><strong id="nobs"></strong><span>原始测量</span></div><div class="stat"><strong id="nstage"></strong><span>系列分组</span></div></div></section>
 <div class="notice">数据已对接 ChEMBL，原文图表与研发意图仍待人工复核。这里展示论文系列及分子对照；不将系列顺序当作专利时间，不将规则分数当作结论概率。</div>
 <nav class="tabs" aria-label="研究视图"><button class="active" data-tab="timeline">系列与结构</button><button data-tab="compare">分子对照</button><button data-tab="sources">来源与边界</button><button data-tab="validation">独立验证</button></nav>

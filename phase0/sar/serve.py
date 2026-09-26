@@ -1,0 +1,115 @@
+"""Loopback-only interactive patent explorer: python -m phase0.sar.serve."""
+from __future__ import annotations
+import argparse
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlsplit
+from .patents import retrieve, normalize_id
+from .report import ROOT, structure_pair
+from .features import FEATURE_LABELS
+
+class Handler(BaseHTTPRequestHandler):
+    def reply(self, status, body, content_type='application/json; charset=utf-8'):
+        raw = json.dumps(body, ensure_ascii=False).encode('utf-8') if not isinstance(body, bytes) else body
+        self.send_response(status)
+        self.send_header('Content-Type', content_type)
+        self.send_header('Content-Length', str(len(raw)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Referrer-Policy', 'no-referrer')
+        self.end_headers()
+        try:
+            self.wfile.write(raw)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def allowed(self):
+        host = self.headers.get('Host','')
+        valid = {f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}'}
+        origin = self.headers.get('Origin')
+        return host in valid and (not origin or origin in {'http://' + v for v in valid})
+
+    def do_GET(self):
+        if not self.allowed():
+            return self.reply(403, {'error':'仅接受本机同源请求。'})
+        url = urlsplit(self.path)
+        if url.path in ('/', '/index.html'):
+            return self.reply(200, (ROOT/'phase0/web/patents.html').read_bytes(), 'text/html; charset=utf-8')
+        if url.path == '/examples':
+            path = ROOT/'artifacts/sar-explorer.html'
+            return self.reply(200, path.read_bytes(), 'text/html; charset=utf-8') if path.exists() else self.reply(404, {'error':'请先运行 python -m phase0.sar.demo'})
+        if url.path == '/api/health':
+            return self.reply(200, {'service':'SAR patent explorer'})
+        if url.path != '/api/patent':
+            return self.reply(404, {'error':'未找到页面。'})
+        query = parse_qs(url.query)
+        try:
+            pid = normalize_id(query.get('id',[''])[0])
+        except ValueError as exc:
+            return self.reply(400, {'error':str(exc)})
+        if not self.server.work_lock.acquire(blocking=False):
+            return self.reply(429, {'error':'正在检索另一份专利，请稍后重试。'})
+        try:
+            result = retrieve(pid, self.server.cache)
+            self.server.results[pid] = result
+            if len(self.server.results) > 16:
+                del self.server.results[next(iter(self.server.results))]
+            self.reply(200, result)
+        except ValueError as exc:
+            self.reply(422, {'error':str(exc)})
+        except Exception:
+            self.reply(502, {'error':'来源解析失败，未生成推断。请查看公开号对应的原始专利。'})
+        finally:
+            self.server.work_lock.release()
+
+    def do_POST(self):
+        if not self.allowed():
+            return self.reply(403, {'error':'仅接受本机同源请求。'})
+        if self.path != '/api/compare':
+            return self.reply(404, {'error':'未找到接口。'})
+        try:
+            size = int(self.headers.get('Content-Length','0'))
+            if size < 1 or size > 2048:
+                return self.reply(400, {'error':'请求大小无效。'})
+            request = json.loads(self.rfile.read(size))
+            selected = []
+            for field in ('a','b'):
+                value = request[field]
+                index = value['index']
+                if type(index) is not int or index < 0:
+                    raise ValueError()
+                selected.append(self.server.results[normalize_id(value['publication'])]['structures'][index])
+            result = structure_pair(selected[0]['smiles'],selected[1]['smiles'])
+            result['deltas'] = [{'name':FEATURE_LABELS.get(key,key),'from':value,'to':selected[1]['features'][key],
+                'delta':round(selected[1]['features'][key]-value,4)} for key,value in selected[0]['features'].items()
+                if key in selected[1]['features'] and selected[1]['features'][key] != value]
+            result['interpretation'] = '这是用户选择的索引结构对照；尚无实施例映射和同协议实验数据，不能推断真实研发意图或改善效果。'
+            self.reply(200,result)
+        except (KeyError, IndexError, TypeError, ValueError):
+            self.reply(400, {'error':'请选择两项已检索的结构；服务重启后需要重新检索。'})
+
+
+def create_server(port=8766, cache=None):
+    server = ThreadingHTTPServer(('127.0.0.1',port),Handler)
+    server.cache = cache or ROOT/'artifacts/patent-cache'
+    server.work_lock = threading.Lock()
+    server.results = {}
+    return server
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--port',type=int,default=8766)
+    args=parser.parse_args()
+    server=create_server(args.port)
+    print(f'Open http://127.0.0.1:{server.server_port}',flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+if __name__ == '__main__':
+    main()
