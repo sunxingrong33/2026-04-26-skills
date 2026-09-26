@@ -147,5 +147,7 @@ def retrieve(publication, cache: Path):
         raw_path.write_bytes(raw)
         manifest_path.write_text(json.dumps(source, indent=2), encoding='utf-8')
     result['source_snapshot'] = source | {'cache_hit': cached}
+    from .patent_evidence import attach_evidence
+    attach_evidence(result)
     (cache / f'{publication}.json').write_text(json.dumps(result, ensure_ascii=False, indent=2),encoding='utf-8')
     return result

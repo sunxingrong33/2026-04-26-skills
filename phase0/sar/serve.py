@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urlsplit
 from .patents import retrieve, normalize_id
 from .report import ROOT, structure_pair
 from .features import FEATURE_LABELS
+from .patent_evidence import compare_measurements, provisional_direction
 
 class Handler(BaseHTTPRequestHandler):
     def reply(self, status, body, content_type='application/json; charset=utf-8'):
@@ -74,17 +75,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(400, {'error':'请求大小无效。'})
             request = json.loads(self.rfile.read(size))
             selected = []
+            kinds = []
+            publications = []
             for field in ('a','b'):
                 value = request[field]
                 index = value['index']
                 if type(index) is not int or index < 0:
                     raise ValueError()
-                selected.append(self.server.results[normalize_id(value['publication'])]['structures'][index])
+                kind=value.get('kind','index')
+                if kind not in ('index','evidence'):raise ValueError()
+                pid=normalize_id(value['publication'])
+                selected.append(self.server.results[pid]['evidence_cards' if kind=='evidence' else 'structures'][index])
+                kinds.append(kind)
+                publications.append(pid)
             result = structure_pair(selected[0]['smiles'],selected[1]['smiles'])
             result['deltas'] = [{'name':FEATURE_LABELS.get(key,key),'from':value,'to':selected[1]['features'][key],
                 'delta':round(selected[1]['features'][key]-value,4)} for key,value in selected[0]['features'].items()
                 if key in selected[1]['features'] and selected[1]['features'][key] != value]
             result['interpretation'] = '这是用户选择的索引结构对照；尚无实施例映射和同协议实验数据，不能推断真实研发意图或改善效果。'
+            if kinds == ['evidence','evidence'] and publications[0] == publications[1]:
+                result['measurements']=compare_measurements(*selected)
+                result['candidate']=provisional_direction(result['measurements'])
+                result['interpretation']='结构与测量已关联至明确实施例，助手已核对 PDF；独立复核尚未完成。这是指定分子对照，不是已证实的历史步骤。'
             self.reply(200,result)
         except (KeyError, IndexError, TypeError, ValueError):
             self.reply(400, {'error':'请选择两项已检索的结构；服务重启后需要重新检索。'})

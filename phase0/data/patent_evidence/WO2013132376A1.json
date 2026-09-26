@@ -1,0 +1,194 @@
+{
+  "publication": "WO2013132376A1",
+  "version": 1,
+  "source_html_sha256": "909478477f099ed4c81b12bf52de950a4afdee72391f62b89bff2d9faf57045c",
+  "source_pdf_sha256": "88f35d03bdb57f33029a90e5b09f141cd7c457183abb9b3fc09e31df65a93096",
+  "pdf_url": "https://patentimages.storage.googleapis.com/45/f2/58/34b02c33ca73a9/WO2013132376A1.pdf",
+  "review": {
+    "status": "agent_visual_checked_pending_independent_review",
+    "method": "Agent visually compared rendered original PDF final-product schemes and Table 1. SMILES transcribed from final products, rendered back for comparison; nominal LCMS is only a supporting check, not proof of identity.",
+    "independent_reviewer": null
+  },
+  "assays": [
+    {
+      "id": "ALK_WT_Ki",
+      "label": "WT ALK 酶 Ki",
+      "unit": "nM",
+      "protocol": "微流控迁移率实验；ATP 60 μM；室温反应 1 h；竞争性抑制模型拟合 Ki",
+      "protocol_locator": "p3363–p3365；PDF p. 435"
+    },
+    {
+      "id": "ALK_L1196M_Ki",
+      "label": "L1196M ALK 酶 Ki",
+      "unit": "nM",
+      "protocol": "与 WT 分列；L1196M ALK 激酶结构域；ATP 60 μM；室温反应 1 h",
+      "protocol_locator": "p3363–p3365；PDF p. 435"
+    },
+    {
+      "id": "cell_WT_IC50",
+      "label": "WT EML4-ALK 细胞 ELISA IC50",
+      "unit": "nM",
+      "protocol": "NIH-3T3 EML4-ALK v1；化合物处理 1 h；phospho-ALK Tyr1604 ELISA",
+      "protocol_locator": "p3366–p3371；PDF pp. 435–436"
+    },
+    {
+      "id": "cell_L1196M_IC50",
+      "label": "L1196M EML4-ALK 细胞 ELISA IC50",
+      "unit": "nM",
+      "protocol": "NIH-3T3 EML4-ALK v1 L1196M；处理 1 h；phospho-ALK Tyr1604 ELISA",
+      "protocol_locator": "p3366–p3371；PDF pp. 435–436"
+    }
+  ],
+  "cards": [
+    {
+      "example": 2,
+      "label": "Example 2",
+      "smiles": "C[C@H]1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21",
+      "structure_source": {
+        "url": "https://patentimages.storage.googleapis.com/45/f2/58/34b02c33ca73a9/WO2013132376A1.pdf#page=260",
+        "pdf_page": 260,
+        "printed_page": 258,
+        "locator": "p2076",
+        "scope": "final product labelled Example 2"
+      },
+      "reported_lcms_m_plus_h": 407,
+      "stereochemistry_note": "图示与名称指定 10R；转录的四面体中心为 R。未验证构象或其他立体因素。",
+      "table_source": {
+        "url": "https://patentimages.storage.googleapis.com/45/f2/58/34b02c33ca73a9/WO2013132376A1.pdf#page=436",
+        "pdf_page": 436,
+        "printed_page": 434,
+        "locator": "Table 1, row Example 2, columns 2–5"
+      },
+      "measurements": [
+        {
+          "assay_id": "ALK_WT_Ki",
+          "relation": "<",
+          "value": 0.2,
+          "unit": "nM",
+          "raw": "<0.200 nM"
+        },
+        {
+          "assay_id": "ALK_L1196M_Ki",
+          "relation": "=",
+          "value": 0.78,
+          "unit": "nM",
+          "raw": "0.78 nM"
+        },
+        {
+          "assay_id": "cell_WT_IC50",
+          "relation": "=",
+          "value": 1.33,
+          "unit": "nM",
+          "raw": "1.33 nM"
+        },
+        {
+          "assay_id": "cell_L1196M_IC50",
+          "relation": "=",
+          "value": 20.7,
+          "unit": "nM",
+          "raw": "20.7 nM"
+        }
+      ]
+    },
+    {
+      "example": 4,
+      "label": "Example 4",
+      "smiles": "C1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21",
+      "structure_source": {
+        "url": "https://patentimages.storage.googleapis.com/45/f2/58/34b02c33ca73a9/WO2013132376A1.pdf#page=264",
+        "pdf_page": 264,
+        "printed_page": 262,
+        "locator": "p2114",
+        "scope": "final product labelled Example 4"
+      },
+      "reported_lcms_m_plus_h": 393,
+      "stereochemistry_note": "正文提及 SFC 分离的两个峰；此处为未区分两峰的连接结构，Table 1 的 Example 4 不擅自分配给任一峰。",
+      "table_source": {
+        "url": "https://patentimages.storage.googleapis.com/45/f2/58/34b02c33ca73a9/WO2013132376A1.pdf#page=436",
+        "pdf_page": 436,
+        "printed_page": 434,
+        "locator": "Table 1, row Example 4, columns 2–5"
+      },
+      "measurements": [
+        {
+          "assay_id": "ALK_WT_Ki",
+          "relation": "<",
+          "value": 0.2,
+          "unit": "nM",
+          "raw": "<0.200 nM"
+        },
+        {
+          "assay_id": "ALK_L1196M_Ki",
+          "relation": "=",
+          "value": 1.2,
+          "unit": "nM",
+          "raw": "1.20 nM"
+        },
+        {
+          "assay_id": "cell_WT_IC50",
+          "relation": "=",
+          "value": 28.1,
+          "unit": "nM",
+          "raw": "28.1 nM"
+        },
+        {
+          "assay_id": "cell_L1196M_IC50",
+          "relation": "=",
+          "value": 184.0,
+          "unit": "nM",
+          "raw": "184 nM"
+        }
+      ]
+    },
+    {
+      "example": 6,
+      "label": "Example 6",
+      "smiles": "C1Oc2cc(cnc2N)-c2c(n(C)nc2C)CN(C)C(=O)c2ccc(F)cc21",
+      "structure_source": {
+        "url": "https://patentimages.storage.googleapis.com/45/f2/58/34b02c33ca73a9/WO2013132376A1.pdf#page=268",
+        "pdf_page": 268,
+        "printed_page": 266,
+        "locator": "p2148",
+        "scope": "final product labelled Example 6"
+      },
+      "reported_lcms_m_plus_h": 382,
+      "stereochemistry_note": "按 Example 6 最终产物图转录，未为图中未指定的立体因素赋值。",
+      "table_source": {
+        "url": "https://patentimages.storage.googleapis.com/45/f2/58/34b02c33ca73a9/WO2013132376A1.pdf#page=436",
+        "pdf_page": 436,
+        "printed_page": 434,
+        "locator": "Table 1, row Example 6, columns 2–5"
+      },
+      "measurements": [
+        {
+          "assay_id": "ALK_WT_Ki",
+          "relation": "<",
+          "value": 0.2,
+          "unit": "nM",
+          "raw": "<0.200 nM"
+        },
+        {
+          "assay_id": "ALK_L1196M_Ki",
+          "relation": "=",
+          "value": 1.93,
+          "unit": "nM",
+          "raw": "1.93 nM"
+        },
+        {
+          "assay_id": "cell_WT_IC50",
+          "relation": "=",
+          "value": 6.41,
+          "unit": "nM",
+          "raw": "6.41 nM"
+        },
+        {
+          "assay_id": "cell_L1196M_IC50",
+          "relation": "=",
+          "value": 97.1,
+          "unit": "nM",
+          "raw": "97.1 nM"
+        }
+      ]
+    }
+  ]
+}
