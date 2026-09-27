@@ -6,6 +6,8 @@ from collections import Counter
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[1] / 'data'
+SCOPE = 'committed_curated_packages_only'
+NOTICE = '仅汇总本地已整理数据；原始论文定位和独立复核仍有缺口。未联网刷新来源，不代表检索全库；此台账不判定测量可比性。'
 
 
 def _csv(path):
@@ -80,15 +82,24 @@ def build_ledger(data_dir=DATA):
                     'stereochemistry_note': card.get('stereochemistry_note'),
                     'gaps': ['independent_review'],
                 })
+    return assemble(rows, inputs)
+
+
+def value_status(row):
+    return ('missing' if row['value'] in (None, '') else
+            'exact' if row['relation'] == '=' else 'qualified_or_unknown')
+
+
+def assemble(rows, inputs):
+    """Legacy ledger envelope; also used to prove the typed ledger round-trips."""
     ids = [r['id'] for r in rows]
     if len(ids) != len(set(ids)):
         raise ValueError('Duplicate observation identity')
     for row in rows:
-        row['value_status'] = ('missing' if row['value'] in (None, '') else
-                               'exact' if row['relation'] == '=' else 'qualified_or_unknown')
+        row['value_status'] = value_status(row)
     return {'schema_version': 1,
-            'scope': 'committed_curated_packages_only',
-            'notice': '仅汇总本地已整理数据；原始论文定位和独立复核仍有缺口。未联网刷新来源，不代表检索全库；此台账不判定测量可比性。',
+            'scope': SCOPE,
+            'notice': NOTICE,
             'summary': {'documents': len({r['document'] for r in rows}),
                         'structure_records': len({r['compound_id'] for r in rows}),
                         'observations': len(rows),
