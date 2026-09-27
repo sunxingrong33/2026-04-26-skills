@@ -1,0 +1,18 @@
+version: 1
+weights:
+  inventors: 0.35
+  scaffolds: 0.40
+  targets: 0.25
+threshold: 0.55
+scaffold_policy: network_jaccard_with_two_informative_ring_fallback
+# Heuristic ranking threshold, not a calibrated probability.
+assignee_aliases:
+  pfizer: [Pfizer Inc, Pfizer Inc., Pfizer]
+targets:
+  ALK: ['\bALK\b', 'anaplastic lymphoma kinase']
+  EGFR: ['\bEGFR\b', 'epidermal growth factor receptor']
+  ROS1: ['\bROS[- ]?1\b']
+  BTK: ['\bBTK\b', 'bruton.?s? tyrosine kinase']
+  ATR: ['\bATR\b', 'ataxia telangiectasia and rad3']
+  KRAS: ['\bKRAS\b', '\bK-RAS\b']
+  BCL2: ['\bBCL[- ]?2\b']

@@ -11,6 +11,8 @@ from .report import ROOT, structure_pair
 from .features import FEATURE_LABELS
 from .lineage import build_lineage
 from .discovery import discover
+from .programs import analyse_programs
+from .scaffolds import align_evidence
 from .patent_evidence import compare_measurements, provisional_direction
 
 class Handler(BaseHTTPRequestHandler):
@@ -40,6 +42,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         if url.path in ('/', '/index.html'):
             return self.reply(200, (ROOT/'phase0/web/patents.html').read_bytes(), 'text/html; charset=utf-8')
+        if url.path == '/programs.js':
+            return self.reply(200, (ROOT/'phase0/web/programs.js').read_bytes(), 'text/javascript; charset=utf-8')
         if url.path == '/discovery.js':
             return self.reply(200, (ROOT/'phase0/web/discovery.js').read_bytes(), 'text/javascript; charset=utf-8')
         if url.path == '/examples':
@@ -77,6 +81,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.allowed():
             return self.reply(403, {'error':'仅接受本机同源请求。'})
+        if self.path in ('/api/programs', '/api/scaffolds'):
+            return self.analysis_request()
         if self.path == '/api/discover':
             return self.discover_request()
         if self.path != '/api/compare':
@@ -120,6 +126,33 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(200,result)
         except (KeyError, IndexError, TypeError, ValueError):
             self.reply(400, {'error':'请选择两项已检索的结构；服务重启后需要重新检索。'})
+
+    def analysis_request(self):
+        try:
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 4096:
+                raise ValueError()
+            data = json.loads(self.rfile.read(size))
+            ids = data['publications']
+            if not isinstance(ids, list) or not 1 <= len(ids) <= 16 or any(not isinstance(pid, str) for pid in ids):
+                raise ValueError()
+            if len(set(ids)) != len(ids):
+                raise ValueError()
+            docs = [self.server.results[normalize_id(pid)] for pid in ids]
+        except (KeyError, TypeError, ValueError):
+            return self.reply(400, {'error': '请选择 1–16 份已检索且不重复的专利；重启后需要重新检索。'})
+        if not self.server.work_lock.acquire(blocking=False):
+            return self.reply(429, {'error': '正在处理另一请求，请稍后重试。'})
+        try:
+            result = analyse_programs(docs) if self.path == '/api/programs' else align_evidence(docs)
+            result['input_snapshots'] = [{'publication': d['publication'], 'source': d.get('source_snapshot')} for d in docs]
+            self.reply(200, result)
+        except ValueError as exc:
+            self.reply(400, {'error': str(exc)})
+        except Exception:
+            self.reply(422, {'error': '分析未完成；不会用默认分组或 R 位点替代失败结果。'})
+        finally:
+            self.server.work_lock.release()
 
     def discover_request(self):
         try:

@@ -104,9 +104,14 @@ def parse_patent(html, publication):
         ref = re.sub(r'[^A-Z0-9]', '', node.get('content','').upper())
         if re.fullmatch(r'[A-Z]{2}\d{5,12}[A-Z]\d{0,2}', ref) and ref not in references:
             references.append(ref)
+    inventors = list(dict.fromkeys(n.get('content', '').strip() for n in soup.select('meta[name="DC.contributor"][scheme="inventor"]') if n.get('content', '').strip()))
+    assignees = list(dict.fromkeys(n.get('content', '').strip() for n in soup.select('meta[name="DC.contributor"][scheme="assignee"]') if n.get('content', '').strip()))
+    abstract = soup.select_one('[itemprop="abstract"]')
     dates = [n.get('content','') for n in soup.select('meta[name="DC.date"]') if not n.get('scheme')]
     return {'publication': publication, 'title': meta('DC.title'),
-        'assignee': meta('DC.contributor','assignee'), 'priority_date': priority_date,
+        'assignee': meta('DC.contributor','assignee'), 'assignees': assignees, 'inventors': inventors,
+        'abstract': abstract.get_text(' ', strip=True)[:12000] if abstract else '',
+        'metadata_sources': {'inventors': url, 'assignees': url, 'abstract': url + '#abstract'}, 'priority_date': priority_date,
         'filing_date': meta('DC.date','dateSubmitted'), 'publication_date': dates[0] if dates else meta('DC.date','issue'),
         'family_id': family_id.group(1) if family_id else None, 'family_members': family_members,
         'references': references, 'source_url': url, 'pdf_url': meta('citation_pdf_url'),
