@@ -18,6 +18,8 @@
 
 `python -m pytest -q`：**216 passed**（约 7 秒），测试不需要联网。
 
+> 更新：加入评测框架（`test_eval_metrics`，22 项）后为 **238 passed**。
+
 | 测试模块 | 数量 |
 |---|---:|
 | test_discovery | 26 |
@@ -61,6 +63,10 @@ osimertinib-independent: 2 candidates; keyword proxy 0/2; human validation pendi
 | `GET /examples` | 200（离线文献页，需先运行 demo） |
 | `GET /api/evidence` | 200；10 个输入包、320 条观测，与文档一致 |
 | `GET /api/patent?id=WO2013132376A1` | 记录环境的网络策略拦截了 Google Patents；接口返回明确错误“专利来源连接失败或超时”，没有用样例替代，符合设计 |
+
+### 抽取评测框架
+
+`python -m phase0.eval.extraction_metrics --pred phase0/data/gold`（金标准自评，用于确认框架本身）：各项比例 100%，未标记错误、编造数值、可比性误判均为 0。金标准 v0 由现有证据包派生（6 个化合物、22 项测量、2 条未测记录），尚未独立复核。尚无真实抽取器的评测结果。
 
 ## 未覆盖
 
