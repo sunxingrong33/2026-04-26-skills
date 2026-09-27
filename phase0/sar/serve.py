@@ -13,6 +13,9 @@ from .lineage import build_lineage
 from .discovery import discover
 from .programs import analyse_programs
 from .scaffolds import align_evidence
+from .evidence_ledger import build_ledger
+from .evidence_pair import analyse_pair
+from .sar_workflow import run_workflow
 from .patent_evidence import compare_measurements, provisional_direction
 
 class Handler(BaseHTTPRequestHandler):
@@ -44,6 +47,17 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, (ROOT/'phase0/web/patents.html').read_bytes(), 'text/html; charset=utf-8')
         if url.path == '/programs.js':
             return self.reply(200, (ROOT/'phase0/web/programs.js').read_bytes(), 'text/javascript; charset=utf-8')
+        if url.path == '/evidence':
+            return self.reply(200, (ROOT/'phase0/web/evidence.html').read_bytes(), 'text/html; charset=utf-8')
+        if url.path == '/evidence-workflow.js':
+            return self.reply(200, (ROOT/'phase0/web/evidence-workflow.js').read_bytes(), 'text/javascript; charset=utf-8')
+        if url.path == '/sar-workflow.js':
+            return self.reply(200, (ROOT/'phase0/web/sar-workflow.js').read_bytes(), 'text/javascript; charset=utf-8')
+        if url.path == '/api/evidence':
+            try:
+                return self.reply(200, build_ledger())
+            except (ValueError, KeyError, OSError):
+                return self.reply(422, {'error': '证据包读取或校验失败，未返回部分台账。'})
         if url.path == '/discovery.js':
             return self.reply(200, (ROOT/'phase0/web/discovery.js').read_bytes(), 'text/javascript; charset=utf-8')
         if url.path == '/examples':
@@ -81,6 +95,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.allowed():
             return self.reply(403, {'error':'仅接受本机同源请求。'})
+        if self.path in ('/api/evidence-pair', '/api/sar-workflow'):
+            return self.evidence_pair_request()
         if self.path in ('/api/programs', '/api/scaffolds'):
             return self.analysis_request()
         if self.path == '/api/discover':
@@ -126,6 +142,25 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(200,result)
         except (KeyError, IndexError, TypeError, ValueError):
             self.reply(400, {'error':'请选择两项已检索的结构；服务重启后需要重新检索。'})
+
+    def evidence_pair_request(self):
+        try:
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 16000:
+                raise ValueError('请求大小无效。')
+            request = json.loads(self.rfile.read(size))
+        except ValueError:
+            return self.reply(400, {'error': '请求格式或大小无效。'})
+        if not self.server.work_lock.acquire(blocking=False):
+            return self.reply(429, {'error': '正在处理另一请求，请稍后重试。'})
+        try:
+            self.reply(200, run_workflow(request) if self.path == '/api/sar-workflow' else analyse_pair(request))
+        except ValueError as exc:
+            self.reply(400, {'error': str(exc)})
+        except Exception:
+            self.reply(422, {'error': '对照未完成，请核对证据包；未用默认结果替代。'})
+        finally:
+            self.server.work_lock.release()
 
     def analysis_request(self):
         try:
