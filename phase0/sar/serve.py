@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import threading
 from rdkit import Chem
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -39,8 +40,12 @@ class Handler(BaseHTTPRequestHandler):
     def allowed(self):
         host = self.headers.get('Host','')
         valid = {f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}'}
+        origins = {'http://' + v for v in valid}
+        # An explicitly named forwarding host (e.g. a GitHub Codespaces port URL) is served over https.
+        valid |= self.server.public_hosts
+        origins |= {'https://' + h for h in self.server.public_hosts}
         origin = self.headers.get('Origin')
-        return host in valid and (not origin or origin in {'http://' + v for v in valid})
+        return host in valid and (not origin or origin in origins)
 
     def do_GET(self):
         if not self.allowed():
@@ -305,8 +310,19 @@ class Handler(BaseHTTPRequestHandler):
             self.server.work_lock.release()
 
 
-def create_server(port=8766, cache=None, ledger_db=None):
+PUBLIC_HOST = re.compile(r'(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+')
+
+
+def public_host(value):
+    value = value.strip().lower()
+    if not PUBLIC_HOST.fullmatch(value):
+        raise argparse.ArgumentTypeError(f'不是有效的主机名：{value!r}（不接受通配符、端口或网址）')
+    return value
+
+
+def create_server(port=8766, cache=None, ledger_db=None, public_hosts=()):
     server = ThreadingHTTPServer(('127.0.0.1',port),Handler)
+    server.public_hosts = frozenset(public_hosts)
     server.cache = cache or ROOT/'artifacts/patent-cache'
     server.ledger_db = ledger_db
     server.work_lock = threading.Lock()
@@ -318,6 +334,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8766)
     parser.add_argument('--ledger-db',help='启用 SQLite 台账（空库时从已提交数据初始化）；分析也改为读取该库')
+    parser.add_argument('--public-host',action='append',default=[],type=public_host,
+                        help='另外接受的转发主机名（如 GitHub Codespaces 的端口地址），经 https 访问；可重复。服务仍只监听 127.0.0.1')
     args=parser.parse_args()
     if args.ledger_db:
         store = LedgerStore(args.ledger_db)
@@ -326,8 +344,10 @@ def main():
             store.import_ledger(build(), 'serve --ledger-db')
             print(f'已从已提交数据初始化台账：{args.ledger_db}', flush=True)
         os.environ[LEDGER_ENV] = args.ledger_db
-    server=create_server(args.port, ledger_db=args.ledger_db)
+    server=create_server(args.port, ledger_db=args.ledger_db, public_hosts=args.public_host)
     print(f'Open http://127.0.0.1:{server.server_port}',flush=True)
+    for host in args.public_host:
+        print(f'Also accepting https://{host}',flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

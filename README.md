@@ -40,6 +40,15 @@
 
 ## 快速开始
 
+### 在 GitHub 上运行（不用在本地拉代码）
+
+- **工作台（GitHub Codespaces）**：在仓库页面切到 `codex/sar-evidence-pipeline` 分支，点 **Code → Codespaces → Create codespace on codex/sar-evidence-pipeline**。首次创建会自动安装依赖（几分钟），随后自动启动服务并在浏览器打开 8766 端口的转发地址；也可以在 **Ports** 标签里点 8766 的地址打开。配置见 [.devcontainer/](.devcontainer/)。Codespace 可以联网，专利检索、ChEMBL、SureChEMBL、PubChem 都能直接用。
+  - 转发地址默认是**私有**的，只有登录 GitHub 的你能打开。要给化学家看，可在 Ports 标签把 8766 设为 Public，演示结束后改回 Private 并停止 Codespace：公开期间，拿到链接的人都能使用检索和“加入台账（待确认）”。
+  - 服务仍只监听 127.0.0.1，只额外接受这个 Codespace 自己的转发地址（`--public-host`，由 `.devcontainer/start.sh` 自动填写）。
+- **在线核对（GitHub Actions）**：仓库的 **Actions → Online path check → Run workflow**。在 GitHub 的运行器上执行 `python -m phase0.tools.verify_online`，结果显示在该次运行的摘要页，`report.md` / `report.json` 可在 Artifacts 中下载。外部服务可能对云端运行器限流，失败时先看报告里的具体原因。
+
+### 在本机运行
+
 需要 Python 3.10+，以下命令在仓库根目录执行。常规工作台和离线案例不需要模型 API key。
 
 ```sh

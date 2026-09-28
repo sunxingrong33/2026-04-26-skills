@@ -201,7 +201,8 @@
 
 | 命令 | 用途 |
 |---|---|
-| `python -m phase0.sar.serve` | 启动本机工作台 |
+| `python -m phase0.sar.serve [--public-host 主机名]` | 启动本机工作台；`--public-host` 另外接受指定的转发地址（如 GitHub Codespaces，经 https） |
+| GitHub Codespaces / Actions | `.devcontainer/` 在 Codespace 中自动安装并启动工作台；手动工作流 “Online path check” 在 GitHub 运行器上执行在线核对 |
 | `python -m phase0.sar.demo` | 冻结规则验证 + 生成离线页面 |
 | `python -m phase0.sar.mass_check` | 检查已整理证据卡的质谱一致性 |
 | `python -m phase0.eval.gold [--check]` | 生成 / 核对由证据包派生的金标准 |
