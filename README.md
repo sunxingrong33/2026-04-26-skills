@@ -2,7 +2,7 @@
 
 从专利公开号、一个结构或一个靶点出发，查看专利家族、优先权日期、实施例和结构；对已整理的分子证据卡，比较结构与原始测量，并回到 PDF 核查。
 
-项目目标是构建“竞对 SAR 演化时间线”：输入化合物、专利号或靶点，输出结构与属性变化，以及有证据支撑的研发问题假说。**当前已提供三类检索入口（其中结构检索支持精确、相似性和子结构三种方式），以及基于已整理数据的六步 SAR 工作流：证据整理、结构对齐、可比性检查、批次汇总、证据审查和候选方向。在此之上，已建成带审计日志的类型化证据台账、供 AI agent 调用的 MCP 工具层（只能提交待确认记录、每次运行可重放）、按字段统计的抽取评测框架，以及分级抽取的控制逻辑。仍是研究原型。** 真实的专利抽取器、任意专利自动抽取和经过证据确认的历史演化路线尚未实现。
+项目目标是构建“竞对 SAR 演化时间线”：输入化合物、专利号或靶点，输出结构与属性变化，以及有证据支撑的研发问题假说。**当前已提供三类检索入口（其中结构检索支持精确、相似性和子结构三种方式，覆盖本地台账、ChEMBL、SureChEMBL 专利化学与 PubChem 交叉引用），以及基于已整理数据的六步 SAR 工作流：证据整理、结构对齐、可比性检查、批次汇总、证据审查和候选方向。在此之上，已建成带审计日志的类型化证据台账、供 AI agent 调用的 MCP 工具层（只能提交待确认记录、每次运行可重放）、按字段统计的抽取评测框架，以及分级抽取的控制逻辑。仍是研究原型。** 真实的专利抽取器、任意专利自动抽取和经过证据确认的历史演化路线尚未实现。
 
 核心原则：数字只由确定性代码计算；工具与 AI 只能提交“待确认”记录，确认必须由具名的人完成；限定值、缺失值和跨来源数据不强行比较；证据不足时弃答。完整功能清单见 [FEATURES.md](FEATURES.md)，迭代进度见 [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（原始方案 v1 见 [docs/iteration-plan.md](docs/iteration-plan.md)）。
 
@@ -13,7 +13,8 @@
 | 功能 | 当前状态 |
 |---|---|
 | 输入完整专利公开号 | 已实现；读取 Google Patents 公共页面，支持继续检索同族和引用专利 |
-| 结构检索 | 精确 / 相似性 / 子结构三种方式；去盐、中和、互变异构标准化并记录；检索本地证据台账，可选 ChEMBL（相似性与子结构命中经本地 RDKit 复核）；相似度只排序、不作证据 |
+| 结构检索 | 精确 / 相似性 / 子结构三种方式；去盐、中和、互变异构标准化并记录；检索本地证据台账，可选 ChEMBL 与 SureChEMBL（远程命中经本地 RDKit 复核）；相似度只排序、不作证据 |
+| 从结构到专利 | SureChEMBL 命中可查“出现在哪些专利”；任一结构可查 PubChem 关联专利与 PubMed 文献；公开号一键核实加载；两个来源可能同源，并列显示、不当作独立佐证 |
 | 靶点输入 | ChEMBL 名称 / 基因符号 / ID 查询；用户按物种与类型选择，再分页查看分子、测量及来源 |
 | 专利日期与家族 | 按来源记载的优先权日排列；跨专利关联视图合并同族公开 |
 | 实施例原文与化学实体索引 | 自动提取支持格式的文本和可解析结构；标题可能漏检，结构可能包含试剂与中间体 |
@@ -104,7 +105,7 @@ python -m phase0.tools.verify_online                                         # �
 
 原始 HTML、SHA-256、读取时间及解析 JSON 缓存在 `artifacts/patent-cache/`，后续请求优先使用缓存，**不会自动保证上游内容为最新版本**。网络、校验或解析失败会显示错误，不用样例替代。来源 HTML 哈希改变时，旧证据映射停用并等待重新核对。原始 HTML/PDF 缓存不提交到仓库。
 
-### SMILES 与靶点入口
+### 结构检索与靶点入口
 
 输入框左侧可切换“专利号 / SMILES / 靶点”。
 
@@ -125,7 +126,20 @@ python -m phase0.tools.verify_online                                         # �
 
 靶点候选最多展示 20 项，过多时请细化名称或使用 ID。SMILES 限制为 2000 字符 / 200 个原子；测量最多浏览前 10020 条，界面显示来源总数。ChEMBL 响应缓存在 `artifacts/discovery-cache/`，记录哈希和读取时间；缓存不代表最新数据库内容。在线失败与零命中分开提示，SMILES 查询失败时可保留本地结果。依据 [ChEMBL 官方接口说明](https://chembl.gitbook.io/chembl-interface-documentation/web-services/chembl-data-web-services) 实现。
 
-结构命中、靶点测量关联与专利实施例证据是不同层次；新入口尚不能自动从任意分子或靶点生成完整竞对专利路线。
+结构命中、数据库中的专利关联与专利实施例证据是不同层次；新入口尚不能自动从任意分子或靶点生成完整竞对专利路线。
+
+### 外部数据来源与许可
+
+均为公开接口，不需要账号或 API key。开发环境的网络策略拒绝访问这些来源，**在线路径均未实连**，首次实连请运行在线核对（见“验证与科学边界”）。
+
+| 来源 | 用途 | 许可 / 条款 | 请求约束 | 核实记录 |
+|---|---|---|---|---|
+| Google Patents 公共页面 | 专利元数据、实施例、化学实体索引 | 受 Google 服务条款约束；按需读取单篇页面，原始 HTML 不入库 | 一次一篇、缓存 | — |
+| ChEMBL | 靶点、测量、来源文档；相似性与子结构检索 | CC BY-SA 3.0 | 每页 20 条、缓存 | — |
+| SureChEMBL | 专利中提取的化学结构检索；化合物所在专利 | CC BY 4.0（署名、保留 SCHEMBL 编号） | 一次一个异步任务、轮询退避、前 20 条 | [docs/surechembl-access.md](docs/surechembl-access.md) |
+| PubChem | 化合物关联专利与 PubMed 文献 | NCBI 不限制使用；提交者可能保有权利，注明来源 | 每次最多 3 个请求（限速 5 次/秒） | [docs/pubchem-access.md](docs/pubchem-access.md) |
+
+所有远程响应按查询缓存在 `artifacts/discovery-cache/` 下，记录 SHA-256 与读取时间，agent 运行可断网重放；缓存不代表来源的最新内容。
 
 ## 证据台账与“加入台账”
 
@@ -203,11 +217,11 @@ python -m pytest -q
 python -m phase0.sar.validate
 ```
 
-当前测试套件包含 31 个模块、390 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制、结构检索、在线验证脚本（模拟网络响应）、浏览器主路径，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。
+当前测试套件包含 31 个模块、390 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制、结构检索（含 SureChEMBL 与 PubChem 适配器，以模拟服务器测试）、在线验证脚本（模拟网络响应）、浏览器主路径，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。
 
-浏览器测试（`phase0/tests/test_browser.py`）用 Playwright 驱动 Chromium，以离线夹具覆盖“加入台账”、跨家族案例与“未展示原因”、证据卡质谱校验显示和六步工作流主路径；需安装 `requirements-browser.txt`，缺少 Playwright 或浏览器时自动跳过（CI 中为可选任务）。其余页面交互仍需人工走查。
+浏览器测试（`phase0/tests/test_browser.py`）用 Playwright 驱动 Chromium，以离线夹具覆盖“加入台账”、跨家族案例与“未展示原因”、证据卡质谱校验显示、六步工作流主路径、结构相似性检索，以及从 SureChEMBL / PubChem 命中到加载原始专利的路径；需安装 `requirements-browser.txt`，缺少 Playwright 或浏览器时自动跳过（CI 中为可选任务）。其余页面交互仍需人工走查。
 
-在线路径（Google Patents、ChEMBL）需在可联网的机器上核对：
+在线路径（Google Patents、ChEMBL、SureChEMBL、PubChem）需在可联网的机器上核对：
 
 ```sh
 python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时间>/report.md
@@ -227,7 +241,7 @@ python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时�
 |---|---|
 | [phase0/sar/serve.py](phase0/sar/serve.py) / [patents.py](phase0/sar/patents.py) | 本机接口、专利检索、来源缓存与解析 |
 | [phase0/sar/patent_evidence.py](phase0/sar/patent_evidence.py) / [lineage.py](phase0/sar/lineage.py) | 证据映射、测量比较与显式跨家族关联 |
-| [phase0/sar/discovery.py](phase0/sar/discovery.py) / [structure_search.py](phase0/sar/structure_search.py) / [surechembl.py](phase0/sar/surechembl.py) / [pubchem.py](phase0/sar/pubchem.py) / [phase0/web/discovery.js](phase0/web/discovery.js) | SMILES 与靶点入口、结构检索（精确 / 相似性 / 子结构、标准化）、ChEMBL 查询与来源展示 |
+| [phase0/sar/discovery.py](phase0/sar/discovery.py) / [structure_search.py](phase0/sar/structure_search.py) / [surechembl.py](phase0/sar/surechembl.py) / [pubchem.py](phase0/sar/pubchem.py) / [phase0/web/discovery.js](phase0/web/discovery.js) | 结构与靶点入口、结构检索（精确 / 相似性 / 子结构、标准化）、ChEMBL / SureChEMBL / PubChem 查询与来源展示 |
 | [phase0/sar/evidence_ledger.py](phase0/sar/evidence_ledger.py) / [evidence_pair.py](phase0/sar/evidence_pair.py) / [sar_workflow.py](phase0/sar/sar_workflow.py) | 六步台账、分子对分析、汇总与复核及候选方向 |
 | [phase0/sar/mass_check.py](phase0/sar/mass_check.py) | 质谱报告值与结构比对 |
 | [phase0/ledger](phase0/ledger) | 类型化台账、无损迁移、SQLite 存储与审计、分析读取入口、“加入台账” |
