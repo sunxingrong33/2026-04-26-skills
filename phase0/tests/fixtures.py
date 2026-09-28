@@ -4,11 +4,15 @@ SMILES are hand-drawn and cross-checked against published molecular formulas and
 molecular weights. They are NOT database-verified -- see README §数据可信度.
 Tests here assert on relative behaviour (A vs B), which stays valid even if an
 individual structure needs a small correction after verification.
+
+crizotinib and lorlatinib are checked against the curated evidence ledger by
+InChIKey (test_structure_search); lorlatinib was corrected on 2026-09-28 (the
+fluorine had been drawn on the wrong ring position -- same formula and mass).
 """
 
 SMILES = {
     "crizotinib": "C[C@@H](Oc1cc(-c2cnn(C3CCNCC3)c2)cnc1N)c1c(Cl)ccc(F)c1Cl",
-    "lorlatinib": "C[C@H]1Oc2cc(-c3c(C#N)n(C)nc3CN(C)C(=O)c3cc(F)ccc13)cnc2N",
+    "lorlatinib": "C[C@H]1Oc2cc(-c3c(C#N)n(C)nc3CN(C)C(=O)c3ccc(F)cc13)cnc2N",
     "ceritinib": "CC(C)Oc1cc(C2CCNCC2)c(C)cc1Nc1ncc(Cl)c(Nc2ccccc2S(=O)(=O)C(C)C)n1",
     "brigatinib": "COc1cc(N2CCC(N3CCN(C)CC3)CC2)ccc1Nc1ncc(Cl)c(Nc2ccccc2P(C)(C)=O)n1",
     "alectinib": "CCc1cc2c(cc1N1CCC(N3CCOCC3)CC1)[nH]c1c2C(=O)c2ccc(C#N)cc2C1(C)C",

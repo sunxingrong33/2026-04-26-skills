@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 from phase0.sar import discovery, patents
 from phase0.tests.test_ledger_intake import DOCS, PAGE
 from phase0.tests.test_patents import HTML
-from phase0.tools.verify_online import verify
+from phase0.tools.verify_online import LORLATINIB, verify
 
 FIXTURE_ID = 'WO2013132376A1'  # the only publication the parser test page answers for
 TARGETS = [{'target_chembl_id': 'CHEMBL4247', 'pref_name': 'ALK tyrosine kinase receptor',
@@ -24,6 +24,10 @@ def fake_urlopen(calls):
             body = json.dumps({'targets': TARGETS, 'page_meta': {'total_count': 1}}).encode()
         elif path.endswith('/activity.json'):
             body = json.dumps({'activities': PAGE, 'page_meta': {'total_count': len(PAGE)}}).encode()
+        elif '/similarity/' in path or '/substructure/' in path:
+            body = json.dumps({'molecules': [{'molecule_chembl_id': 'CHEMBL1', 'similarity': '100.0',
+                                              'molecule_structures': {'canonical_smiles': LORLATINIB}}],
+                               'page_meta': {'total_count': 1}}).encode()
         elif path.endswith('/document.json'):
             body = json.dumps({'documents': DOCS}).encode()
         else:
@@ -50,6 +54,9 @@ def test_full_path_passes_with_changed_page_as_warning(tmp_path, monkeypatch):
     assert checks['测量加入台账']['refused']  # rows without value or structure are refused, not guessed
     assert checks['重复加入']['status'] == 'pass'
     assert checks['新增记录状态']['detail'].endswith("状态 ['proposed']（只能是 proposed）")
+    assert checks['结构检索（相似性）']['status'] == 'pass'
+    assert '命中查询分子本身' in checks['结构检索（相似性）']['detail']
+    assert checks['结构检索（子结构）']['status'] == 'pass'  # lorlatinib keeps the aminopyridine ether
     assert checks['断网重放']['status'] == 'pass'
     assert report['verdict'] == '通过（有注意项）'
     assert any('patents.google.com' in u for u in calls) and any('ebi.ac.uk' in u for u in calls)

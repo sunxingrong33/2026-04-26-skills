@@ -13,7 +13,7 @@
 | 功能 | 当前状态 |
 |---|---|
 | 输入完整专利公开号 | 已实现；读取 Google Patents 公共页面，支持继续检索同族和引用专利 |
-| SMILES 输入 | 本地 RDKit 解析、二维结构与描述符、6 张专利证据卡的规范化异构 SMILES 匹配；可选 ChEMBL 标准 InChIKey 查询 |
+| 结构检索 | 精确 / 相似性 / 子结构三种方式；去盐、中和、互变异构标准化并记录；检索本地证据台账，可选 ChEMBL（相似性与子结构命中经本地 RDKit 复核）；相似度只排序、不作证据 |
 | 靶点输入 | ChEMBL 名称 / 基因符号 / ID 查询；用户按物种与类型选择，再分页查看分子、测量及来源 |
 | 专利日期与家族 | 按来源记载的优先权日排列；跨专利关联视图合并同族公开 |
 | 实施例原文与化学实体索引 | 自动提取支持格式的文本和可解析结构；标题可能漏检，结构可能包含试剂与中间体 |
@@ -34,7 +34,7 @@
 | 候选方向 | 输入结构精确匹配本批 A 后，按具体 assay 和数值方向筛选已有 B；保留相反案例与验证计划，证据不足时弃答 |
 | 类型化证据台账 | 实体与复核状态由数据模型强制；320 条观测无损迁移（还原哈希一致）；SQLite 存储与只追加审计日志；被拒绝记录只退出分析、不删除 |
 | 加入台账 | 专利结构索引与 ChEMBL 测量可写入为待确认；只用服务端读取的数据，无法映射的记录说明原因 |
-| AI agent 工具层 | 12 个 MCP 工具；台账只能查询与提交待确认记录；参数严格校验；每次运行留快照与记录，可逐条重放 |
+| AI agent 工具层 | 13 个 MCP 工具；台账只能查询与提交待确认记录；参数严格校验；每次运行留快照与记录，可逐条重放 |
 | 抽取评测与分级抽取 | 按字段评测，核心指标为未标记错误数；分级抽取控制逻辑（页面分区、逐级调用、冲突保留、置信度）已就绪，真实抽取器尚未接入 |
 
 ## 快速开始
@@ -106,7 +106,12 @@ python -m pip install -r requirements-agent.txt                              # A
 
 输入框左侧可切换“专利号 / SMILES / 靶点”。
 
-- **SMILES**：粘贴结构或点击“填入洛拉替尼 SMILES”，然后检索。默认只在本地解析并匹配已整理的专利证据卡；勾选“同时查询 ChEMBL”或点击结果中的查询按钮后，才向 ChEMBL 发送标准 InChIKey。命中记录后可查看相关测量与靶点。本地匹配保留立体信息；标准 InChIKey 可能合并互变异构形式，当前未做相似性、子结构或去盐检索。
+- **SMILES（结构检索）**：粘贴结构或点击“填入洛拉替尼 SMILES”，选择检索方式后检索：
+  - **精确**：按标准 InChIKey，同时匹配已整理的专利证据卡；
+  - **相似性**：Morgan 指纹（半径 2、2048 位）Tanimoto，阈值 40–100%，默认 70%；相似度只用于排序和筛选，不说明活性相近、属于同一研发程序或被某专利覆盖；
+  - **子结构**：输入片段 SMILES，至少 6 个重原子，避免命中过多。
+
+  默认先标准化（去盐和溶剂、中和、统一互变异构形式；子结构查询不做互变异构），页面显示实际做了哪些改动，并可关闭。默认只检索本地证据台账（范围与命中数一并显示）；勾选“同时查询 ChEMBL”或点击结果中的查询按钮后，才向 ChEMBL 发送标准 InChIKey（精确）或标准化后的 SMILES（相似性、子结构）。ChEMBL 命中逐个用本地 RDKit 复核，复现不了的标红提示而不删除；返回被截断时明确提示；未命中不代表不存在。命中分子可继续查看测量、来源文档和专利候选。
 - **靶点**：输入 `ALK`、`EGFR` 等名称/基因符号，或 `CHEMBL4247` 等 ID，查询 ChEMBL。先选择候选的物种和靶点类型，再查看测量。人源 ALK 另提供已整理双家族案例入口，不代表该靶点的完整专利清单。
 - **测量结果**：每页最多 20 条，按 activity_id 排列，可翻页；保留限定符、缺失值和质量标记，附 activity、assay、document 原始响应链接。可将记录中的 SMILES 再用于本地证据检索。不同协议不自动合并，也不按返回顺序认定药效强弱。
 
@@ -135,7 +140,7 @@ python -m phase0.tools.mcp_server all --ledger-db artifacts/ledger.sqlite  # std
 python -m phase0.tools.replay artifacts/runs/<run_id>                    # 按运行记录重放
 ```
 
-12 个工具覆盖台账查询与提交、结构性质、质谱校验、可比性检查与骨架对齐、专利与 ChEMBL 读取。**没有确认、拒绝、导入工具**；agent 的写入记为本次运行并附依据。参数先按签名校验，拼错的参数名直接报错而不是被静默忽略。每次运行保存开始时的台账快照与调用记录，重放时在快照副本上逐条重新执行（包括写入）并比对结果，禁止联网。尚未用真实模型端到端运行 agent。说明及 `.mcp.json` 配置示例见 [phase0/tools/README.md](phase0/tools/README.md)。
+13 个工具覆盖台账查询与提交、结构性质、质谱校验、可比性检查与骨架对齐、专利与 ChEMBL 读取、结构检索。**没有确认、拒绝、导入工具**；agent 的写入记为本次运行并附依据。参数先按签名校验，拼错的参数名直接报错而不是被静默忽略。每次运行保存开始时的台账快照与调用记录，重放时在快照副本上逐条重新执行（包括写入）并比对结果，禁止联网。尚未用真实模型端到端运行 agent。说明及 `.mcp.json` 配置示例见 [phase0/tools/README.md](phase0/tools/README.md)。
 
 ## 抽取评测与分级抽取
 
@@ -190,7 +195,7 @@ python -m pytest -q
 python -m phase0.sar.validate
 ```
 
-当前测试套件包含 28 个模块、356 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制、在线验证脚本（模拟网络响应）、浏览器主路径，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。
+当前测试套件包含 29 个模块、373 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制、结构检索、在线验证脚本（模拟网络响应）、浏览器主路径，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。
 
 浏览器测试（`phase0/tests/test_browser.py`）用 Playwright 驱动 Chromium，以离线夹具覆盖“加入台账”、跨家族案例与“未展示原因”、证据卡质谱校验显示和六步工作流主路径；需安装 `requirements-browser.txt`，缺少 Playwright 或浏览器时自动跳过（CI 中为可选任务）。其余页面交互仍需人工走查。
 
@@ -200,7 +205,7 @@ python -m phase0.sar.validate
 python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时间>/report.md
 ```
 
-脚本使用全新缓存和临时台账，依次检索两份专利、查询 ALK 靶点及一页测量、写入台账（仅待确认）、重复写入检查、断网重放；任一检查失败时返回非零退出码。尚未在可联网环境中运行过。
+脚本使用全新缓存和临时台账，依次检索两份专利、查询 ALK 靶点及一页测量、写入台账（仅待确认）、重复写入检查、ChEMBL 相似性与子结构检索、断网重放；任一检查失败时返回非零退出码。尚未在可联网环境中运行过。
 
 冻结的 21 条规则未依据留出结果调参。既有诊断中，开发案例生成 8 条候选，目标关键词命中 1/3；独立案例生成 2 条候选，命中 0/2。这是代理指标，不能视为真实召回率。规则分值不是概率，MCS 高亮不是药效团或因果证明，数值关联不能直接证明作者动机。
 
@@ -214,7 +219,7 @@ python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时�
 |---|---|
 | [phase0/sar/serve.py](phase0/sar/serve.py) / [patents.py](phase0/sar/patents.py) | 本机接口、专利检索、来源缓存与解析 |
 | [phase0/sar/patent_evidence.py](phase0/sar/patent_evidence.py) / [lineage.py](phase0/sar/lineage.py) | 证据映射、测量比较与显式跨家族关联 |
-| [phase0/sar/discovery.py](phase0/sar/discovery.py) / [phase0/web/discovery.js](phase0/web/discovery.js) | SMILES 与靶点入口、ChEMBL 查询与来源展示 |
+| [phase0/sar/discovery.py](phase0/sar/discovery.py) / [structure_search.py](phase0/sar/structure_search.py) / [phase0/web/discovery.js](phase0/web/discovery.js) | SMILES 与靶点入口、结构检索（精确 / 相似性 / 子结构、标准化）、ChEMBL 查询与来源展示 |
 | [phase0/sar/evidence_ledger.py](phase0/sar/evidence_ledger.py) / [evidence_pair.py](phase0/sar/evidence_pair.py) / [sar_workflow.py](phase0/sar/sar_workflow.py) | 六步台账、分子对分析、汇总与复核及候选方向 |
 | [phase0/sar/mass_check.py](phase0/sar/mass_check.py) | 质谱报告值与结构比对 |
 | [phase0/ledger](phase0/ledger) | 类型化台账、无损迁移、SQLite 存储与审计、分析读取入口、“加入台账” |

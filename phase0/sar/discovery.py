@@ -49,12 +49,15 @@ def structure(smiles):
             'features': f.numeric, 'svg': molecule_svg(canonical)}
 
 
-def local_matches(canonical):
+def local_matches(searched, method='exact', standardize=True):
+    """Curated evidence cards with the same standardised structure (exact search only)."""
+    from .structure_search import prepared
     rows = []
     for path in sorted(DATA.glob('*.json')):
         package = json.loads(path.read_text(encoding='utf8'))
         for card in package['cards']:
-            if Chem.MolToSmiles(Chem.MolFromSmiles(card['smiles']), isomericSmiles=True) == canonical:
+            mol = prepared(card['smiles'], method, standardize)
+            if mol is not None and Chem.MolToSmiles(mol, isomericSmiles=True) == searched:
                 rows.append({'publication': package['publication'], 'example': card['example'],
                     'label': card['label'], 'structure_source': card['structure_source'],
                     'review_status': package['review']['status']})
@@ -73,12 +76,33 @@ def discover(request, cache):
     if mode == 'documents':
         return discover_documents(request, cache)
     if mode == 'smiles':
-        result['structure'] = structure(request.get('query'))
-        result['local_matches'] = local_matches(result['structure']['smiles'])
-        result['notice'] = '本地按规范化异构 SMILES 匹配；ChEMBL 按标准 InChIKey 查询，标准化可能合并互变异构形式。未做相似性、子结构或去盐检索；未命中不代表不存在。'
+        from . import structure_search as ss
+        q, query_mol = ss.query(request)
+        result['search'] = q
+        result['structure'] = structure(q['searched_smiles'])
+        if q['original_smiles'] != q['searched_smiles']:
+            result['original_structure'] = structure(q['original_smiles'])
+        if q['method'] == 'exact':
+            result['local_matches'] = local_matches(q['searched_smiles'], 'exact', q['standardize'])
+        else:
+            del result['local_matches']  # the evidence-card shortcut belongs to exact search only
+        result['ledger_matches'] = ss.local_search(q, query_mol)
+        result['notice'] = (ss.NOTICE[q['method']] + ' ChEMBL 精确检索按标准 InChIKey；相似性与子结构检索使用 ChEMBL 自身的算法，命中后用本地 RDKit 复核。'
+                            + ss.ZERO_HITS)
         result['molecules'] = []
         if request.get('external', False) is not True:
             result['external_status'] = 'not_requested'
+            return result
+        if q['method'] != 'exact':
+            try:
+                page = ss.chembl_search(q, query_mol, cache, fetch, LIMIT)
+            except Exception:
+                result['external_status'] = 'failed'
+                result['warning'] = 'ChEMBL 结构检索失败；以下仅为本地结果，不代表数据库无结果。'
+                return result
+            result['sources'].append(page['source'])
+            result.update(molecules=page['rows'], total=page['total'], truncated=page['truncated'],
+                          has_more=page['truncated'], external_status='ok')
             return result
         endpoint = 'molecule'
         params = {'molecule_structures__standard_inchi_key': result['structure']['inchikey'], 'limit': LIMIT}

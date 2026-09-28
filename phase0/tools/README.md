@@ -27,6 +27,7 @@ python -m phase0.tools.verify_online                                        # �
 | | `chem_compare_observations` | ✓ | | 两个分子逐实验可比性检查 / 骨架对齐 |
 | sources | `patent_fetch` | ✓ | ✓ | 专利元数据、实施例标题、化学实体索引、已整理证据卡 |
 | | `chembl_activities` | ✓ | ✓ | ChEMBL 一页测量记录 |
+| | `structure_search` | ✓ | ✓ | 精确 / 相似性 / 子结构检索本地证据台账与 ChEMBL（`external=false` 时只查本地）；ChEMBL 命中经本地 RDKit 复核，标准化步骤写入结果 |
 
 每个工具返回 `{summary, data, preview}`：`summary` 一两句话，`data` 完整结果，`preview` 前几条供快速判断。
 
@@ -88,7 +89,8 @@ Claude Agent SDK 使用同样的 stdio 服务配置，具体写法见其文档�
 3. `chembl_activities` 读取一页测量，统计限定符与无数值记录（原样保留）；
 4. `ledger_propose_chembl_activities` 提交整页，核对“新增 + 拒绝 + 已存在”等于请求数，列出拒绝原因；再提交一次，核对无新增；
 5. `ledger_propose_patent_index` 提交一份专利索引；核对所有新增记录均为 `proposed`；
-6. 断网重放整个运行，逐条比对。
+6. `structure_search`：以洛拉替尼（WO2013132376A1 Example 2）做相似性检索、以两个 ALK 家族共有的氨基吡啶苄醚片段做子结构检索，记录命中数、是否截断、本地复核不一致的记录，以及相似性检索是否命中查询分子本身；
+7. 断网重放整个运行，逐条比对。
 
 结果分为通过 / 注意 / 失败。**注意不是失败**：例如专利页面哈希与已整理证据包不一致时，证据卡按设计暂停使用，报告提示需要重新核对映射。任一检查失败时退出码非零。脚本本身由 `test_verify_online.py` 以模拟网络响应测试；真实运行结果补入 `docs/baseline.md`。
 

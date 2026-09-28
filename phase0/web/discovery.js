@@ -9,12 +9,16 @@ function updateInputMode(){
   $('publication').placeholder=mode==='smiles'?'粘贴完整 SMILES':mode==='target'?'例如 ALK、EGFR 或 CHEMBL4247':'例如 WO2013132376A1';
   $('submit').textContent=mode==='patent'?'检索专利':mode==='smiles'?'检索结构':'检索靶点';
   $('fill').textContent=mode==='patent'?'填入洛拉替尼专利号':mode==='smiles'?'填入洛拉替尼 SMILES':'填入 ALK';
-  $('external-option').classList.toggle('hidden',mode!=='smiles');
-  $('input-hint').textContent=mode==='smiles'?'默认本地结构核对；勾选后可查询公开数据库。':mode==='target'?'查询 ChEMBL；请按物种和靶点类型选择候选。':'输入完整公开号，例如 WO2013132376A1。';
+  $('external-option').classList.toggle('hidden',mode!=='smiles');$('structure-options').classList.toggle('hidden',mode!=='smiles');
+  $('input-hint').textContent=mode==='smiles'?'默认只检索本地证据台账；勾选后同时查询 ChEMBL。':mode==='target'?'查询 ChEMBL；请按物种和靶点类型选择候选。':'输入完整公开号，例如 WO2013132376A1。';
 }
 $('input-mode').onchange=updateInputMode;
 $('fill').onclick=()=>{$('publication').value=$('input-mode').value==='smiles'?exampleSmiles:$('input-mode').value==='target'?'ALK':'WO2013132376A1';$('publication').focus()};
-$('lookup').onsubmit=e=>{e.preventDefault();const mode=$('input-mode').value;if(mode==='patent'){lookup($('publication').value);return}discoveryHistory=[];runDiscovery({mode,query:$('publication').value,external:$('external-search').checked})};
+$('lookup').onsubmit=e=>{e.preventDefault();const mode=$('input-mode').value;if(mode==='patent'){lookup($('publication').value);return}discoveryHistory=[];runDiscovery(mode==='smiles'?{mode,query:$('publication').value,external:$('external-search').checked,...searchOptions()}:{mode,query:$('publication').value})};
+function searchOptions(){const method=$('search-method').value,o={method,standardize:$('search-standardize').checked};if(method==='similarity')o.threshold=Number($('search-threshold').value);return o}
+$('search-method').onchange=()=>$('threshold-option').classList.toggle('hidden',$('search-method').value!=='similarity');
+const methodNames={exact:'精确',similarity:'相似性',substructure:'子结构'};
+const roleNames={example:'实施例',intermediate:'中间体',reference:'对照',reagent:'试剂',unspecified:'未指定'},statusNames={proposed:'待确认',confirmed:'已确认',rejected:'已拒绝'};
 function action(label,fn){const b=el('button',label);b.type='button';b.onclick=fn;return b}
 async function proposeToLedger(payload,button){if(button)button.disabled=true;setStatus('正在写入台账（待确认）…');try{const r=await fetch('/api/ledger/propose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(d.error||'写入失败');const names={documents:'文档',compounds:'结构',assays:'实验',observations:'测量'};const added=Object.entries(d.added).map(([k,n])=>(names[k]||k)+' '+n).join('、')||'无新增';let text='已加入台账（待确认）：'+added+'。';const present=Object.entries(d.already_present_counts||{}).map(([k,n])=>(names[k]||k)+' '+n).join('、');if(present)text+=' 已在台账中：'+present+'。';if(d.refused.length)text+=' 未写入 '+d.refused.length+' 条：'+d.refused.slice(0,3).map(x=>x.id+' '+x.reason).join('；')+(d.refused.length>3?' …':'')+'。';setStatus(text+' '+d.notice)}catch(e){setStatus(e.message,true)}finally{if(button)button.disabled=false}}
 function recordLink(type,id){return link(id||'来源缺失','https://www.ebi.ac.uk/chembl/api/data/'+type+'/'+encodeURIComponent(id||'')+'.json')}
@@ -39,10 +43,15 @@ function drawDiscovery(d,request){
   if(d.structure){
     const c=el('article',undefined,'card');const img=el('img');img.src=d.structure.svg;img.alt='输入 SMILES 的二维结构';
     c.append(img,el('p',d.structure.formula+' · '+d.structure.inchikey),el('p','MW '+d.structure.features.mw+' · cLogP '+d.structure.features.clogp),el('pre',d.structure.smiles));box.append(c);
-    box.append(el('h3','本地专利证据卡匹配'));
+    if(d.search){const q=d.search;box.append(el('p','检索方式：'+methodNames[q.method]+(q.method==='similarity'?'（Tanimoto ≥ '+q.threshold+'%，'+q.fingerprint+'）':'')+' · 标准化：'+q.steps.map(x=>x.note).join('；'),'muted'));if(d.original_structure)box.append(el('p','输入结构（标准化前）：','muted'),el('pre',d.original_structure.smiles))}
+    if(d.local_matches){box.append(el('h3','本地专利证据卡匹配'));
     if(!d.local_matches.length)box.append(el('p','本地 6 张已整理证据卡中没有相同结构；这不代表没有相关专利。'));
-    d.local_matches.forEach(m=>{const row=el('div',undefined,'panel');row.append(el('strong',m.publication+' / '+m.label),el('p','助手转录，待独立复核；打开专利时还需核对来源快照。'),link('原始结构图',m.structure_source.url),action('打开专利证据',async()=>{if(await lookup(m.publication)){showTab('evidence');$('evidence').scrollIntoView({behavior:'smooth'})}}));box.append(row)});
-    if(d.external_status==='not_requested')box.append(action('查询 ChEMBL（发送标准 InChIKey）',()=>runDiscovery({...request,external:true})));
+    d.local_matches.forEach(m=>{const row=el('div',undefined,'panel');row.append(el('strong',m.publication+' / '+m.label),el('p','助手转录，待独立复核；打开专利时还需核对来源快照。'),link('原始结构图',m.structure_source.url),action('打开专利证据',async()=>{if(await lookup(m.publication)){showTab('evidence');$('evidence').scrollIntoView({behavior:'smooth'})}}));box.append(row)})}
+    if(d.ledger_matches){const L=d.ledger_matches;box.append(el('h3','本地证据台账命中 · '+L.total+' 个（范围：'+L.scope+'）'));
+      if(!L.total)box.append(el('p','本地台账中没有命中；未命中不代表不存在。'));
+      if(L.truncated)box.append(el('p','仅显示前 '+L.rows.length+' 个，请提高阈值或细化片段。','error'));
+      const list=el('div',undefined,'ledger-hits');L.rows.forEach(m=>{const row=el('div',undefined,'panel');row.dataset.compound=m.compound_id;row.append(el('strong',m.document_id+' / '+m.label),el('p',(m.similarity!==undefined?'相似度 '+m.similarity.toFixed(3)+' · ':m.match_atoms?'含查询片段 · ':'')+'角色：'+(roleNames[m.role]||m.role)+' · '+(statusNames[m.record_status]||m.record_status),'muted'),el('pre',m.smiles));if(m.structure_source&&m.structure_source.url)row.append(link('结构来源',m.structure_source.url));list.append(row)});box.append(list)}
+    if(d.external_status==='not_requested')box.append(action(request.method&&request.method!=='exact'?'查询 ChEMBL（发送标准化后的 SMILES）':'查询 ChEMBL（发送标准 InChIKey）',()=>runDiscovery({...request,external:true})));
     else if(d.external_status==='failed')box.append(action('重试 ChEMBL',()=>runDiscovery(request,true)));
   }
   if(d.targets){
@@ -53,9 +62,15 @@ function drawDiscovery(d,request){
       box.append(card)});
   }
   if(d.molecules&&d.external_status==='ok'){
-    box.append(el('h3','ChEMBL 标准 InChIKey 命中'));
-    if(!d.molecules.length)box.append(el('p','ChEMBL 未返回该标准 InChIKey；未进行相似结构检索。'));
-    d.molecules.forEach(m=>{const c=el('div',undefined,'panel');c.append(el('h3',m.pref_name||m.molecule_chembl_id),recordLink('molecule',m.molecule_chembl_id),action('查看此分子的测量与靶点',()=>runDiscovery({mode:'activities',entity:'molecule',id:m.molecule_chembl_id,offset:0})));box.append(c)});
+    const method=d.search?d.search.method:'exact';
+    box.append(el('h3',method==='exact'?'ChEMBL 标准 InChIKey 命中':'ChEMBL '+methodNames[method]+'检索命中 · 共 '+(d.total??'未知')+' 个'));
+    if(d.truncated)box.append(el('p','仅显示前 '+d.molecules.length+' 个（按 ChEMBL 返回顺序）；请提高阈值或细化片段。','error'));
+    if(!d.molecules.length)box.append(el('p',method==='exact'?'ChEMBL 未返回该标准 InChIKey；可改用相似性或子结构检索。':'ChEMBL 未返回命中；未命中不代表不存在。'));
+    d.molecules.forEach(m=>{const c=el('div',undefined,'panel chembl-hit');c.append(el('h3',m.pref_name||m.molecule_chembl_id),recordLink('molecule',m.molecule_chembl_id));
+      if(m.chembl_similarity!=null)c.append(el('p','ChEMBL 相似度 '+m.chembl_similarity+'（ChEMBL 自身指纹算法）'));
+      if(m.local_check){const k=m.local_check;c.append(el('p',k.note+(k.similarity!==undefined?'（本地 '+k.similarity.toFixed(3)+'）':''),k.status==='agrees'?'muted':'error'));c.dataset.localCheck=k.status}
+      if(m.canonical_smiles)c.append(el('pre',m.canonical_smiles));
+      c.append(action('查看此分子的测量与靶点',()=>runDiscovery({mode:'activities',entity:'molecule',id:m.molecule_chembl_id,offset:0})));box.append(c)});
   }
   if(d.documents)drawDocuments(box,d,request);
   if(d.activities){

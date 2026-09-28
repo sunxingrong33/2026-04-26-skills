@@ -54,3 +54,55 @@ def chembl_activities(ctx, entity: Literal['target', 'molecule'], chembl_id: str
                      # cache_hit is transport detail; dropping it keeps results identical on replay.
                      'sources': [{k: v for k, v in s.items() if k != 'cache_hit'} for s in page['sources']],
                      'notice': page.get('notice')}, rows[:PREVIEW])
+
+
+@tool('sources', open_world=True)
+def structure_search(ctx, smiles: str, method: Literal['exact', 'similarity', 'substructure'] = 'similarity',
+                     threshold: Annotated[int, Field(ge=40, le=100)] = 70, standardize: bool = True,
+                     external: bool = True):
+    """按结构检索本地证据台账与 ChEMBL：精确（标准 InChIKey）、相似性（Tanimoto，阈值为百分比）或子结构。
+
+    需要“从一个结构出发找相关化合物、文献和专利”时调用；ChEMBL 命中后可用 chembl_activities（entity=molecule）
+    查看测量及其来源文档。相似度只用于排序，不说明活性相近、属于同一研发程序或被某专利覆盖；
+    未命中不代表不存在。ChEMBL 命中已用本地 RDKit 复核，local_check 为 disagrees 的记录需回到原始记录核对。
+    默认标准化（去盐、中和、互变异构；子结构查询不做互变异构），search.steps 记录实际做了哪些改动。
+    """
+    from phase0.sar import structure_search as ss
+    from phase0.sar.discovery import fetch
+    try:
+        q, mol = ss.query({'query': smiles, 'method': method, 'threshold': threshold, 'standardize': standardize})
+    except ValueError as exc:
+        raise ToolFailure(str(exc)) from None
+    if ctx.ledger_db:
+        ledger = ctx.store().load()
+    else:
+        from phase0.ledger.migrate import build
+        ledger = build()
+    local = ss.local_search(q, mol, ledger)
+    data = {'search': q, 'notice': ss.NOTICE[method] + ss.ZERO_HITS, 'local': local, 'chembl': None}
+    if external:
+        try:
+            if method == 'exact':
+                from phase0.sar.discovery import discover
+                page = discover({'mode': 'smiles', 'query': q['searched_smiles'], 'method': 'exact',
+                                 'standardize': False, 'external': True}, ctx.cache_dir / 'discovery-cache')
+                if page['external_status'] != 'ok':
+                    raise RuntimeError('ChEMBL 暂不可用')
+                rows = [{'molecule_chembl_id': m.get('molecule_chembl_id'), 'pref_name': m.get('pref_name')}
+                        for m in page['molecules']]
+                chembl = {'total': page.get('total'), 'truncated': bool(page.get('has_more')), 'rows': rows,
+                          'source': page['sources'][0]}
+            else:
+                chembl = ss.chembl_search(q, mol, ctx.cache_dir / 'discovery-cache', fetch)
+        except OSError:
+            # Transport errors vary between runs; a fixed message keeps failures replayable.
+            raise ToolFailure('ChEMBL 结构检索失败：连接失败或超时；可设 external=false 只查本地。') from None
+        except (ValueError, RuntimeError) as exc:
+            raise ToolFailure(f'ChEMBL 结构检索失败：{exc}；可设 external=false 只查本地。') from None
+        # cache_hit is transport detail; dropping it keeps results identical on replay.
+        chembl['source'] = {k: v for k, v in chembl['source'].items() if k != 'cache_hit'}
+        data['chembl'] = chembl
+    n = data['chembl']
+    summary = (f"本地命中 {local['total']} 个" + ('' if n is None else
+               f"；ChEMBL 命中 {n['total']} 个（本页 {len(n['rows'])} 个{'，已截断' if n['truncated'] else ''}）"))
+    return envelope(summary + '。', data, (n['rows'] if n else local['rows'])[:PREVIEW])

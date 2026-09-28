@@ -5,8 +5,9 @@
 Uses a fresh cache and a fresh ledger built from committed evidence, then goes
 through the path a user or agent would: read two patents from Google Patents,
 look up the target in ChEMBL, read one page of its measurements, add that page
-and one patent index to the ledger (proposed only), and replay the whole run
-with the network blocked. Writes ``report.md`` and ``report.json`` to the output
+and one patent index to the ledger (proposed only), run a similarity and a
+substructure search in ChEMBL, and replay the whole run with the network
+blocked. Writes ``report.md`` and ``report.json`` to the output
 directory and exits non-zero when any check fails.
 
 A warning is not a failure: e.g. a patent page whose hash no longer matches the
@@ -29,6 +30,8 @@ from .core import ROOT, Run, ToolFailure, replay
 
 PUBLICATIONS = ('WO2011138751A2', 'WO2013132376A1')
 TARGET, TARGET_ID = 'ALK', 'CHEMBL4247'
+LORLATINIB = 'C[C@H]1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21'  # WO2013132376A1 Example 2
+FRAGMENT = 'Nc1ncccc1OCc1ccccc1'  # aminopyridine benzyl ether shared by both ALK families
 
 
 class Checks:
@@ -98,6 +101,24 @@ def check_activities(checks, run):
     return [x['activity_id'] for x in rows]
 
 
+def check_structure(checks, run):
+    for name, args in (('结构检索（相似性）', {'smiles': LORLATINIB, 'method': 'similarity', 'threshold': 70}),
+                       ('结构检索（子结构）', {'smiles': FRAGMENT, 'method': 'substructure'})):
+        r = checks.step(name, lambda: run.call('structure_search', args))
+        if r is None:
+            continue
+        chembl = r['data']['chembl']
+        rows = chembl['rows']
+        disagree = [x['molecule_chembl_id'] for x in rows if x['local_check']['status'] != 'agrees']
+        detail = (f"{r['summary']} 本地复核不一致 {len(disagree)} 个" + (f"：{disagree[:5]}" if disagree else '')
+                  + ('；结果已截断' if chembl['truncated'] else ''))
+        if args['method'] == 'similarity':
+            same = any(x['local_check'].get('similarity') == 1.0 for x in rows)
+            detail += '；' + ('命中查询分子本身' if same else '未命中查询分子本身')
+        status = 'fail' if not rows else 'warn' if disagree else 'pass'
+        checks.add(name, status, detail)
+
+
 def _record_ids(db):
     led = LedgerStore(db).load()
     return {(kind, r.id): r.review.record_status
@@ -156,6 +177,7 @@ def verify(out, publications=PUBLICATIONS):
     activity_ids = check_activities(checks, run)
     if activity_ids:
         check_intake(checks, run, db, activity_ids, publications[-1])
+    check_structure(checks, run)
     earlier_failed = any(c['status'] == 'fail' for c in checks.items)
     result = checks.step('断网重放', lambda: replay(run.dir))
     if result is not None:

@@ -27,6 +27,13 @@ from phase0.tests.test_ledger_intake import DOCS, PAGE
 from phase0.tests.test_lineage import EARLY, EXPECTED, LATE, document
 from phase0.tests.test_patents import HTML
 
+LORLATINIB = 'C[C@H]1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21'  # WO2013132376A1 Example 2
+STRUCTURE_HITS = [
+    {'molecule_chembl_id': 'CHEMBL9000001', 'pref_name': 'SAME', 'similarity': '100.0',
+     'molecule_structures': {'canonical_smiles': LORLATINIB, 'standard_inchi_key': 'X'}},
+    {'molecule_chembl_id': 'CHEMBL9000002', 'pref_name': 'UNRELATED', 'similarity': '71.0',
+     'molecule_structures': {'canonical_smiles': 'CCOCC', 'standard_inchi_key': 'Y'}},
+]
 FIXTURE_ID = 'WO2013132376A1'  # the only publication the parser test page answers for
 TARGETS = [{'target_chembl_id': 'CHEMBL4247', 'pref_name': 'ALK tyrosine kinase receptor',
             'organism': 'Homo sapiens', 'target_type': 'SINGLE PROTEIN', 'target_components': []}]
@@ -77,6 +84,8 @@ def fake_fetch(endpoint, params, cache):
         return {'activities': PAGE, 'page_meta': {'total_count': len(PAGE)}}, src
     if endpoint == 'document':
         return {'documents': DOCS}, src
+    if endpoint.startswith(('similarity/', 'substructure/')):
+        return {'molecules': STRUCTURE_HITS, 'page_meta': {'total_count': 40, 'next': '/next'}}, src
     raise AssertionError(endpoint)
 
 
@@ -218,4 +227,28 @@ def test_six_step_workflow_keeps_opposite_directions_apart(app, page):
     other = page.text_content('#sar-suggestions')
     assert '待验证候选方向' in lower
     assert '待验证候选方向' not in other and '相反方向或未变的已选案例' in other
+    assert page.errors == []
+
+
+def test_similarity_search_shows_ranked_local_hits_and_flags_chembl_disagreement(app, page):
+    base, _, _ = app
+    page.goto(base + '/')
+    page.select_option('#input-mode', 'smiles')
+    page.select_option('#search-method', 'similarity')
+    assert page.is_visible('#search-threshold')
+    page.fill('#search-threshold', '90')
+    page.fill('#publication', LORLATINIB + '.Cl')
+    page.click('#submit')
+    wait_status(page, '检索完成')
+    text = page.text_content('#discovery-content')
+    assert 'Tanimoto ≥ 90%' in text and '去除盐和溶剂' in text and '输入结构（标准化前）' in text
+    hits = page.locator('.ledger-hits .panel')
+    assert hits.count() == 2 and all('相似度 1.000' in t for t in hits.all_text_contents())
+
+    page.get_by_role('button', name='查询 ChEMBL（发送标准化后的 SMILES）').click()
+    wait_status(page, '检索完成')
+    assert '共 40 个' in page.text_content('#discovery-content')
+    assert '仅显示前 2 个' in page.text_content('#discovery-content')
+    checks = page.eval_on_selector_all('.chembl-hit', 'n => n.map(x => x.dataset.localCheck)')
+    assert checks == ['agrees', 'disagrees']
     assert page.errors == []
