@@ -97,7 +97,7 @@ python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite</pre>
   <ol class="index">
     <li><span class="n">1</span><div><a href="#s1">竞品专利里到底测了什么</a><span class="sub">打开洛拉替尼专利的证据卡：结构、活性、限定符、PDF 页码、质谱校验</span></div></li>
     <li><span class="n">2</span><div><a href="#s2">早期专利和大环化专利是什么关系</a><span class="sub">跨家族关联只列事实、假设和缺口；跨专利活性并列，不算倍数</span></div></li>
-    <li><span class="n">3</span><div><a href="#s3">同一个替换，在不同实验里结论一样吗</a><span class="sub">六步工作流：6f → 6e 在两个实验里方向相反，系统不给“整体更优”</span></div></li>
+    <li><span class="n">3</span><div><a href="#s3">活性提高了，其他性质付出了什么代价</a><span class="sub">六步工作流：6f → 6e 酶活性提高约 8 倍，MDR1 外排比却从 7.6 升到 17，系统按实验分开，不给“整体更优”</span></div></li>
     <li><span class="n">4</span><div><a href="#s4">从一个结构找回同一条研发线</a><span class="sub">相似性检索找不到大环化前的早期化合物，共有片段的子结构检索能找回</span></div></li>
     <li><span class="n">5</span><div><a href="#s5">让 AI 助手帮忙整理，但它只能提交“待确认”</a><span class="sub">越权确认被拒绝、拼错参数被拒绝、重复测量阻断比值、全程可重放</span></div></li>
     <li><span class="n">6</span><div><a href="#s6">自动抽取出错时，错的地方会被标出来</a><span class="sub">漏掉一个氟原子的实施例被质谱校验排在人工核对第一位</span></div></li>
@@ -172,22 +172,24 @@ python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite</pre>
 <!-- 3 -->
 <section class="scenario" id="s3">
   <div class="eyebrow">场景 3 · 六步 SAR 工作流</div>
-  <h2>同一个替换，在不同实验里结论一样吗</h2>
-  <p class="question">“酰胺上的 N,N-二甲基改成 N-甲基（6f → 6e），活性是变好还是变差？”</p>
+  <h2>活性提高了，其他性质付出了什么代价</h2>
+  <p class="question">“酰胺上的 N,N-二甲基改成 N-甲基（6f → 6e），活性变好了吗？外排会不会变差？”</p>
   <div class="cols">
     <div class="stack"><h3>操作（<code>/evidence</code> 页面）</h3>
       <ol class="steps">
         <li>来源选 <code>CHEMBL3286195</code>（洛拉替尼发现论文），A 选 6f，B 选 6e，点“分析结构变化”。</li>
         <li>点“检查所选分子的测量”。</li>
         <li>点“加入当前已检查分子对”，再点“汇总本批替换效果”。</li>
-        <li>第⑥步点“填入当前 A”，实验选 <code>CHEMBL3293161</code>、目标“数值降低”，生成候选方向；再把实验换成 <code>CHEMBL3293391</code>。</li>
+        <li>第⑥步点“填入当前 A”，实验选 <code>CHEMBL3293161</code>（WT ALK Ki）、目标“数值降低”，生成候选方向；再把实验换成 <code>CHEMBL3293391</code>（MDR1 外排比，同样希望降低）。</li>
       </ol></div>
     <div class="stack"><h3>看什么</h3>
       <ul class="points">
         <li>结构对齐：共同锚点 28 个重原子，差异在 R1（甲基 → 氢）；页面提示存在对称歧义，需核对原图。</li>
         <li>7 项实验里 3 项可暂定计算，另外 4 项不计算。</li>
-        <li>CHEMBL3293161：Ki 22.0 → 2.8 nM，B/A = 0.127；CHEMBL3293162：B/A = 0.113；CHEMBL3293391：B/A = 2.24，方向相反。</li>
-        <li>候选方向随实验变化：前者给出 6e 和验证计划，后者没有符合目标的候选，只把 6e 列为相反案例。</li>
+        <li>酶活性：WT ALK Ki（CHEMBL3293161）22.0 → 2.8 nM，B/A = 0.127；L1196M Ki（CHEMBL3293162）310 → 35 nM，B/A = 0.113。</li>
+        <li>外排：MDR1 外排比（MDCK 细胞，CHEMBL3293391）7.6 → 17，B/A = 2.24，外排变差。</li>
+        <li>候选方向随性质变化：以酶 Ki 降低为目标时给出 6e 和验证计划；以外排比降低为目标时没有候选，6e 被列为相反案例。</li>
+        <li>台账中没有 6f 的两个细胞 IC50 记录（6e 为 116 nM 和 1665 nM），细胞层面的活性变化无法比较。</li>
       </ul></div>
   </div>
   <figure>
@@ -199,20 +201,20 @@ python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite</pre>
     <figcaption><b>③ 测量可比性。</b>只有同来源、同 assay、同条件的精确值才暂定可比；每条都写明“B/A 非改善倍数”，并列出待补证据（原图、原表定位、完整实验条件、独立复核）。</figcaption>
   </figure>
   <figure>
-    <img src="shots/s3-3-summary.png" width="1200" height="1267" alt="第四步：按实验分组的批次汇总，CHEMBL3293391 方向与另两个实验相反">
-    <figcaption><b>④ 批次汇总。</b>按实验分开计数：CHEMBL3293161、CHEMBL3293162 为“数值降低 1”，CHEMBL3293391 为“数值升高 1”。页面说明升高 / 降低只是数值方向，未考虑实验误差，单篇来源不证明独立重复。</figcaption>
+    <img src="shots/s3-3-summary.png" width="1200" height="1267" alt="第四步：按实验分组的批次汇总：两个酶 Ki 实验数值降低，MDR1 外排比数值升高">
+    <figcaption><b>④ 批次汇总。</b>按实验分开计数：两个酶 Ki 实验（CHEMBL3293161、CHEMBL3293162）为“数值降低 1”，MDR1 外排比（CHEMBL3293391）为“数值升高 1”。页面说明升高 / 降低只是数值方向，未考虑实验误差，单篇来源不证明独立重复。</figcaption>
   </figure>
   <div class="cols">
     <figure>
       <img src="shots/s3-4-suggest-lower.png" width="1200" height="478" alt="第六步：CHEMBL3293161 下的待验证候选方向和验证计划">
-      <figcaption><b>⑥ CHEMBL3293161、目标“数值降低”。</b>给出 6e 作为待验证方向，附需核对项和三条验证计划（核查原始结构与协议、同实验重复测定、另测选择性与 ADMET）。</figcaption>
+      <figcaption><b>⑥ WT ALK Ki（CHEMBL3293161）、目标“数值降低”。</b>给出 6e 作为待验证方向，附需核对项和三条验证计划（核查原始结构与协议、同实验重复测定、另测选择性与 ADMET）。</figcaption>
     </figure>
     <figure>
-      <img src="shots/s3-5-suggest-other.png" width="1200" height="165" alt="第六步：CHEMBL3293391 下没有符合目标的候选">
-      <figcaption><b>⑥ 换成 CHEMBL3293391。</b>同一个替换在这里是升高（B/A = 2.24），系统不输出候选，只把它列为相反方向案例。</figcaption>
+      <img src="shots/s3-5-suggest-other.png" width="1200" height="165" alt="第六步：以 MDR1 外排比降低为目标时没有符合的候选">
+      <figcaption><b>⑥ 换成 MDR1 外排比（CHEMBL3293391），目标同样是“数值降低”。</b>6e 的外排比反而升高（B/A = 2.24），系统不输出候选，只把它列为相反方向案例。</figcaption>
     </figure>
   </div>
-  <div class="say"><h3>讲解要点</h3><p>把这批数据直接交给大模型总结，很容易得到“N-去甲基化提高活性”这样一句话。系统按实验分开，发现一个实验里方向相反，于是不给“整体更优”的结论；候选也只从已记录的分子里挑，不生成新结构。</p></div>
+  <div class="say"><h3>讲解要点</h3><p>把这批数据直接交给大模型总结，很容易得到“N-去甲基化提高活性”这样一句话，外排变差和细胞数据缺失却被略过。系统按实验分开：酶活性有利、外排不利，于是不给“整体更优”的结论；候选也只从已记录的分子里挑，不生成新结构。把这种多性质取舍并排成一张表、并提示“先补测 6f 的细胞 IC50”，是下一步迭代（I2.7）要做的。</p></div>
 </section>
 
 <!-- 4 -->

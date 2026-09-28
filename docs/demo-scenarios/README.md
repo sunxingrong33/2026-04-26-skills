@@ -9,7 +9,7 @@
 |---|---|---|
 | 1 竞品专利里到底测了什么 | 洛拉替尼专利代表性实施例的结构与活性，每个数能回到原文 | [证据卡](shots/s1-evidence-cards.png) · [展开的实验条件](shots/s1-card-detail.png) |
 | 2 早期专利和大环化专利是什么关系 | 两代系列有无关系，大环化后活性提高多少 | [跨专利关联](shots/s2-lineage.png) · [结构差异](shots/s2-compare-structures.png) · [测量并列](shots/s2-compare-measurements.png) |
-| 3 同一个替换，在不同实验里结论一样吗 | 6f → 6e（N,N-二甲酰胺 → N-甲酰胺）是变好还是变差 | [② 结构对齐](shots/s3-1-alignment.png) · [③ 可比性](shots/s3-2-comparability.png) · [④ 汇总](shots/s3-3-summary.png) · [⑥ 候选（CHEMBL3293161）](shots/s3-4-suggest-lower.png) · [⑥ 候选（CHEMBL3293391）](shots/s3-5-suggest-other.png) |
+| 3 活性提高了，其他性质付出了什么代价 | 6f → 6e（N,N-二甲酰胺 → N-甲酰胺）酶活性提高，MDR1 外排比却变差 | [② 结构对齐](shots/s3-1-alignment.png) · [③ 可比性](shots/s3-2-comparability.png) · [④ 汇总](shots/s3-3-summary.png) · [⑥ 候选（WT ALK Ki）](shots/s3-4-suggest-lower.png) · [⑥ 候选（MDR1 外排比）](shots/s3-5-suggest-other.png) |
 | 4 从一个结构找回同一条研发线 | 只有洛拉替尼结构，能否找回前一代化合物和专利 | [相似性 ≥ 50%](shots/s4-similarity.png) · [共有片段子结构](shots/s4-substructure.png) |
 | 5 AI 助手只能提交“待确认” | 助手会不会自己确认数据或自己算倍数 | [工具层演示输出](shots/s5-agent-tools.png) |
 | 6 自动抽取出错时会被标出来 | 大量自动抽取时，抽错了怎么知道 | [分级抽取演示输出](shots/s6-extraction.png) |

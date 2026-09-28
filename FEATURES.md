@@ -172,7 +172,7 @@
 | 13.6 | 回归基线 | ✅ | [docs/baseline.md](docs/baseline.md) 记录每次改动后的测试数与离线验证输出 |
 | 13.7 | 自动化测试 | ✅ | `phase0/tests/` 31 个测试模块、390 项测试（含 7 项浏览器测试，缺少 Playwright 或浏览器时自动跳过），无需联网 |
 | 13.8 | CI | ✅ | GitHub Actions，Python 3.10 / 3.12：安装 `requirements-agent.txt`，运行 pytest 与离线页面生成；另有可选的浏览器测试任务（`requirements-browser.txt`，失败不阻断） |
-| 13.9 | 浏览器界面自动化测试 | ✅ | `test_browser.py`（Playwright + Chromium，离线夹具）：专利与 ChEMBL 测量“加入台账”、跨家族案例与证据卡质谱校验显示、“未展示原因”、六步工作流主路径（同一替换在两个实验方向相反，候选方向随实验变化）、结构相似性检索（标准化记录、本地命中排序、ChEMBL 截断与复核不一致提示）。其他页面交互仍需人工走查 |
+| 13.9 | 浏览器界面自动化测试 | ✅ | `test_browser.py`（Playwright + Chromium，离线夹具）：专利与 ChEMBL 测量“加入台账”、跨家族案例与证据卡质谱校验显示、“未展示原因”、六步工作流主路径（同一替换酶 Ki 降低、MDR1 外排比升高，按实验分开统计，候选方向随实验变化）、结构相似性检索（标准化记录、本地命中排序、ChEMBL 截断与复核不一致提示）。其他页面交互仍需人工走查 |
 | 13.10 | 在线路径验证脚本 | ⚠️ | `python -m phase0.tools.verify_online`：全新缓存下检索两份专利、查询 ALK 靶点与一页测量、写入台账（仅 proposed）、重复写入不新增、ChEMBL 相似性与子结构检索、SureChEMBL 相似性检索及首个命中的专利关联、PubChem 交叉引用、断网重放，输出 `report.md` / `report.json`。已用模拟网络响应测试；**尚未在可联网环境中运行**（本开发环境无法访问 Google Patents / ChEMBL / SureChEMBL / PubChem） |
 
 ## 14. 本机服务接口
