@@ -30,6 +30,8 @@ python -m phase0.tools.verify_online                                        # �
 | | `structure_search` | ✓ | ✓ | 精确 / 相似性 / 子结构检索本地证据台账、ChEMBL（`external`）与 SureChEMBL（`surechembl`）；远程命中经本地 RDKit 复核，标准化步骤写入结果 |
 | | `surechembl_patents` | ✓ | ✓ | 某个 SureChEMBL 化合物出现在哪些专利中（前 20 份与总数）；公开号需再用 `patent_fetch` 核实 |
 | | `pubchem_xrefs` | ✓ | ✓ | 按标准 InChIKey 查 PubChem 关联专利与 PubMed 文献；列出其中已整理的专利；与 SureChEMBL 可能同源，不作独立佐证 |
+| chem | `project_goal_suggest` | ✓ | | 项目目标模板的实验映射建议（可按靶点关键词过滤），附未归入实验与全部实验 |
+| | `project_sar_analyse` | ✓ | | 按确认的目标在台账中自动配对并逐性质比较，给出分类、补测建议，可附 Markdown 讨论材料 |
 
 每个工具返回 `{summary, data, preview}`：`summary` 一两句话，`data` 完整结果，`preview` 前几条供快速判断。
 

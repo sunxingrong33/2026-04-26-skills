@@ -44,6 +44,7 @@ function drawDiscovery(d,request){
     const c=el('article',undefined,'card');const img=el('img');img.src=d.structure.svg;img.alt='输入 SMILES 的二维结构';
     c.append(img,el('p',d.structure.formula+' · '+d.structure.inchikey),el('p','MW '+d.structure.features.mw+' · cLogP '+d.structure.features.clogp),el('pre',d.structure.smiles));box.append(c);
     if(d.search){const q=d.search;box.append(el('p','检索方式：'+methodNames[q.method]+(q.method==='similarity'?'（Tanimoto ≥ '+q.threshold+'%，'+q.fingerprint+'）':'')+' · 标准化：'+q.steps.map(x=>x.note).join('；'),'muted'));if(d.original_structure)box.append(el('p','输入结构（标准化前）：','muted'),el('pre',d.original_structure.smiles))}
+    if(d.coverage)box.append(coveragePanel(d.coverage));
     if(d.local_matches){box.append(el('h3','本地专利证据卡匹配'));
     if(!d.local_matches.length)box.append(el('p','本地 6 张已整理证据卡中没有相同结构；这不代表没有相关专利。'));
     d.local_matches.forEach(m=>{const row=el('div',undefined,'panel');row.append(el('strong',m.publication+' / '+m.label),el('p','助手转录，待独立复核；打开专利时还需核对来源快照。'),link('原始结构图',m.structure_source.url),action('打开专利证据',async()=>{if(await lookup(m.publication)){showTab('evidence');$('evidence').scrollIntoView({behavior:'smooth'})}}));box.append(row)})}
@@ -160,7 +161,7 @@ function drawSureChEMBL(box,d,request){const S=d.surechembl;
 function drawSureChEMBLPatents(box,d){box.append(el('p','共 '+d.total+' 份专利'+(d.truncated?'；仅显示前 '+d.patents.length+' 份':'')+'。'));
   if(!d.patents.length)box.append(el('p','SureChEMBL 未返回专利；未命中不代表不存在。'));
   d.patents.forEach(p=>{const c=el('div',undefined,'panel surechembl-patent');c.append(el('h3',p.doc_id),el('p',[p.title||'标题缺失',p.publication_date||'日期缺失',p.assignee||'申请人缺失'].join(' · ')),link('SureChEMBL 专利页',p.url));
-    if(p.publication)c.append(action('核实并加载专利 '+p.publication,async()=>{if(await lookup(p.publication)){showTab('evidence');$('evidence').scrollIntoView({behavior:'smooth'})}}));else c.append(el('p','编号无法规范化为公开号，未提供加载。','muted'));box.append(c)})}
+    if(p.publication){c.append(action('核实并加载专利 '+p.publication,async()=>{if(await lookup(p.publication)){showTab('evidence');$('evidence').scrollIntoView({behavior:'smooth'})}}));const add=action('将 '+d.id+' 作为该专利的结构加入台账（待确认）',()=>proposeToLedger({source:'surechembl',schembl:d.id,publication:p.publication},add));c.append(document.createTextNode(' '),add)}else c.append(el('p','编号无法规范化为公开号，未提供加载。','muted'));box.append(c)})}
 
 function pubchemButton(key,label){return action(label||'PubChem 专利与文献',()=>runDiscovery({mode:'pubchem_xrefs',inchikey:key}))}
 function drawPubChem(box,d){box.append(el('p',d.attribution,'muted'));
@@ -172,3 +173,11 @@ function drawPubChem(box,d){box.append(el('p',d.attribution,'muted'));
   P.rows.forEach(p=>{const c=el('div',undefined,'panel pubchem-patent');c.dataset.curated=p.curated;c.append(el('strong',p.patent_id+(p.curated?' · 已整理证据包':'')),document.createTextNode(' '),link('PubChem 专利页',p.url));if(p.publication)c.append(action('核实并加载专利 '+p.publication,async()=>{if(await lookup(p.publication)){showTab('evidence');$('evidence').scrollIntoView({behavior:'smooth'})}}));sec.append(c)});box.append(sec);
   const L=d.literature,lit=el('section',undefined,'pubchem-literature');lit.append(el('h3','关联 PubMed 文献 · 共 '+L.total+' 篇'));if(L.truncated)lit.append(el('p','按 PMID 从新到旧显示前 '+L.rows.length+' 篇。','muted'));if(!L.total)lit.append(el('p','PubChem 未登记关联文献。'));
   const list=el('p');L.rows.forEach((r,i)=>{if(i)list.append(document.createTextNode(' · '));list.append(link('PMID '+r.pmid,r.url))});lit.append(list);box.append(lit)}
+
+function coveragePanel(c){const det=el('details');det.className='coverage';det.open=true;det.append(el('summary','检索覆盖报告'));
+  const names={ok:'已查询',not_requested:'未查询',failed:'查询失败',per_compound:'按分子单独查询'};
+  const t=el('table'),h=el('tr');['来源','状态','命中','显示','截断','说明'].forEach(x=>h.append(el('th',x)));t.append(h);
+  c.sources.forEach(s=>{const tr=el('tr');tr.dataset.source=s.source;[s.source,names[s.status]||s.status,s.total??'—',s.returned??'—',s.truncated?'是':'否',[s.scope,s.note].filter(Boolean).join('；')].forEach(v=>tr.append(el('td',String(v))));t.append(tr)});
+  det.append(t);
+  const docs=Object.entries(c.local_by_document||{});if(docs.length)det.append(el('p','本地命中按文档：'+docs.map(([k,v])=>k+' '+v).join('、'),'muted'));
+  det.append(el('p','已知缺口：','muted'));c.gaps.forEach(g=>det.append(el('p','· '+g,'muted')));return det}

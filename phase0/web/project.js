@@ -4,7 +4,7 @@ const OUTCOME = {favorable: '有利', unfavorable: '不利', unchanged: '未变'
   not_comparable: '不可比', missing: '缺失', no_assay: '本文档无该实验'};
 const DIRECTION = {lower: '越低越好', higher: '越高越好', range: '目标区间', none: '仅参考'};
 const COLUMNS = ['favorable', 'unfavorable', 'unchanged', 'changed', 'mixed', 'not_comparable', 'missing', 'no_assay'];
-let busy = false, suggestion = null;
+let busy = false, suggestion = null, lastRequest = null;
 
 function el(tag, text, cls) { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n; }
 function chip(kind, text) { return el('span', text ?? OUTCOME[kind] ?? kind, 'chip ' + kind); }
@@ -150,6 +150,14 @@ function drawResults(r) {
   $('result-head').replaceChildren(el('p', r.notice, 'note'),
     el('p', '范围：' + (Array.isArray(r.scope.documents) ? r.scope.documents.join('、') : r.scope.documents) + ' · ' + r.scope.compounds + ' 个化合物 · 可变部分 ≤ ' + r.scope.max_change_heavy_atoms + ' 个重原子 · ' + r.pair_count + ' 个分子对 · ' + r.transforms.length + ' 种替换 · ' + r.sites.length + ' 个位点'));
   const rules = $('rules'); rules.replaceChildren(); r.grade_rules.forEach(g => rules.append(el('p', g.label + '：' + g.rule)));
+  const cov = $('coverage'), ct = el('table'), ch = el('tr'); ['性质', '有测量的化合物', '涉及文档'].forEach(x => ch.append(el('th', x))); ct.append(ch);
+  r.coverage.forEach(c => { const tr = el('tr'); tr.dataset.property = c.property_id; [c.property, c.compounds_measured + ' / ' + c.compounds_total, c.documents.join('、')].forEach(v => tr.append(el('td', v))); ct.append(tr); });
+  cov.replaceChildren(ct, el('p', '只统计所选范围和所选实验；台账之外的数据不在其中。', 'muted'));
+  const fu = $('followups'); fu.replaceChildren(el('p', r.followups.rule, 'muted'));
+  if (!r.followups.items.length) fu.append(el('p', '没有单侧缺失的目标测量。'));
+  const ol = el('ol'); r.followups.items.forEach(i => { const li = el('li'); li.dataset.compound = i.compound_id; li.dataset.assay = i.assay_id;
+    li.append(el('strong', i.compound.split(' ·')[0] + ' — ' + i.property), el('span', '（' + i.assay_id + '）：' + i.reason + '；涉及 ' + i.pairs.map(p => p.pair).join('、'))); ol.append(li); });
+  fu.append(ol); if (r.followups.total > r.followups.items.length) fu.append(el('p', '共 ' + r.followups.total + ' 项，显示前 ' + r.followups.items.length + ' 项。', 'muted'));
   drawGroups();
   $('results').hidden = false;
 }
@@ -170,6 +178,9 @@ function drawGroups() {
       card.dataset.transform = t.transform;
       card.append(el('h3', '替换 '), el('code', t.transform), el('p', t.pairs.length + ' 个分子对 · 不变部分 ' + t.sites.length + ' 种 · 来源 ' + t.documents.join('、'), 'muted'));
     }
+    card.firstChild.after(el('span', t.category.label, 'cat ' + t.category.key));
+    card.dataset.category = t.category.key;
+    if (t.synthesis_items && ['candidate', 'tradeoff'].includes(t.category.key)) card.append(el('p', '合成可行性待评估项：' + t.synthesis_items.join('；'), 'muted'));
     const wrap = el('div', undefined, 'wrap'), table = el('table'), head = el('tr');
     ['性质', '方向与阈值', ...COLUMNS.map(c => OUTCOME[c]), '证据等级'].forEach(h => head.append(el('th', h)));
     table.append(head);
@@ -216,7 +227,16 @@ async function run(button, body, draw, message) {
 
 $('suggest').onclick = () => guard(() => run($('suggest'), {mode: 'suggest', template: $('template').value, focus: $('focus').value || null, documents: scope()},
   drawMapping, '正在生成映射建议…'));
-$('analyse').onclick = () => guard(() => run($('analyse'), {mode: 'analyse', goal: goal(), documents: scope(), max_change: Number($('max-change').value)},
+$('analyse').onclick = () => guard(() => run($('analyse'), lastRequest = {mode: 'analyse', goal: goal(), documents: scope(), max_change: Number($('max-change').value)},
   drawResults, '正在寻找分子对并比较…'));
 function guard(fn) { try { return fn(); } catch (e) { status(e.message, true); } }
 init();
+
+function save(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], {type}));
+  const a = el('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$('download-md').onclick = () => guard(() => run($('download-md'), {...lastRequest, mode: 'report'},
+  d => save('sar-discussion.md', d.markdown, 'text/markdown;charset=utf-8'), '正在生成讨论材料…'));
+$('download-json').onclick = () => { if (lastResult) save('sar-analysis.json', JSON.stringify(lastResult, null, 2), 'application/json'); };

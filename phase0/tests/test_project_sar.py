@@ -258,3 +258,55 @@ def test_sites_group_the_same_position_across_documents():
     assert {('Example 1', 'Example 7'), ('6a', '6d')} <= named
     assert set(aryl['documents']) == {'CHEMBL3286195', 'WO2011138751A2'}
     assert sum(len(s['pairs']) for s in r['sites']) == r['pair_count']
+
+
+# --- part 2: coverage, follow-ups, categories, report, tools ------------------
+
+def test_followups_rank_6f_cell_potency_first_with_reasons():
+    f = ps.analyse(LEDGER, goal())['followups']
+    top = f['items'][0]
+    assert LABEL[top['compound_id']] == '6f' and top['property_id'] == 'cell_potency'
+    assert {p['pair'] for p in top['pairs']} == {'6f → 6d', '6f → 6e'} and top['promising'] == 2
+    assert top['reason'].startswith('补测后可判断 2 个分子对的细胞活性')
+    keys = [(-len(i['pairs']), -i['promising'], -i['assay_measured']) for i in f['items']]
+    assert keys == sorted(keys) and '排序规则' in f['rule']
+    assert all(i['property_id'] != 'logd' for i in f['items'])  # reference-only properties never ask for data
+
+
+def test_categories_follow_goal_properties_only():
+    r = ps.analyse(LEDGER, goal())
+    cats = {t['transform']: t['category'] for t in r['transforms']}
+    assert cats[N_METHYL]['key'] == 'tradeoff'
+    assert cats[N_METHYL]['favorable'] == ['酶活性'] and cats[N_METHYL]['unfavorable'] == ['外排比']
+    assert {c['key'] for c in cats.values()} <= set(ps.CATEGORY)
+    for t in r['transforms']:
+        assert t['synthesis_items'][-1] == '以上仅为待评估项，不是合成可行性判断'
+    small = next(t for t in r['transforms'] if t['transform'] == 'CO[*:1]>>C[*:1]')
+    assert not any('含有该片段' in x for x in small['synthesis_items'])  # a methyl is everywhere
+
+
+def test_coverage_counts_measured_compounds_per_property():
+    cov = {c['property_id']: c for c in ps.analyse(LEDGER, goal())['coverage']}
+    assert cov['efflux']['documents'] == ['CHEMBL3286195']
+    assert 0 < cov['efflux']['compounds_measured'] < cov['efflux']['compounds_total'] == 37
+
+
+def test_report_carries_sources_for_every_number():
+    md = ps.handle({'mode': 'report', 'goal': goal()}, LEDGER)['markdown']
+    for heading in ('## 1. 目标与实验映射', '## 2. 范围与覆盖', '## 3. 候选方向', '## 4. 取舍', '## 7. 补测建议', '## 8. 规则'):
+        assert heading in md
+    line = next(x for x in md.splitlines() if '外排比：不利' in x and '7.6 → 17' in x)
+    assert '观测 ' in line and 'CHEMBL3293391' in line
+    assert '默认值，待化学家确认' in md and '不合成综合分数' in md
+
+
+def test_project_tools_and_replay(tmp_path):
+    from phase0.tools import chem_tools  # noqa: F401
+    from phase0.tools.core import Run, replay
+    run = Run(runs_dir=tmp_path / 'runs', cache_dir=tmp_path / 'cache')
+    s = run.call('project_goal_suggest', {'template': 'cell_potency_efflux', 'focus': 'ALK'})
+    assert s['summary'].startswith('改善细胞活性，同时控制外排：')
+    r = run.call('project_sar_analyse', {'goal': goal(), 'include_report': True})
+    assert '18 个分子对' in r['summary'] and '# SAR 讨论材料' in r['data']['markdown']
+    assert r['preview'][0]['property_id'] == 'cell_potency'
+    assert replay(run.dir)['faithful']

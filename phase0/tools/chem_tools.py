@@ -1,5 +1,7 @@
 """Deterministic chemistry and comparison tools. Every number comes from code, not the model."""
-from typing import Literal, Union
+from typing import Annotated, Any, Literal, Optional, Union
+
+from pydantic import Field
 
 from phase0.sar.evidence_pair import analyse_pair
 from phase0.sar.features import StructureError, compute_features
@@ -68,3 +70,53 @@ def chem_compare_observations(ctx, a_observation_id: str, b_observation_id: str,
             'alignment_notice': aligned.get('notice'),
             'alignment_status': aligned.get('status')}
     return envelope(f"取代位点变化 {len(aligned.get('changes') or [])} 处。", data)
+
+
+def _ledger(ctx):
+    if ctx.ledger_db:
+        return ctx.store().load()
+    from phase0.ledger.migrate import build
+    return build()
+
+
+@tool('chem')
+def project_goal_suggest(ctx, template: Literal['cell_potency_efflux', 'potency_metabolic_stability'],
+                         focus: Optional[str] = None, documents: Optional[list[str]] = None):
+    """为项目目标模板建议每个性质对应的台账实验，并列出未归入的实验和范围内全部实验。
+
+    做多性质 SAR 分析前调用。focus 为靶点关键词（如 "ALK"），用来排除脱靶选择性实验。
+    建议只是起点：把结果交给用户确认，或只保留你能从实验描述中说明理由的实验；阈值为默认值，待化学家确认。
+    """
+    from phase0.sar.project_sar import handle
+    try:
+        r = handle({'mode': 'suggest', 'template': template, 'focus': focus, 'documents': documents}, _ledger(ctx))
+    except ValueError as exc:
+        raise ToolFailure(str(exc)) from None
+    summary = '；'.join(f"{p['label']} {len(p['suggested'])} 个实验" for p in r['properties'])
+    return envelope(f"{r['label']}：{summary}；未归入 {len(r['unmapped'])} 个。", r,
+                    [{'property': p['label'], 'assays': [h['assay_id'] for h in p['suggested']]} for p in r['properties']])
+
+
+@tool('chem')
+def project_sar_analyse(ctx, goal: dict[str, Any], documents: Optional[list[str]] = None,
+                        max_change: Annotated[int, Field(ge=1, le=20)] = 12, include_report: bool = False):
+    """按确认过的项目目标，在台账中自动找分子对（MMP），逐性质、逐实验比较并按替换 / 位点汇总，给出补测建议。
+
+    在 project_goal_suggest 之后、目标（性质、实验、方向、阈值、可选目标区间）确认后调用。
+    结果是讨论材料：候选方向 / 取舍 / 不利 / 证据不足按固定规则分类，证据等级按公开规则，不合成综合分数；
+    默认阈值待化学家确认，合成可行性只列待评估项。include_report=true 时附 Markdown 讨论材料。
+    """
+    from phase0.sar.project_sar import handle
+    request = {'mode': 'report' if include_report else 'analyse', 'goal': goal, 'documents': documents,
+               'max_change': max_change}
+    try:
+        r = handle(request, _ledger(ctx))
+    except ValueError as exc:
+        raise ToolFailure(str(exc)) from None
+    result = r['analysis'] if include_report else r
+    counts = {}
+    for t in result['transforms']:
+        counts[t['category']['label'].split('：')[0]] = counts.get(t['category']['label'].split('：')[0], 0) + 1
+    summary = (f"{result['pair_count']} 个分子对、{len(result['transforms'])} 种替换（"
+               + '，'.join(f'{k} {v}' for k, v in counts.items()) + f"）；补测建议 {result['followups']['total']} 项。")
+    return envelope(summary, r, result['followups']['items'][:5])

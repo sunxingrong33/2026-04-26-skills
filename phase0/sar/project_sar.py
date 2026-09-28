@@ -36,7 +36,7 @@ TEMPLATES = {
             {'id': 'cell_potency', 'label': '细胞活性', 'direction': 'lower',
              'endpoints': ['ic50', 'ec50', 'gi50'], 'any': ['cell', '细胞']},
             {'id': 'efflux', 'label': '外排比', 'direction': 'lower', 'endpoints': ['ratio'], 'any': ['efflux', '外排']},
-            {'id': 'enzyme_potency', 'label': '酶活性（参考）', 'direction': 'lower',
+            {'id': 'enzyme_potency', 'label': '酶活性', 'direction': 'lower',
              'endpoints': ['ki', 'kd', 'ic50'], 'none': ['cell', '细胞']},
             {'id': 'logd', 'label': 'LogD（仅参考）', 'direction': 'none', 'endpoints': ['logd']},
         ],
@@ -48,7 +48,7 @@ TEMPLATES = {
              'endpoints': ['ic50', 'ec50', 'gi50'], 'any': ['cell', '细胞']},
             {'id': 'clearance', 'label': '微粒体清除率', 'direction': 'lower', 'endpoints': ['cl'],
              'any': ['microsom', '微粒体']},
-            {'id': 'enzyme_potency', 'label': '酶活性（参考）', 'direction': 'lower',
+            {'id': 'enzyme_potency', 'label': '酶活性', 'direction': 'lower',
              'endpoints': ['ki', 'kd', 'ic50'], 'none': ['cell', '细胞']},
         ],
     },
@@ -313,6 +313,110 @@ def _groups(pairs, field, goal):
     return out
 
 
+CATEGORY = {
+    'candidate': '候选方向：目标性质有利，未见不利',
+    'tradeoff': '取舍：部分目标性质有利、部分不利',
+    'unfavorable': '不利：目标性质不利，未见有利',
+    'insufficient': '证据不足：目标性质没有可比较的变化',
+}
+
+
+def classify(group, goal):
+    """Category of one group from its goal-property counts (reference-only properties are ignored)."""
+    fav, unfav = [], []
+    for p in goal['properties']:
+        if p['direction'] == 'none':
+            continue
+        c = group['summary'][p['id']]['counts']
+        if c.get('favorable') and not c.get('unfavorable') and not c.get('mixed'):
+            fav.append(p['label'])
+        elif c.get('unfavorable') and not c.get('favorable') and not c.get('mixed'):
+            unfav.append(p['label'])
+        elif c.get('favorable') or c.get('unfavorable') or c.get('mixed'):
+            fav.append(p['label'] + '（部分）')
+            unfav.append(p['label'] + '（部分）')
+    key = ('tradeoff' if fav and unfav else 'candidate' if fav else 'unfavorable' if unfav else 'insufficient')
+    return {'key': key, 'label': CATEGORY[key], 'favorable': fav, 'unfavorable': unfav}
+
+
+def property_coverage(goal, comps, obs, assay_doc):
+    """How many in-scope compounds have any measurement for each property, and in which documents."""
+    out = []
+    for p in goal['properties']:
+        with_value = {c.id for c in comps for aid in p['assay_ids']
+                      if any(o.status == 'measured' for o in obs.get((c.id, aid), []))}
+        out.append({'property': p['label'], 'property_id': p['id'], 'compounds_measured': len(with_value),
+                    'compounds_total': len(comps), 'documents': sorted({assay_doc[a] for a in p['assay_ids']})})
+    return out
+
+
+def followups(pairs, goal, measured, limit=20):
+    """Missing goal measurements ranked by how many pair judgements they would unlock (fixed rules).
+
+    Order: pairs unlocked, then pairs that already look favourable on another goal property, then how
+    established the assay is (measurements already in it). Only one-sided gaps count: measuring one
+    compound must make a pair comparable.
+    """
+    goal_props = [p for p in goal['properties'] if p['direction'] != 'none']
+    found = {}
+    for r in pairs:
+        for p in goal_props:
+            for aid, x in r['properties'][p['id']]['assays'].items():
+                if x.get('lacking') not in ('A', 'B'):
+                    continue
+                cid, label = (r['a'], r['a_label']) if x['lacking'] == 'A' else (r['b'], r['b_label'])
+                item = found.setdefault((cid, aid), {'compound_id': cid, 'compound': label, 'assay_id': aid,
+                                                     'property': p['label'], 'property_id': p['id'],
+                                                     'pairs': [], 'promising': 0, 'assay_measured': measured[aid]})
+                others = [q['label'] for q in goal_props if q['id'] != p['id']
+                          and r['properties'][q['id']]['result'] == 'favorable']
+                item['pairs'].append({'pair': f"{r['a_label'].split(' ·')[0]} → {r['b_label'].split(' ·')[0]}",
+                                      'favorable_elsewhere': others})
+                item['promising'] += bool(others)
+    ranked = sorted(found.values(), key=lambda i: (-len(i['pairs']), -i['promising'], -i['assay_measured'],
+                                                   i['compound_id'], i['assay_id']))
+    for rank, i in enumerate(ranked, 1):
+        i['rank'] = rank
+        i['reason'] = (f"补测后可判断 {len(i['pairs'])} 个分子对的{i['property']}"
+                       + (f"，其中 {i['promising']} 个在其他目标性质上已有利" if i['promising'] else '')
+                       + f"；该实验已有 {i['assay_measured']} 条测量")
+    return {'items': ranked[:limit], 'total': len(ranked),
+            'rule': '排序规则：可判断的分子对数 → 其中在其他目标性质上已有利的分子对数 → 该实验已有的测量数。'
+                    '只计单侧缺失；是否有样品、实验能否安排需另行确认。'}
+
+
+def synthesis_items(pair, comps):
+    """Items to assess for making the 'to' side; flags only, never a feasibility judgement."""
+    from rdkit import Chem
+    frm, to = pair['transform'].split('>>')
+
+    def mol(smiles):
+        return Chem.MolFromSmiles(smiles) if smiles != '[H][*:1]' else None
+
+    def stereo(m):
+        return len(Chem.FindMolChiralCenters(m, includeUnassigned=True, useLegacyImplementation=False)) if m else 0
+
+    def rings(m):
+        return m.GetRingInfo().NumRings() if m else 0
+
+    a, b = mol(frm), mol(to)
+    items = []
+    if stereo(b) > stereo(a):
+        items.append(f'新增 {stereo(b) - stereo(a)} 个立体中心：需考虑手性合成或拆分')
+    if rings(b) != rings(a):
+        items.append(f'环数变化 {rings(b) - rings(a):+d}')
+    heavy = (b.GetNumHeavyAtoms() - 1 if b else 0) - (a.GetNumHeavyAtoms() - 1 if a else 0)
+    if heavy:
+        items.append(f'重原子数变化 {heavy:+d}')
+    if b is not None and b.GetNumHeavyAtoms() - 1 >= 3:  # smaller fragments occur in nearly everything
+        query = Chem.MolFromSmarts(Chem.MolToSmarts(b).replace('[#0:1]', '*').replace('[#0]', '*'))
+        precedent = sum(1 for c in comps if query is not None and Chem.MolFromSmiles(c.smiles) is not None
+                        and Chem.MolFromSmiles(c.smiles).HasSubstructMatch(query))
+        items.append(f'范围内 {precedent} 个化合物含有该片段' + ('（有同系列先例）' if precedent > 1 else ''))
+    items.append('以上仅为待评估项，不是合成可行性判断')
+    return items
+
+
 def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE):
     """Matched pairs in scope, each property compared per assay, summarised per transformation."""
     goal = check_goal(goal, ledger)
@@ -353,14 +457,107 @@ def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE):
     for g in sites:
         g['site'] = g.pop('group')
         g['transforms'] = sorted({r['transform'] for r in g['pairs']})
+    for g in transforms:
+        g['category'] = classify(g, goal)
+        g['synthesis_items'] = synthesis_items(g['pairs'][0], comps)
+    for g in sites:
+        g['category'] = classify(g, goal)
+    measured = defaultdict(int)
+    for o in ledger.observations:
+        if o.status == 'measured' and o.review.record_status != 'rejected':
+            measured[o.assay_id] += 1
     defaults = [p['label'] for p in goal['properties'] if p['threshold']['source'] == PENDING]
     return {'goal': goal, 'scope': {'documents': sorted(documents) if documents else '全部', 'compounds': len(comps),
                                     'max_change_heavy_atoms': max_change},
+            'coverage': property_coverage(goal, comps, obs, assay_doc),
+            'followups': followups(pairs, goal, measured),
             'pair_count': len(pairs), 'transforms': transforms, 'sites': sites, 'site_radius': SITE_RADIUS,
             'grade_rules': [{'grade': k, 'label': v, 'rule': d} for k, v, d in GRADE_RULES],
             'pending_defaults': defaults,
             'notice': ('讨论材料，不是结论。分子对由 MMP 单切自动找出；各性质按实验逐项比较，限定值、重复观测和缺失不计算；'
                        '阈值内记为“未变”；不合成综合分数。' + (f"以下性质使用默认阈值，待化学家确认：{'、'.join(defaults)}。" if defaults else ''))}
+
+
+OUTCOME_LABEL = {'favorable': '有利', 'unfavorable': '不利', 'unchanged': '未变', 'changed': '有变化',
+                 'mixed': '各实验不一致', 'not_comparable': '不可比', 'missing': '缺失', 'no_assay': '本文档无该实验'}
+DIRECTION_LABEL = {'lower': '越低越好', 'higher': '越高越好', 'range': '目标区间', 'none': '仅参考'}
+
+
+def _rule(p):
+    t = p['threshold']
+    thr = f"≥{t['value']:g} 倍" if t['kind'] == 'fold' else f"差值 ≥{t['value']:g}"
+    thr += '（默认值，待化学家确认）' if t['source'] == PENDING else '（用户设定）'
+    if p['direction'] != 'range':
+        return f"{DIRECTION_LABEL[p['direction']]}；{thr}"
+    r, u = p['range'], (' ' + p['range']['unit']) if p['range']['unit'] else ''
+    span = (f"{r['low']:g}–{r['high']:g}" if r['low'] is not None and r['high'] is not None
+            else f"≥ {r['low']:g}" if r['low'] is not None else f"≤ {r['high']:g}")
+    return f'目标区间 {span}{u}；{thr}'
+
+
+def _cell(x):
+    if x['status'] != 'comparable':
+        return x.get('note') or OUTCOME_LABEL[x['status']]
+    unit = f" {x['a']['unit']}" if x['a']['unit'] else ''
+    change = (f"B/A {x['ratio_b_over_a']:g}" if 'ratio_b_over_a' in x else f"B−A {x['delta_b_minus_a']:g}")
+    return (f"{x['a']['value']:g} → {x['b']['value']:g}{unit}（{change}，{OUTCOME_LABEL[x['outcome']]}；"
+            f"观测 {x['a']['id']} / {x['b']['id']}）")
+
+
+def report(result):
+    """Discussion material as Markdown. Every number carries its assay and observation ids."""
+    goal = result['goal']
+    lines = [f"# SAR 讨论材料：{goal['label']}", '',
+             '> 讨论材料，不是结论。所有台账记录仍为“待确认”；数值只由代码按固定规则比较，不合成综合分数。', '',
+             '## 1. 目标与实验映射', '', '| 性质 | 方向与阈值 | 实验 |', '|---|---|---|']
+    for p in goal['properties']:
+        lines.append(f"| {p['label']} | {_rule(p)} | {'、'.join(p['assay_ids'])} |")
+    scope = result['scope']
+    docs = '、'.join(scope['documents']) if isinstance(scope['documents'], list) else scope['documents']
+    lines += ['', '## 2. 范围与覆盖', '',
+              f"范围：{docs}；{scope['compounds']} 个化合物；可变部分 ≤ {scope['max_change_heavy_atoms']} 个重原子；"
+              f"{result['pair_count']} 个分子对，{len(result['transforms'])} 种替换，{len(result['sites'])} 个位点。", '',
+              '| 性质 | 有测量的化合物 | 涉及文档 |', '|---|---|---|']
+    for c in result['coverage']:
+        lines.append(f"| {c['property']} | {c['compounds_measured']} / {c['compounds_total']} | {'、'.join(c['documents'])} |")
+    for key, title in (('candidate', '3. 候选方向'), ('tradeoff', '4. 取舍'), ('unfavorable', '5. 不利的替换'),
+                       ('insufficient', '6. 证据不足')):
+        groups = [g for g in result['transforms'] if g['category']['key'] == key]
+        lines += ['', f'## {title}（{len(groups)} 种替换）', '']
+        if not groups:
+            lines.append('无。')
+        for g in groups:
+            lines += [f"### `{g['transform']}`", '',
+                      f"{len(g['pairs'])} 个分子对；来源 {'、'.join(g['documents'])}。"
+                      + (f"有利：{'、'.join(g['category']['favorable'])}。" if g['category']['favorable'] else '')
+                      + (f"不利：{'、'.join(g['category']['unfavorable'])}。" if g['category']['unfavorable'] else ''), '',
+                      '| 性质 | 结果计数 | 证据等级 |', '|---|---|---|']
+            for p in goal['properties']:
+                sm = g['summary'][p['id']]
+                counts = '，'.join(f"{OUTCOME_LABEL[k]} {v}" for k, v in sm['counts'].items())
+                lines.append(f"| {p['label']} | {counts} | {sm['grade_label']} |")
+            for r in g['pairs']:
+                lines += ['', f"- **{r['a_label']} → {r['b_label']}**（{r['document']}）"]
+                for p in goal['properties']:
+                    shown = [f'{aid}：{_cell(x)}' for aid, x in r['properties'][p['id']]['assays'].items()
+                             if x.get('lacking') != 'A、B 均']
+                    lines.append(f"  - {p['label']}：{OUTCOME_LABEL[r['properties'][p['id']]['result']]}"
+                                 + (('；' + '；'.join(shown)) if shown else ''))
+            if key in ('candidate', 'tradeoff'):
+                lines += ['', '合成可行性待评估项：' + '；'.join(g['synthesis_items']), '']
+    f = result['followups']
+    lines += ['', '## 7. 补测建议', '', f['rule'], '']
+    if not f['items']:
+        lines.append('没有单侧缺失的目标测量。')
+    for i in f['items']:
+        lines.append(f"{i['rank']}. {i['compound']} — {i['property']}（{i['assay_id']}）：{i['reason']}；"
+                     f"涉及 {'、'.join(p['pair'] for p in i['pairs'])}")
+    lines += ['', '## 8. 规则', '', '- 可比性：同一文档、同一实验、各一个精确值、单位一致；限定值、重复观测、缺失不计算。',
+              '- 阈值内记为“未变”；目标区间：向区间靠近且超出阈值为有利，远离为不利。']
+    lines += [f"- 证据等级“{g['label']}”：{g['rule']}" for g in result['grade_rules']]
+    if result['pending_defaults']:
+        lines.append(f"- 使用默认阈值、待化学家确认的性质：{'、'.join(result['pending_defaults'])}")
+    return '\n'.join(lines) + '\n'
 
 
 def handle(request, ledger=None):
@@ -382,9 +579,10 @@ def handle(request, ledger=None):
         if focus is not None and (not isinstance(focus, str) or len(focus) > 40):
             raise ValueError('靶点关键词不超过 40 个字符。')
         return {**suggest(ledger, request.get('template'), documents, focus), 'documents': known}
-    if mode == 'analyse':
+    if mode in ('analyse', 'report'):
         max_change = request.get('max_change', MAX_CHANGE)
         if type(max_change) is not int or not 1 <= max_change <= 20:
             raise ValueError('可变部分的重原子数上限须为 1–20 的整数。')
-        return analyse(ledger, request.get('goal'), documents, max_change)
-    raise ValueError('mode 必须是 templates、suggest 或 analyse。')
+        result = analyse(ledger, request.get('goal'), documents, max_change)
+        return {'markdown': report(result), 'analysis': result} if mode == 'report' else result
+    raise ValueError('mode 必须是 templates、suggest、analyse 或 report。')

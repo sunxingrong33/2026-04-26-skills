@@ -10,7 +10,7 @@ section{background:#fffdf8;border:1px solid #d9dfd5;border-radius:6px;padding:20
 .tf{border:1px solid #d9dfd5;border-radius:6px;padding:14px;margin:14px 0;background:#fff}.tf code{font-size:13px;overflow-wrap:anywhere}
 table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #e3e7e0;vertical-align:top}th{color:#627470;font-weight:600}
 .chip{display:inline-block;padding:0 7px;border-radius:9px;font-size:12.5px;white-space:nowrap}.favorable{background:#e2f1e7;color:#1f5a3a}.unfavorable{background:#f7e3dc;color:#8a3420}.unchanged,.changed{background:#eeeee8;color:#4f5e5a}.mixed,.inconsistent,.conflicting{background:#f7eedb;color:#8a5a00}.missing,.not_comparable,.no_assay,.none{background:#f1f1ec;color:#8a9692}
-.grade{font-weight:600}.wrap{overflow-x:auto}details{margin-top:8px}summary{cursor:pointer;font-weight:600}pre{white-space:pre-wrap;font-size:12px}
+.grade{font-weight:600}.cat{display:inline-block;margin-left:8px;font-size:13px;padding:1px 9px;border-radius:10px}.cat.candidate{background:#e2f1e7;color:#1f5a3a}.cat.tradeoff{background:#f7eedb;color:#8a5a00}.cat.unfavorable{background:#f7e3dc;color:#8a3420}.cat.insufficient{background:#f1f1ec;color:#627470}.wrap{overflow-x:auto}details{margin-top:8px}summary{cursor:pointer;font-weight:600}pre{white-space:pre-wrap;font-size:12px}
 </style></head><body><main>
 <a href="/">← 返回检索工作台</a> · <a href="/evidence">六步证据工作流</a>
 <h1>项目目标 · 多性质 SAR</h1>
@@ -43,6 +43,9 @@ table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:
   <h2>③ 按替换的多性质证据</h2>
   <div id="result-head"></div>
   <div class="row"><label>汇总方式 <select id="group-by" aria-label="汇总方式"><option value="transform">按替换</option><option value="site">按位点</option></select></label></div>
+  <div class="row"><button id="download-md" type="button">下载讨论材料（Markdown）</button><button id="download-json" type="button">下载完整结果（JSON）</button></div>
+  <details open><summary>范围与覆盖</summary><div id="coverage"></div></details>
+  <details open><summary>补测建议</summary><div id="followups"></div></details>
   <details><summary>证据等级规则</summary><div id="rules"></div></details>
   <div id="transforms"></div>
 </section>

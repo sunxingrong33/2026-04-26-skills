@@ -71,6 +71,14 @@ def chembl_id(value):
 
 
 def discover(request, cache):
+    result = _discover(request, cache)
+    if result.get('mode') == 'smiles':
+        from .structure_search import coverage
+        result['coverage'] = coverage(result)
+    return result
+
+
+def _discover(request, cache):
     mode = request.get('mode')
     result = {'mode': mode, 'sources': [], 'local_matches': []}
     if mode == 'documents':

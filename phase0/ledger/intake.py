@@ -62,6 +62,34 @@ def from_patent(result):
     return items, refused
 
 
+def from_surechembl(schembl, record, publication, patent):
+    """A SureChEMBL compound as an unmapped structure of one patent it was extracted from (no measurements).
+
+    ``record`` is the compound as re-read by the server, ``patent`` the matching row of the server's own
+    documents_for_structures result; nothing here comes from the page.
+    """
+    smiles = (record or {}).get('smiles')
+    if not _valid_smiles(smiles):
+        return [], [{'id': schembl, 'reason': 'SureChEMBL 未返回可解析的结构'}]
+    url = f'https://patents.google.com/patent/{publication}/en'
+    identifiers = {'publication': publication, 'surechembl_doc_id': patent['doc_id']}
+    if patent.get('title'):
+        identifiers['title'] = patent['title']
+    items = [('documents', {
+        'id': publication, 'kind': 'patent', 'url': url, 'identifiers': identifiers, 'source_sha256': {},
+        'review': _review('database_import_pending_original_review', ['original_locators', 'independent_review'])}),
+        ('compounds', {
+            'id': f'{publication}:surechembl:{schembl}', 'document_id': publication,
+            'label': f'{schembl}（SureChEMBL 提取）', 'smiles': smiles, 'role': 'unspecified',
+            'structure_source': {'url': f'https://www.surechembl.org/chemical/{schembl.removeprefix("SCHEMBL")}',
+                                 'locator': 'SureChEMBL 自动化学标注提取的结构'},
+            'mapping_source': {'url': patent['url'], 'locator': 'SureChEMBL 文档关联，未映射实施例'},
+            'review': _review('database_import_pending_original_review',
+                              ['compound_role', 'structure_example_mapping', 'extraction_verification',
+                               'independent_review'])})]
+    return items, []
+
+
 def _document(did, record):
     kind = str((record or {}).get('doc_type') or '').upper()
     kind = {'PUBLICATION': 'paper', 'PATENT': 'patent'}.get(kind)

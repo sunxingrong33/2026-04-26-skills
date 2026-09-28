@@ -47,6 +47,9 @@ class Server:
             return self.env({'message': message, 'resultCount': self.total})
         if url.path.endswith('/search/abc123/results'):
             return self.env({'results': {'structures': HITS}, 'pagination': {'num_pages': 1}})
+        if '/chemical/id/' in url.path:
+            n = url.path.rsplit('/', 1)[1]
+            return self.env([{'id': int(n), 'smiles': EX2.smiles}] if n == '200' else [])
         if url.path.endswith('/search/documents_for_structures'):
             assert parse_qs(url.query)['chemicalIds'] == ['200']
             return self.env({'results': {'documents': DOCS, 'total_hits': 57}})
@@ -139,3 +142,38 @@ def test_tools_replay_offline(server, tmp_path):
     assert p['data']['patents'][0]['publication'] == 'WO2013132376A1'
     report = replay(run.dir)  # network blocked, including SureChEMBL: answers come from the cache
     assert report['faithful'] and report['calls'] == 2
+
+
+def test_hit_enters_the_ledger_only_with_a_server_confirmed_patent_link(server, tmp_path, monkeypatch):
+    import threading
+    from urllib.error import HTTPError
+    from urllib.request import Request, urlopen
+    from phase0.ledger.access import ENV
+    from phase0.ledger.migrate import build
+    from phase0.ledger.store import LedgerStore
+    from phase0.sar.serve import create_server
+    db = tmp_path / 'ledger.sqlite'
+    LedgerStore(db).import_ledger(build(), 'test')
+    monkeypatch.setenv(ENV, str(db))
+    srv = create_server(0, tmp_path / 'cache', ledger_db=db)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    url = f'http://127.0.0.1:{srv.server_port}/api/ledger/propose'
+
+    def post(body):
+        return json.load(urlopen(Request(url, data=json.dumps(body).encode(), headers={'Content-Type': 'application/json'})))
+    try:
+        r = post({'source': 'surechembl', 'schembl': 'SCHEMBL200', 'publication': 'WO2013132376A1'})
+        assert r['added'] == {'compounds': 1} and r['already_present_counts'] == {'documents': 1}
+        assert '未映射实施例' in r['notice']
+        c = next(c for c in LedgerStore(db).load().compounds if c.id == 'WO2013132376A1:surechembl:SCHEMBL200')
+        assert (c.role, c.review.record_status, c.smiles) == ('unspecified', 'proposed', EX2.smiles)
+        assert 'extraction_verification' in c.review.gaps
+        assert post({'source': 'surechembl', 'schembl': 'SCHEMBL200', 'publication': 'WO2013132376A1'})['added'] == {}
+        for bad, code in (({'source': 'surechembl', 'schembl': 'SCHEMBL200', 'publication': 'WO2099999999A1'}, 400),
+                          ({'source': 'surechembl', 'schembl': 'SCHEMBL999', 'publication': 'WO2013132376A1'}, 400)):
+            with pytest.raises(HTTPError) as exc:
+                post(bad)
+            assert exc.value.code == code
+    finally:
+        srv.shutdown()
+        srv.server_close()

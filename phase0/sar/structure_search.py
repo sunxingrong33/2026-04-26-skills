@@ -10,6 +10,7 @@ search uses its similarity / substructure endpoints through the cached
 ``discovery.fetch``. ChEMBL hits are re-checked locally with RDKit: a hit whose
 substructure match or similarity cannot be reproduced is flagged, not dropped.
 """
+from collections import Counter, defaultdict
 from functools import lru_cache
 from urllib.parse import quote
 
@@ -140,6 +141,10 @@ def local_search(q, query_mol, ledger=None):
     """Search the evidence ledger (rejected compounds excluded)."""
     from phase0.ledger.access import current_ledger
     ledger = ledger if ledger is not None else current_ledger()
+    measured = defaultdict(int)
+    for o in ledger.observations:
+        if o.status == 'measured' and o.review.record_status != 'rejected':
+            measured[o.compound_id] += 1
     rows = []
     for c in ledger.compounds:
         if c.review.record_status == 'rejected':
@@ -151,10 +156,50 @@ def local_search(q, query_mol, ledger=None):
         if hit:
             rows.append({'compound_id': c.id, 'document_id': c.document_id, 'label': c.label,
                          'smiles': c.smiles, 'role': c.role, 'record_status': c.review.record_status,
+                         'measured_observations': measured[c.id],
                          'structure_source': c.structure_source.model_dump(exclude_none=True), **detail})
     rows.sort(key=lambda r: (-r.get('similarity', 1), r['document_id'], r['label']))
     return {'total': len(rows), 'truncated': len(rows) > LOCAL_LIMIT, 'rows': rows[:LOCAL_LIMIT],
-            'scope': f'本地证据台账 {len(ledger.compounds)} 个结构'}
+            'scope': f'本地证据台账 {len(ledger.compounds)} 个结构',
+            'by_document': dict(sorted(Counter(r['document_id'] for r in rows).items())),
+            'with_measurements': sum(1 for r in rows if r['measured_observations']),
+            'structure_only': sum(1 for r in rows if not r['measured_observations'])}
+
+
+def coverage(result):
+    """What this structure search covered and what it did not: sources, counts, truncation, known gaps."""
+    q = result.get('search') or {}
+    local = result.get('ledger_matches') or {}
+    sources = [{'source': '本地证据台账', 'status': 'ok', 'scope': local.get('scope'), 'total': local.get('total'),
+                'returned': len(local.get('rows', [])), 'truncated': bool(local.get('truncated')),
+                'note': f"其中有测量 {local.get('with_measurements', 0)} 个、只有结构 {local.get('structure_only', 0)} 个"}]
+    chembl = result.get('external_status', 'not_requested')
+    sources.append({'source': 'ChEMBL', 'status': chembl,
+                    'total': result.get('total') if chembl == 'ok' else None,
+                    'returned': len(result.get('molecules') or []) if chembl == 'ok' else 0,
+                    'truncated': bool(result.get('truncated') or result.get('has_more')) if chembl == 'ok' else False,
+                    'note': '精确检索按标准 InChIKey；相似性 / 子结构用 ChEMBL 自身算法' if chembl == 'ok' else ''})
+    sc = result.get('surechembl') or {'status': 'not_requested'}
+    sources.append({'source': 'SureChEMBL', 'status': sc['status'], 'total': sc.get('total'),
+                    'returned': len(sc.get('rows', [])), 'truncated': bool(sc.get('truncated')),
+                    'note': ('达到服务端 10,000 上限，实际命中可能更多；' if sc.get('capped') else '')
+                            + (f"{sc['below_threshold']} 个低于阈值未显示" if sc.get('below_threshold') else '')})
+    sources.append({'source': 'PubChem', 'status': 'per_compound', 'total': None, 'returned': None, 'truncated': False,
+                    'note': '不做批量结构检索；可对检索结构或任一命中单独查询关联专利与文献'})
+    gaps = []
+    names = {'not_requested': '未查询', 'failed': '查询失败'}
+    for src in sources:
+        if src['status'] in names:
+            gaps.append(f"{src['source']}：{names[src['status']]}，结果不包含该来源")
+        if src['truncated']:
+            gaps.append(f"{src['source']}：结果被截断，只显示前 {src['returned']} 个")
+    if local.get('structure_only'):
+        gaps.append(f"本地命中中 {local['structure_only']} 个只有结构、没有测量（如专利结构索引或 SureChEMBL 提取结构）")
+    if sc['status'] == 'ok' and sc.get('rows'):
+        gaps.append('SureChEMBL 命中只有结构，没有测量；专利中的活性数据需要 PDF 抽取（迭代 I3）后才有')
+    gaps.append('未检索商业数据库（如 Reaxys、SciFinder、GOSTAR、智慧芽）；零命中不代表不存在')
+    return {'query': {k: q.get(k) for k in ('method', 'threshold', 'standardize', 'searched_smiles')},
+            'sources': sources, 'local_by_document': local.get('by_document', {}), 'gaps': gaps}
 
 
 def chembl_search(q, query_mol, cache, fetch, limit=20):

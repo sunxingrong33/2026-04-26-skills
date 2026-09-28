@@ -16,7 +16,7 @@ from .discovery import discover, discover_documents
 from .programs import analyse_programs
 from .scaffolds import align_evidence
 from phase0.ledger.access import ENV as LEDGER_ENV, analysis_view
-from phase0.ledger.intake import from_activities, from_patent
+from phase0.ledger.intake import from_activities, from_patent, from_surechembl
 from phase0.ledger.store import KINDS, LedgerStore
 from .evidence_pair import analyse_pair
 from .sar_workflow import run_workflow
@@ -275,7 +275,7 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < size <= 4096:
                 raise ValueError()
             request = json.loads(self.rfile.read(size))
-            if not isinstance(request, dict) or request.get('source') not in ('patent', 'activities'):
+            if not isinstance(request, dict) or request.get('source') not in ('patent', 'activities', 'surechembl'):
                 raise ValueError()
         except (ValueError, TypeError):
             return self.reply(400, {'error': '请求格式无效。'})
@@ -292,6 +292,26 @@ class Handler(BaseHTTPRequestHandler):
                 items, refused = from_patent(self.server.results[pid])
                 present, note = [], {'source': 'patent', 'publication': pid,
                                      'sha256': self.server.results[pid].get('source_snapshot', {}).get('sha256')}
+            elif request['source'] == 'surechembl':
+                from . import surechembl
+                n = surechembl.schembl_id(request.get('schembl'))
+                pid = normalize_id(request.get('publication', ''))
+                cache = self.server.cache.parent / 'discovery-cache' / 'surechembl'
+                try:
+                    record, src = surechembl.compound(n, cache)
+                    if record is None:
+                        return self.reply(400, {'error': f'SureChEMBL 中没有 SCHEMBL{n}；未写入。'})
+                    payload, doc_src = surechembl.documents(n, cache)
+                except Exception:
+                    return self.reply(502, {'error': 'SureChEMBL 暂不可用，未写入任何记录。'})
+                rows = [surechembl.document_row(d) for d in payload['documents']]
+                patent = next((r for r in rows if r['publication'] == pid), None)
+                if patent is None:
+                    return self.reply(400, {'error': '服务端读取的 SureChEMBL 结果中没有该专利与该化合物的关联；未写入。'})
+                items, refused = from_surechembl(f'SCHEMBL{n}', record, pid, patent)
+                present = []
+                note = {'source': 'surechembl', 'schembl': f'SCHEMBL{n}', 'publication': pid,
+                        'sha256': [src['sha256'], doc_src['sha256']]}
             else:
                 wanted = request.get('activity_ids')
                 if not isinstance(wanted, list) or not 1 <= len(wanted) <= 20:
@@ -318,6 +338,8 @@ class Handler(BaseHTTPRequestHandler):
             notice = '状态均为待确认；确认或拒绝须经人工复核。'
             if request['source'] == 'patent':
                 notice += '结构索引条目未映射实施例、尚无测量，不会出现在分析视图中。'
+            elif request['source'] == 'surechembl':
+                notice += '该结构由 SureChEMBL 自动提取，未映射实施例、没有测量；需回到专利原文核实后才能作为证据。'
             else:
                 notice += '测量已进入证据台账页（带待复核缺口），可比性仍按原规则判断。'
             self.reply(200, {

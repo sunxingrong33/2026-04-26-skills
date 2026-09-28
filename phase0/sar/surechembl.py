@@ -147,6 +147,19 @@ def documents(compound, cache, limit=20):
     return _cached(cache, ('/search/documents_for_structures', n, limit), produce)
 
 
+def compound(value, cache):
+    """One compound record by SCHEMBL id; (record or None, source). Used to re-read a hit server-side."""
+    n = schembl_id(value)
+
+    def produce():
+        data = _call('GET', f'/chemical/id/{n}')
+        records = data if isinstance(data, list) else []
+        return {'record': records[0] if records else None}
+
+    payload, source = _cached(cache, ('/chemical/id', n), produce)
+    return payload['record'], source
+
+
 def compound_row(r):
     similarity = r.get('similarity')
     try:

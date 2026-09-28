@@ -276,6 +276,8 @@ def test_surechembl_hits_lead_to_patent_loading(app, page, monkeypatch):
     page.locator('.surechembl-hit').first.get_by_role('button', name='查看含此化合物的专利').click()
     wait_status(page, '检索完成')
     assert 'SureChEMBL 专利 · SCHEMBL200' in page.text_content('#discovery-content')
+    page.get_by_role('button', name='将 SCHEMBL200 作为该专利的结构加入台账（待确认）').first.click()
+    assert '结构 1' in wait_status(page, '已加入台账') and 'SureChEMBL 自动提取' in page.text_content('#status')
     page.get_by_role('button', name='核实并加载专利 WO2013132376A1').click()
     page.wait_for_selector('#evidence-cards .mass', timeout=15000)  # the curated patent opens with its cards
     assert page.errors == []
@@ -354,4 +356,24 @@ def test_project_page_custom_property_range_and_sites(app, page):
     site.wait_for()
     assert 'WO2011138751A2' in site.text_content() and 'CHEMBL3286195' in site.text_content()
     assert page.locator('.tf[data-site="cC(=O)N(C)[*:1]"]').count() == 1
+    assert page.errors == []
+
+
+def test_project_page_followups_categories_and_report_download(app, page):
+    base, _, _ = app
+    page.goto(base + '/project')
+    page.wait_for_selector('#template option', state='attached')
+    page.fill('#focus', 'ALK')
+    page.click('#suggest')
+    page.wait_for_selector('.prop[data-id="efflux"]')
+    page.click('#analyse')
+    page.locator('.tf').first.wait_for(timeout=20000)
+    assert page.locator('.tf[data-transform="C[*:1]>>[H][*:1]"]').get_attribute('data-category') == 'tradeoff'
+    first = page.locator('#followups li').first
+    assert first.text_content().startswith('6f — 细胞活性')
+    assert page.locator('#coverage tr[data-property="efflux"]').text_content().endswith('CHEMBL3286195')
+    with page.expect_download() as info:
+        page.click('#download-md')
+    text = open(info.value.path(), encoding='utf-8').read()
+    assert text.startswith('# SAR 讨论材料：改善细胞活性，同时控制外排') and '## 7. 补测建议' in text
     assert page.errors == []

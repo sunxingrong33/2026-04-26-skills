@@ -30,7 +30,7 @@ def session(server, fn):
 def test_tool_list_and_annotations(run):
     tools = session(build_server('all', run), lambda c: c.list_tools()).tools
     by_name = {t.name: t for t in tools}
-    assert len(by_name) == 15
+    assert len(by_name) == 17
     assert not any(w in n for n in by_name for w in ('confirm', 'reject', 'review', 'import'))
     assert by_name['ledger_propose'].annotations.read_only_hint is False
     assert by_name['ledger_propose'].annotations.destructive_hint is False
@@ -38,7 +38,8 @@ def test_tool_list_and_annotations(run):
     assert by_name['patent_fetch'].annotations.open_world_hint is True
     assert all(t.input_schema.get('additionalProperties') is False for t in tools)
     chem = session(build_server('chem', run), lambda c: c.list_tools()).tools
-    assert sorted(t.name for t in chem) == ['chem_compare_observations', 'chem_describe', 'chem_mass_check']
+    assert sorted(t.name for t in chem) == ['chem_compare_observations', 'chem_describe', 'chem_mass_check',
+                                            'project_goal_suggest', 'project_sar_analyse']
 
 
 def test_results_are_envelopes_and_failures_are_tool_errors(run):

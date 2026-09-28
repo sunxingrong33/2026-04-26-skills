@@ -169,3 +169,13 @@ def test_hand_drawn_fixtures_match_curated_structures():
     key = lambda s: Chem.MolToInchiKey(Chem.MolFromSmiles(s))  # noqa: E731
     assert key(SMILES['lorlatinib']) == key(EX2.smiles) == key(K8.smiles)
     assert key(SMILES['crizotinib']) == key(CRIZOTINIB.smiles)
+
+
+def test_coverage_reports_sources_and_gaps(tmp_path):
+    r = discovery.discover({'mode': 'smiles', 'query': AMINOPYRIDINE_ETHER, 'method': 'substructure'}, tmp_path)
+    cov = r['coverage']
+    status = {s['source']: s['status'] for s in cov['sources']}
+    assert status == {'本地证据台账': 'ok', 'ChEMBL': 'not_requested', 'SureChEMBL': 'not_requested',
+                      'PubChem': 'per_compound'}
+    assert cov['local_by_document']['WO2011138751A2'] == 3
+    assert any('ChEMBL：未查询' in g for g in cov['gaps']) and any('商业数据库' in g for g in cov['gaps'])

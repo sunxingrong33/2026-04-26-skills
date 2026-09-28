@@ -115,6 +115,13 @@ def structure_search(ctx, smiles: str, method: Literal['exact', 'similarity', 's
             raise ToolFailure(f'SureChEMBL 检索失败：{exc}；可设 surechembl=false。') from None
         sc['source'] = {k: v for k, v in sc['source'].items() if k != 'cache_hit'}
         data['surechembl'] = sc
+    view = {'search': q, 'ledger_matches': local, 'surechembl': {'status': 'ok', **data['surechembl']}
+            if data['surechembl'] else {'status': 'not_requested'},
+            'external_status': 'ok' if data['chembl'] else 'not_requested'}
+    if data['chembl']:
+        view.update(total=data['chembl']['total'], truncated=data['chembl']['truncated'],
+                    molecules=data['chembl']['rows'])
+    data['coverage'] = ss.coverage(view)
     n, sc = data['chembl'], data['surechembl']
     summary = (f"本地命中 {local['total']} 个" + ('' if n is None else
                f"；ChEMBL 命中 {n['total']} 个（本页 {len(n['rows'])} 个{'，已截断' if n['truncated'] else ''}）")
