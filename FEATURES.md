@@ -14,7 +14,7 @@
 | 1.2 | SMILES 检索 | ✅ | 本地 RDKit 解析、二维结构、描述符；按规范化异构 SMILES 匹配证据卡；可选 ChEMBL 标准 InChIKey 查询 | `sar/discovery.py`、`web/discovery.js` |
 | 1.3 | 靶点检索 | ✅ | 按名称 / 基因符号 / ChEMBL ID 查询；按物种与类型消歧；测量结果分页（每页 20 条） | `sar/discovery.py` `/api/discover` |
 | 1.4 | 输入限制与失败处理 | ✅ | SMILES ≤ 2000 字符 / 200 原子；候选靶点 ≤ 20；测量最多浏览前 10020 条；在线失败与零命中分开提示 | `sar/discovery.py` |
-| 1.5 | 相似性 / 子结构 / 去盐检索 | ⬜ | 当前仅精确匹配 | — |
+| 1.5 | 相似性 / 子结构 / 去盐检索 | ⬜ | 当前仅精确匹配；已排入迭代 I2.6 结构检索入口（ChEMBL 相似性与子结构检索、结构标准化，SureChEMBL 待核实），见 [迭代方案 v1.2](docs/iteration-plan_v1.2.md) | — |
 
 ## 2. 专利解析与来源
 
