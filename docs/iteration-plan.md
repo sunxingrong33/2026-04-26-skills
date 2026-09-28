@@ -120,6 +120,8 @@
 - [x] （I1）SQLite 存储：propose / 人工 review / 只追加审计日志；配对分析、六步工作流与 `/api/evidence` 改为经类型化台账读取，输出不变（`phase0/ledger/store.py`、`access.py`）
 - [x] （I1）页面“加入台账”入口：专利结构索引与 ChEMBL 测量写入为待确认，只用服务端读取的数据，不能映射的记录说明原因（`phase0/ledger/intake.py`）
 - [ ] （I1）商业库导出导入适配
+- [x] （I2）工具层与 MCP 服务：12 个工具（台账只读 + 仅 proposed 写入、化学计算、专利与 ChEMBL 来源）；统一返回格式；参数严格校验；每次运行留轨迹与台账快照，可逐条重放含写入（`phase0/tools/`）
+- [ ] （I2）SureChEMBL 与 PDF 工具（随 I3 分级抽取一起做）
 - [ ] 化学家访谈、横向对比
 
 ### I1 证据台账底座（3–4 周）

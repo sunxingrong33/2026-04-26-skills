@@ -29,6 +29,8 @@
 > 更新：加入 SQLite 台账存储与统一读取入口（`test_ledger_store`，12 项）后为 **299 passed**。`/api/evidence` 与配对分析改为经类型化台账读取，输出与原实现逐项一致。
 >
 > 更新：加入“加入台账”入口（`test_ledger_intake`，11 项）后为 **310 passed**。另用 Playwright + 本机 Chromium 离线驱动真实页面（专利夹具页面、模拟 ChEMBL 响应）点击两个入口按钮：写入、重复点击不新增、拒绝原因展示均符合预期，无 JS 错误。该浏览器脚本未纳入仓库测试（Playwright 未加入依赖）。
+>
+> 更新：加入 agent 工具层与 MCP 服务（`test_tools_core` 12 项、`test_mcp_server` 7 项；新增 `requirements-agent.txt`，mcp==2.2.0，CI 改为安装该文件）后为 **329 passed**。MCP 测试包括以子进程方式经 stdio 启动服务。
 
 | 测试模块 | 数量 |
 |---|---:|

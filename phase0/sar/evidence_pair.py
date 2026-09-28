@@ -83,12 +83,12 @@ def compare_rows(left, right):
     return output
 
 
-def analyse_pair(request):
+def analyse_pair(request, typed_ledger=None):
     if not isinstance(request, dict) or request.get('mode') not in ('align', 'compare'):
         raise ValueError('请选择结构对齐或可比性检查。')
     if not all(isinstance(request.get(k), str) for k in ('a', 'b')):
         raise ValueError('请选择 A、B 两个分子。')
-    ledger = analysis_view()
+    ledger = analysis_view(typed_ledger)
     left, right = select_pair(ledger, request['a'], request['b'])
     out = {'mode': request['mode'], 'inputs': ledger['inputs'],
            'a': left[0], 'b': right[0],
