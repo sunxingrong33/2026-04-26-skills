@@ -33,6 +33,8 @@
 > 更新：加入 agent 工具层与 MCP 服务（`test_tools_core` 12 项、`test_mcp_server` 7 项；新增 `requirements-agent.txt`，mcp==2.2.0，CI 改为安装该文件）后为 **329 passed**。MCP 测试包括以子进程方式经 stdio 启动服务。
 >
 > 更新：加入分级抽取控制逻辑（`test_extract_cascade`，13 项）后为 **342 passed**。用金标准 v0 构造的桩抽取器端到端验证：抽取正确时评测全部正确；单一来源的数值错误计入错误但为已标记；两个来源给出同一错误同分异构体时被评为 high，评测计为 1 个未标记错误（已知边界）。
+>
+> 更新：加入两个离线演示命令 `phase0.tools.demo`、`phase0.extract.demo` 及其冒烟测试（`test_demos`，2 项）后为 **344 passed**。
 
 | 测试模块 | 数量 |
 |---|---:|

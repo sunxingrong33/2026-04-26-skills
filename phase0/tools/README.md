@@ -7,6 +7,7 @@ python -m pip install -r requirements-agent.txt        # 核心依赖 + mcp==2.2
 python -m phase0.ledger.store init --db artifacts/ledger.sqlite
 python -m phase0.tools.mcp_server all --ledger-db artifacts/ledger.sqlite   # stdio
 python -m phase0.tools.replay artifacts/runs/<run_id>                      # 按轨迹重放
+python -m phase0.tools.demo                                                 # 离线演示：脚本化会话 + 重放
 ```
 
 ## 工具
