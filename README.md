@@ -4,7 +4,7 @@
 
 项目目标是构建“竞对 SAR 演化时间线”：输入化合物、专利号或靶点，输出结构与属性变化，以及有证据支撑的研发问题假说。**当前已提供三类检索入口，以及基于已整理数据的六步 SAR 工作流：证据整理、结构对齐、可比性检查、批次汇总、证据审查和候选方向。在此之上，已建成带审计日志的类型化证据台账、供 AI agent 调用的 MCP 工具层（只能提交待确认记录、每次运行可重放）、按字段统计的抽取评测框架，以及分级抽取的控制逻辑。仍是研究原型。** 真实的专利抽取器、任意专利自动抽取和经过证据确认的历史演化路线尚未实现。
 
-核心原则：数字只由确定性代码计算；工具与 AI 只能提交“待确认”记录，确认必须由具名的人完成；限定值、缺失值和跨来源数据不强行比较；证据不足时弃答。完整功能清单见 [FEATURES.md](FEATURES.md)，迭代进度见 [docs/iteration-plan.md](docs/iteration-plan.md)。
+核心原则：数字只由确定性代码计算；工具与 AI 只能提交“待确认”记录，确认必须由具名的人完成；限定值、缺失值和跨来源数据不强行比较；证据不足时弃答。完整功能清单见 [FEATURES.md](FEATURES.md)，迭代进度见 [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（原始方案 v1 见 [docs/iteration-plan.md](docs/iteration-plan.md)）。
 
 ## 当前能力
 
@@ -218,7 +218,7 @@ python -m phase0.sar.validate
 | [phase0/data/curated](phase0/data/curated) | 固定文献结构与测量 |
 | [phase0/tests](phase0/tests) | 自动化回归测试 |
 | [phase0/README.md](phase0/README.md) | 数据导入、CLI、可选模型配置及模块说明 |
-| [FEATURES.md](FEATURES.md) / [docs/iteration-plan.md](docs/iteration-plan.md) / [docs/baseline.md](docs/baseline.md) | 功能清单、迭代方案与进度、回归基线 |
+| [FEATURES.md](FEATURES.md) / [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（v1：[docs/iteration-plan.md](docs/iteration-plan.md)） / [docs/baseline.md](docs/baseline.md) | 功能清单、迭代方案与进度、回归基线 |
 
 接下来：取得专利 PDF 原文与更多金标准标注（ALK 另 3 份专利、礼来 DACRA 3 份专利），接入 PDF 文字提取与开源结构图识别工具，用未标记错误数做第一次真实抽取评测；同时补齐独立化学家复核及跨专利实验可比性证据。扩大外部验证程序集后再评估通用抽取与推断能力；如果依据留出结果修改规则，需要更换验证协议与留出集。
 

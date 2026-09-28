@@ -1,6 +1,6 @@
 # SAR Atlas 功能清单
 
-项目定位：竞对 SAR（构效关系）证据工作台研究原型。以专利公开号、SMILES 或靶点为入口，展示结构、测量与来源，并严格区分事实、假设与证据缺口。状态说明见 [README](README.md)，迭代进度见 [docs/iteration-plan.md](docs/iteration-plan.md)，回归基线见 [docs/baseline.md](docs/baseline.md)。
+项目定位：竞对 SAR（构效关系）证据工作台研究原型。以专利公开号、SMILES 或靶点为入口，展示结构、测量与来源，并严格区分事实、假设与证据缺口。状态说明见 [README](README.md)，迭代进度见 [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（原始方案 v1 见 [docs/iteration-plan.md](docs/iteration-plan.md)），回归基线见 [docs/baseline.md](docs/baseline.md)。
 
 图例：✅ 已实现　⚠️ 已实现但有明确限制　⬜ 尚未实现
 
