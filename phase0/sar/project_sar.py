@@ -1,9 +1,10 @@
 """Goal-driven multi-property SAR over matched pairs (iteration I2.7, part 1).
 
 A *goal* is a set of properties. Each property names the ledger assays that
-measure it (suggested by rules, confirmed by the user), a desired direction
-(``lower`` / ``higher``, or ``none`` for reference-only properties) and a
-noise threshold. Thresholds have defaults per endpoint type; every default is
+measure it (suggested by rules, confirmed by the user; custom properties are
+built from any in-scope assay), a desired direction (``lower`` / ``higher``,
+``range`` with a target interval such as efflux ratio <= 2.5, or ``none`` for
+reference-only properties) and a noise threshold. Thresholds have defaults per endpoint type; every default is
 reported as *pending chemist review* until the user sets it.
 
 For each matched pair and each property the measurements are compared assay
@@ -18,11 +19,12 @@ judgement. The output is discussion material, not a conclusion.
 import math
 from collections import defaultdict
 
-from .mmp import MAX_CHANGE, find_pairs, transform
+from .mmp import MAX_CHANGE, find_pairs, site, transform
 from .units import normalise
 
 PENDING = 'default_pending_chemist_review'
-DIRECTIONS = ('lower', 'higher', 'none')
+DIRECTIONS = ('lower', 'higher', 'range', 'none')
+SITE_RADIUS = 3  # bonds from the attachment point that define a site
 DELTA_ENDPOINTS = ('logd', 'logp', 'pka')  # already logarithmic: compare differences, not ratios
 DEFAULT_FOLD = 2.0
 DEFAULT_DELTA = 0.5
@@ -122,8 +124,10 @@ def suggest(ledger, template_id, documents=None, focus=None):
                            'threshold': default_threshold(hits[0]['endpoint'] if hits else spec['endpoints'][0])})
     unmapped = [{'assay_id': a.id, 'endpoint': a.endpoint, 'description': a.protocol, 'measured': measured[a.id]}
                 for a in assays if a.id not in claimed]
+    catalogue = [{'assay_id': a.id, 'document_id': a.document_id, 'endpoint': a.endpoint, 'description': a.protocol,
+                  'unit': a.unit, 'measured': measured[a.id]} for a in assays]
     return {'template': template_id, 'label': template['label'], 'focus': focus, 'properties': properties,
-            'unmapped': unmapped,
+            'unmapped': unmapped, 'assays': catalogue,
             'notice': '映射由规则按终点类型和实验描述建议，必须由用户确认；阈值为默认值，待化学家确认。'}
 
 
@@ -140,7 +144,9 @@ def check_goal(goal, ledger):
             raise ValueError('每个性质需要唯一的 id。')
         seen.add(pid)
         if p.get('direction') not in DIRECTIONS:
-            raise ValueError(f'{label}：方向必须是 lower、higher 或 none。')
+            raise ValueError(f'{label}：方向必须是 lower、higher、range 或 none。')
+        if not isinstance(label, str) or len(label) > 40:
+            raise ValueError('性质名称不超过 40 个字符。')
         ids = p.get('assay_ids')
         if not isinstance(ids, list) or not ids or any(i not in assays for i in ids):
             raise ValueError(f'{label}：请确认至少一个台账中存在的实验。')
@@ -149,9 +155,43 @@ def check_goal(goal, ledger):
             raise ValueError(f'{label}：阈值格式无效。')
         if (t['kind'] == 'fold' and not t['value'] > 1) or (t['kind'] == 'delta' and not t['value'] > 0):
             raise ValueError(f'{label}：倍数阈值须大于 1，差值阈值须大于 0。')
-        out.append({'id': pid, 'label': label, 'direction': p['direction'], 'assay_ids': list(dict.fromkeys(ids)),
-                    'threshold': {'kind': t['kind'], 'value': float(t['value']), 'source': t.get('source', 'user')}})
+        item = {'id': pid, 'label': label, 'direction': p['direction'], 'assay_ids': list(dict.fromkeys(ids)),
+                'threshold': {'kind': t['kind'], 'value': float(t['value']), 'source': t.get('source', 'user')}}
+        if p['direction'] == 'range':
+            item['range'] = _check_range(p.get('range'), label, t['kind'])
+        out.append(item)
     return {'label': goal.get('label') or '自定义目标', 'properties': out}
+
+
+def _check_range(r, label, kind):
+    """Target interval {low, high, unit}; either bound may be open. Units must be convertible."""
+    if not isinstance(r, dict):
+        raise ValueError(f'{label}：目标区间需要下限和 / 或上限。')
+    low, high, unit = r.get('low'), r.get('high'), r.get('unit') or None
+    for v in (low, high):
+        if v is not None and (not isinstance(v, (int, float)) or not math.isfinite(v)):
+            raise ValueError(f'{label}：区间边界必须是数值。')
+    if low is None and high is None:
+        raise ValueError(f'{label}：目标区间至少需要一个边界。')
+    if low is not None and high is not None and low > high:
+        raise ValueError(f'{label}：区间下限不能大于上限。')
+    if kind == 'fold' and any(v is not None and v <= 0 for v in (low, high)):
+        raise ValueError(f'{label}：按倍数比较的性质，区间边界须为正数。')
+    if unit is not None and (not isinstance(unit, str) or len(unit) > 20):
+        raise ValueError(f'{label}：单位无效。')
+    return {'low': low, 'high': high, 'unit': unit}
+
+
+def _distance(value, unit, r, kind):
+    """How far a value lies outside the target interval (0 inside); log scale for fold-type properties."""
+    lo, hi = (normalise(v, r['unit'])[0] if (v is not None and r['unit']) else v for v in (r['low'], r['high']))
+    if lo is not None and value < lo:
+        gap = (math.log10(lo) - math.log10(value)) if kind == 'fold' else lo - value
+    elif hi is not None and value > hi:
+        gap = (math.log10(value) - math.log10(hi)) if kind == 'fold' else value - hi
+    else:
+        gap = 0.0
+    return gap
 
 
 def _values(obs):
@@ -195,7 +235,18 @@ def compare(a_obs, b_obs, prop):
         moved = abs(change) >= t['value']
         down = change < 0
         base['delta_b_minus_a'] = round(change, 4)
-    if not moved:
+    if prop['direction'] == 'range':
+        r = prop['range']
+        range_unit = normalise(1.0, r['unit'])[1] if r['unit'] else None
+        if range_unit != u:
+            return {'status': 'not_comparable', 'note': f"目标区间单位（{r['unit'] or '无'}）与测量单位（{a.unit or '无'}）不一致", **base}
+        da, db = _distance(x, u, r, t['kind']), _distance(y, u, r, t['kind'])
+        base.update(a_in_range=da == 0, b_in_range=db == 0)
+        if not moved or da == db:
+            outcome = 'unchanged'
+        else:
+            outcome = 'favorable' if db < da else 'unfavorable'
+    elif not moved:
         outcome = 'unchanged'
     elif prop['direction'] == 'none':
         outcome = 'changed'
@@ -230,6 +281,38 @@ def grade(pair_results, prop_id):
     return 'moderate' if len(comparable) >= 2 else 'weak'
 
 
+def _groups(pairs, field, goal):
+    """Per-group property counts, evidence grades and missing goal properties."""
+    grouped = defaultdict(list)
+    for r in pairs:
+        grouped[r[field]].append(r)
+    out = []
+    for name, rows in grouped.items():
+        summary = {}
+        for prop in goal['properties']:
+            counts = defaultdict(int)
+            for r in rows:
+                counts[r['properties'][prop['id']]['result']] += 1
+            g = grade(rows, prop['id'])
+            summary[prop['id']] = {'counts': dict(counts), 'grade': g,
+                                   'grade_label': {k: v for k, v, _ in GRADE_RULES}[g]}
+        gaps = []
+        for r in rows:
+            for prop in goal['properties']:
+                cell = r['properties'][prop['id']]
+                if prop['direction'] == 'none' or cell['result'] != 'missing':
+                    continue
+                one_side = sorted({x['lacking'] for x in cell['assays'].values() if x['lacking'] in ('A', 'B')})
+                gaps.append({'pair': f"{r['a_label']} → {r['b_label']}", 'a': r['a'], 'b': r['b'],
+                             'property': prop['label'], 'property_id': prop['id'],
+                             'lacking': one_side or ['A、B 均'],
+                             'assays': [aid for aid, x in cell['assays'].items() if x['lacking'] in ('A', 'B')]})
+        out.append({'group': name, 'pairs': rows, 'documents': sorted({r['document'] for r in rows}),
+                    'summary': summary, 'gaps': gaps})
+    out.sort(key=lambda t: (-len(t['pairs']), t['group']))
+    return out
+
+
 def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE):
     """Matched pairs in scope, each property compared per assay, summarised per transformation."""
     goal = check_goal(goal, ledger)
@@ -246,7 +329,8 @@ def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE):
     for p in find_pairs(comps, max_change):
         row = {'a': p['a'], 'b': p['b'], 'a_label': names[p['a']], 'b_label': names[p['b']],
                'document': docs[p['a']] if docs[p['a']] == docs[p['b']] else f"{docs[p['a']]} / {docs[p['b']]}",
-               'transform': transform(p), 'key': p['key'], 'change_heavy_atoms': p['change'], 'properties': {}}
+               'transform': transform(p), 'key': p['key'], 'site': site(p['key'], SITE_RADIUS),
+               'change_heavy_atoms': p['change'], 'properties': {}}
         same_doc = docs[p['a']] == docs[p['b']]
         for prop in goal['properties']:
             # Only the pair's own document can hold comparable measurements; other documents' assays are not
@@ -261,36 +345,18 @@ def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE):
                 result = _merge(per_assay)
             row['properties'][prop['id']] = {'result': result, 'assays': per_assay}
         pairs.append(row)
-    groups = defaultdict(list)
-    for r in pairs:
-        groups[r['transform']].append(r)
-    transforms = []
-    for name, rows in groups.items():
-        summary = {}
-        for prop in goal['properties']:
-            counts = defaultdict(int)
-            for r in rows:
-                counts[r['properties'][prop['id']]['result']] += 1
-            g = grade(rows, prop['id'])
-            summary[prop['id']] = {'counts': dict(counts), 'grade': g, 'grade_label': dict((k, v) for k, v, _ in GRADE_RULES)[g]}
-        gaps = []
-        for r in rows:
-            for prop in goal['properties']:
-                cell = r['properties'][prop['id']]
-                if prop['direction'] == 'none' or cell['result'] != 'missing':
-                    continue
-                one_side = sorted({x['lacking'] for x in cell['assays'].values() if x['lacking'] in ('A', 'B')})
-                gaps.append({'pair': f"{r['a_label']} → {r['b_label']}", 'a': r['a'], 'b': r['b'],
-                             'property': prop['label'], 'property_id': prop['id'],
-                             'lacking': one_side or ['A、B 均'],
-                             'assays': [aid for aid, x in cell['assays'].items() if x['lacking'] in ('A', 'B')]})
-        transforms.append({'transform': name, 'sites': sorted({r['key'] for r in rows}), 'pairs': rows,
-                           'documents': sorted({r['document'] for r in rows}), 'summary': summary, 'gaps': gaps})
-    transforms.sort(key=lambda t: (-len(t['pairs']), t['transform']))
+    transforms = _groups(pairs, 'transform', goal)
+    for g in transforms:
+        g['transform'] = g.pop('group')
+        g['sites'] = sorted({r['key'] for r in g['pairs']})  # full constant parts
+    sites = _groups(pairs, 'site', goal)
+    for g in sites:
+        g['site'] = g.pop('group')
+        g['transforms'] = sorted({r['transform'] for r in g['pairs']})
     defaults = [p['label'] for p in goal['properties'] if p['threshold']['source'] == PENDING]
     return {'goal': goal, 'scope': {'documents': sorted(documents) if documents else '全部', 'compounds': len(comps),
                                     'max_change_heavy_atoms': max_change},
-            'pair_count': len(pairs), 'transforms': transforms,
+            'pair_count': len(pairs), 'transforms': transforms, 'sites': sites, 'site_radius': SITE_RADIUS,
             'grade_rules': [{'grade': k, 'label': v, 'rule': d} for k, v, d in GRADE_RULES],
             'pending_defaults': defaults,
             'notice': ('讨论材料，不是结论。分子对由 MMP 单切自动找出；各性质按实验逐项比较，限定值、重复观测和缺失不计算；'

@@ -194,3 +194,67 @@ def test_http_api_modes_and_validation(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+# --- custom properties, target range, sites ----------------------------------
+
+def test_custom_property_from_any_assay():
+    s = ps.suggest(LEDGER, 'cell_potency_efflux', focus='ALK')
+    assert 'CHEMBL3286195:CHEMBL3293390' in {a['assay_id'] for a in s['assays']}  # HLM clearance is offered
+    g = goal()
+    g['properties'].append({'id': 'custom_1', 'label': '微粒体清除率', 'direction': 'lower',
+                            'assay_ids': ['CHEMBL3286195:CHEMBL3293390'],
+                            'threshold': {'kind': 'fold', 'value': 2.0, 'source': 'user'}})
+    _, row = pair_row(ps.analyse(LEDGER, g), '6f', '6e')
+    cl = row['properties']['custom_1']
+    assert cl['result'] == 'favorable'  # 58 -> 28 mL/min/kg, just past 2-fold
+    assert cl['assays']['CHEMBL3286195:CHEMBL3293390']['ratio_b_over_a'] == 0.4828
+
+
+def test_target_range_moving_away_is_unfavorable_inside_is_unchanged():
+    g = goal(efflux={'direction': 'range', 'range': {'low': None, 'high': 2.5, 'unit': None}},
+             logd={'direction': 'range', 'range': {'low': 1, 'high': 3, 'unit': None}})
+    _, row = pair_row(ps.analyse(LEDGER, g), '6f', '6e')
+    efflux = row['properties']['efflux']['assays']['CHEMBL3286195:CHEMBL3293391']
+    assert efflux['outcome'] == 'unfavorable' and not efflux['a_in_range'] and not efflux['b_in_range']
+    logd = row['properties']['logd']['assays']['CHEMBL3286195:CHEMBL3293165']
+    assert logd['outcome'] == 'unchanged' and logd['a_in_range'] and logd['b_in_range']
+
+
+@pytest.mark.parametrize('a, b, rng, outcome', [
+    (obs(10), obs(3), {'low': None, 'high': 5, 'unit': 'nM'}, 'favorable'),       # moves into the range
+    (obs(10), obs(3), {'low': None, 'high': 0.005, 'unit': 'uM'}, 'favorable'),   # same bound in uM
+    (obs(3), obs(1), {'low': 2, 'high': 5, 'unit': 'nM'}, 'unfavorable'),         # leaves the range downwards
+    (obs(3), obs(4), {'low': 2, 'high': 5, 'unit': 'nM'}, 'unchanged'),           # within noise, both inside
+])
+def test_range_outcomes(a, b, rng, outcome):
+    prop = {'direction': 'range', 'range': rng, 'threshold': {'kind': 'fold', 'value': 2.0}}
+    assert ps.compare([a], [b], prop)['outcome'] == outcome
+
+
+def test_range_unit_must_match_the_measurement():
+    prop = {'direction': 'range', 'range': {'low': None, 'high': 5, 'unit': None},
+            'threshold': {'kind': 'fold', 'value': 2.0}}
+    r = ps.compare([obs(10)], [obs(3)], prop)
+    assert r['status'] == 'not_comparable' and '单位' in r['note']
+
+
+@pytest.mark.parametrize('rng, message', [
+    (None, '区间'), ({'low': None, 'high': None}, '至少需要一个边界'), ({'low': 5, 'high': 1}, '下限'),
+    ({'low': 0, 'high': 1}, '正数'), ({'low': 'x', 'high': 1}, '数值'),
+])
+def test_range_is_validated(rng, message):
+    g = goal(efflux={'direction': 'range', 'range': rng})
+    with pytest.raises(ValueError, match=message):
+        ps.check_goal(g, LEDGER)
+
+
+def test_sites_group_the_same_position_across_documents():
+    r = ps.analyse(LEDGER, goal())
+    sites = {s['site']: s for s in r['sites']}
+    assert sites['cC(=O)N(C)[*:1]']['transforms'] == [N_METHYL]  # the amide N of 6f / 6e
+    aryl = sites['ccc([*:1])cn']  # 5-position of the 2-aminopyridine
+    named = {(LABEL[p['a']], LABEL[p['b']]) for p in aryl['pairs']}
+    assert {('Example 1', 'Example 7'), ('6a', '6d')} <= named
+    assert set(aryl['documents']) == {'CHEMBL3286195', 'WO2011138751A2'}
+    assert sum(len(s['pairs']) for s in r['sites']) == r['pair_count']

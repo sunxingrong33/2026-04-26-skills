@@ -323,3 +323,35 @@ def test_project_goal_page_shows_multi_property_tradeoff(app, page):
     assert '有利' in pair.locator('[data-property="enzyme_potency"]').text_content()
     assert '6f' in card.text_content() and '细胞活性：A 无记录' in card.text_content()
     assert page.errors == []
+
+
+def test_project_page_custom_property_range_and_sites(app, page):
+    base, _, _ = app
+    page.goto(base + '/project')
+    page.wait_for_selector('#template option', state='attached')
+    page.fill('#focus', 'ALK')
+    page.click('#suggest')
+    efflux = page.locator('.prop[data-id="efflux"]')
+    efflux.wait_for()
+    efflux.locator('.direction').select_option('range')
+    efflux.locator('.range-high').fill('2.5')
+    page.click('#add-property')
+    custom = page.locator('.prop[data-id="custom_1"]')
+    custom.locator('.prop-name').fill('微粒体清除率')
+    custom.locator('details summary').click()
+    custom.locator('details input[placeholder]').fill('CHEMBL3293390')
+    custom.locator('.assay input[value="CHEMBL3286195:CHEMBL3293390"]').check()
+    page.click('#analyse')
+    card = page.locator('.tf[data-transform="C[*:1]>>[H][*:1]"]')
+    card.wait_for(timeout=20000)
+    assert '目标区间 ≤ 2.5' in card.locator('tr[data-property="efflux"]').text_content()
+    card.locator('details summary').last.click()
+    pair = card.locator('[data-pair="6f>6e"]')
+    assert '有利' in pair.locator('[data-property="custom_1"]').text_content()
+    assert '目标区间内：A 否 / B 否' in pair.locator('[data-property="efflux"]').text_content()
+    page.select_option('#group-by', 'site')
+    site = page.locator('.tf[data-site="ccc([*:1])cn"]')
+    site.wait_for()
+    assert 'WO2011138751A2' in site.text_content() and 'CHEMBL3286195' in site.text_content()
+    assert page.locator('.tf[data-site="cC(=O)N(C)[*:1]"]').count() == 1
+    assert page.errors == []

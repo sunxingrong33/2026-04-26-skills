@@ -91,3 +91,23 @@ def find_pairs(compounds, max_change=MAX_CHANGE):
 
 def transform(pair):
     return f"{pair['from']}>>{pair['to']}"
+
+
+def site(key, radius=3):
+    """The attachment point's local environment in the constant part (atoms within ``radius`` bonds).
+
+    Pairs whose constant parts differ elsewhere but share this environment change the same
+    position of a series (e.g. the amide N of 6f/6e). A symmetric or repeated environment can
+    merge positions that are chemically distinct farther away; the full constant parts stay listed.
+    """
+    mol = Chem.MolFromSmiles(key, sanitize=False)
+    if mol is None:
+        return key
+    dummy = next(a.GetIdx() for a in mol.GetAtoms() if a.GetAtomicNum() == 0)
+    bonds = Chem.FindAtomEnvironmentOfRadiusN(mol, radius, dummy)
+    if not bonds:
+        return key
+    atoms = sorted({i for b in bonds for i in (mol.GetBondWithIdx(b).GetBeginAtomIdx(),
+                                               mol.GetBondWithIdx(b).GetEndAtomIdx())})
+    return Chem.MolFragmentToSmiles(mol, atomsToUse=atoms, bondsToUse=list(bonds), canonical=True,
+                                    isomericSmiles=True, allHsExplicit=False)

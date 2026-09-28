@@ -36,6 +36,8 @@
 >
 > 更新：加入两个离线演示命令 `phase0.tools.demo`、`phase0.extract.demo` 及其冒烟测试（`test_demos`，2 项）后为 **344 passed**。
 >
+> 更新（I2.7 第一段补齐）：自定义性质、目标区间方向、按位点汇总（`test_project_sar` 增至 32 项；`test_browser` 9 项）。合计 **431 passed**。台账上 18 个分子对归为 15 种替换、5 个位点。
+>
 > 更新（I2.7 第一段）：项目目标与多性质 SAR（`test_project_sar`，19 项：MMP 配对含氢替换、实验映射建议、目标校验、验收用例 6f → 6e、阈值、跨文档实验不计为缺失、不可比规则、证据等级、无综合分数、接口）；浏览器测试增加 `/project` 完整路径（`test_browser` 8 项）；`--public-host` 转发主机测试（`test_serve_hosts`，7 项，此前随 Codespaces 支持加入）。合计 **417 passed**。台账上自动配对得到 18 个分子对、15 种替换。
 >
 > 更新（I2.6 · PubChem）：接入 PubChem 交叉引用（`test_pubchem`，8 项：已整理专利排前、截断与计数、“查不到”缓存可重放、服务繁忙不缓存、只发送标准 InChIKey、断网重放）；浏览器测试增加从检索结构到 PubChem 关联专利再到加载专利的路径（`test_browser` 7 项）；MCP 工具 15 个；在线核对增加一项。合计 **390 passed**。PubChem 在本环境不可达，接口未实连（见 `docs/pubchem-access.md`）。
