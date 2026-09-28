@@ -57,6 +57,9 @@
      "default": null,
      "title": "Protocol Locator"
     },
+    "review": {
+     "$ref": "#/$defs/Review"
+    },
     "source_assay_id": {
      "description": "原文或数据库中的 assay 编号，不同文档可以重名",
      "title": "Source Assay Id",
@@ -92,7 +95,8 @@
     "id",
     "document_id",
     "source_assay_id",
-    "endpoint"
+    "endpoint",
+    "review"
    ],
    "title": "Assay",
    "type": "object"

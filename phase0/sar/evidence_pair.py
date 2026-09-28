@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from rdkit import Chem
 
-from .evidence_ledger import build_ledger
+from phase0.ledger.access import analysis_view
 from .scaffolds import align_evidence
 from .units import normalise
 
@@ -88,7 +88,7 @@ def analyse_pair(request):
         raise ValueError('请选择结构对齐或可比性检查。')
     if not all(isinstance(request.get(k), str) for k in ('a', 'b')):
         raise ValueError('请选择 A、B 两个分子。')
-    ledger = build_ledger()
+    ledger = analysis_view()
     left, right = select_pair(ledger, request['a'], request['b'])
     out = {'mode': request['mode'], 'inputs': ledger['inputs'],
            'a': left[0], 'b': right[0],

@@ -143,6 +143,7 @@ class Assay(_Model):
     variant: Optional[str] = Field(default=None, description='协议变体，例如 10 点 / 20 点格式')
     grade_definitions: Optional[dict[str, str]] = Field(
         default=None, description='分级值的等级定义，例如 {"A": "EC50 < 10 nM"}')
+    review: Review
 
 
 class Observation(_Model):

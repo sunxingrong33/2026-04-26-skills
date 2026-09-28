@@ -116,7 +116,8 @@ def test_graded_values_need_an_assay_definition():
     d = as_dict()
     d['assays'].append({'id': 'WO2011138751A2:AMY3R_grade', 'document_id': 'WO2011138751A2',
                         'source_assay_id': 'AMY3R_grade', 'endpoint': 'EC50 grade', 'unit': None,
-                        'grade_definitions': {'A': 'EC50 < 10 nM', 'B': '10–100 nM'}})
+                        'grade_definitions': {'A': 'EC50 < 10 nM', 'B': '10–100 nM'},
+                        'review': {'record_status': 'proposed', 'provenance_status': 'test'}})
     base = copy.deepcopy(obs(d, 'WO2011138751A2:example:1:0'))
     graded = {**base, 'id': 'graded', 'assay_id': 'WO2011138751A2:AMY3R_grade', 'relation': 'grade',
               'grade': 'A', 'value': None, 'unit': None}
@@ -134,7 +135,7 @@ def test_emax_is_an_ordinary_endpoint_with_its_own_assay():
     d = as_dict()
     d['assays'].append({'id': 'WO2011138751A2:AMY3R_Emax', 'document_id': 'WO2011138751A2',
                         'source_assay_id': 'AMY3R_Emax', 'endpoint': 'Emax', 'unit': '%',
-                        'variant': '10-point'})
+                        'variant': '10-point', 'review': {'record_status': 'proposed', 'provenance_status': 'test'}})
     base = obs(d, 'WO2011138751A2:example:1:0')
     d['observations'].append({**base, 'id': 'emax', 'assay_id': 'WO2011138751A2:AMY3R_Emax',
                               'relation': '=', 'value': 98.0, 'unit': '%'})

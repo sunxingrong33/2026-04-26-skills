@@ -13,7 +13,7 @@ from .lineage import build_lineage
 from .discovery import discover
 from .programs import analyse_programs
 from .scaffolds import align_evidence
-from .evidence_ledger import build_ledger
+from phase0.ledger.access import analysis_view
 from .evidence_pair import analyse_pair
 from .sar_workflow import run_workflow
 from .patent_evidence import compare_measurements, provisional_direction
@@ -55,8 +55,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, (ROOT/'phase0/web/sar-workflow.js').read_bytes(), 'text/javascript; charset=utf-8')
         if url.path == '/api/evidence':
             try:
-                return self.reply(200, build_ledger())
-            except (ValueError, KeyError, OSError):
+                return self.reply(200, analysis_view())
+            except (ValueError, KeyError, OSError, LookupError):
                 return self.reply(422, {'error': '证据包读取或校验失败，未返回部分台账。'})
         if url.path == '/discovery.js':
             return self.reply(200, (ROOT/'phase0/web/discovery.js').read_bytes(), 'text/javascript; charset=utf-8')

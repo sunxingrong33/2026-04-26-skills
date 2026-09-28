@@ -96,7 +96,10 @@ def build(data_dir=DATA):
         assay = dict(id=aid, document_id=doc, source_assay_id=row['assay_id'], endpoint=row['endpoint'],
                      protocol=row['protocol'], protocol_locator=row['protocol_locator'], unit=assay_unit)
         _same(assay_seen, aid, assay, 'assay')
-        assays.setdefault(aid, Assay(**assay))
+        if aid not in assays:
+            assays[aid] = Assay(**assay, review=Review(
+                record_status=RecordStatus.proposed, provenance_status=row['review_status'],
+                gaps=['independent_review'] if patent else ['full_protocol_review', 'independent_review']))
 
         raw = row['raw']
         if patent:
@@ -143,13 +146,19 @@ def to_legacy(ledger):
             'measurement_source': loc(o.source),
             'assay_id': a.source_assay_id, 'endpoint': a.endpoint,
             'protocol': a.protocol, 'protocol_locator': a.protocol_locator,
-            'relation': raw.get('relation') if patent else raw['standard_relation'],
-            'value': raw.get('value') if patent else raw['standard_value'],
-            'unit': raw.get('unit', a.unit) if patent else raw['standard_units'],
             'raw': raw, 'missing_reason': o.missing_reason,
-            'quality_flag': o.quality_flag if patent else raw['data_validity_comment'],
             'review_status': o.review.provenance_status,
         }
+        if patent:
+            row.update(relation=raw.get('relation', o.relation), value=raw.get('value', o.value),
+                       unit=raw.get('unit', a.unit), quality_flag=o.quality_flag)
+        elif 'standard_value' in raw:
+            row.update(relation=raw['standard_relation'], value=raw['standard_value'],
+                       unit=raw['standard_units'], quality_flag=raw['data_validity_comment'])
+        else:
+            # Records proposed after migration carry no ChEMBL-shaped raw row.
+            row.update(relation=o.relation or '', value=o.value, unit=o.unit or '',
+                       quality_flag=o.quality_flag or '')
         if patent:
             row.update(source_html_sha256=d.source_sha256['html'], source_pdf_sha256=d.source_sha256['pdf'],
                        stereochemistry_note=c.stereochemistry_note)
