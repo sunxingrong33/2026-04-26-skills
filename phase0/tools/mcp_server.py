@@ -71,12 +71,16 @@ def build_server(domain, run):
     return server
 
 
-def main(argv=None):
+def parser():
     ap = argparse.ArgumentParser(description='SAR Atlas MCP 工具服务（stdio）')
     ap.add_argument('domain', choices=[*DOMAINS, 'all'])
     ap.add_argument('--ledger-db', help='台账 SQLite；台账工具必需')
     ap.add_argument('--runs-dir', help='运行轨迹目录，默认 artifacts/runs')
-    args = ap.parse_args(argv)
+    return ap
+
+
+def main(argv=None):
+    args = parser().parse_args(argv)
     kwargs = {'runs_dir': args.runs_dir} if args.runs_dir else {}
     run = Run(ledger_db=args.ledger_db, **kwargs)
     build_server(args.domain, run).run('stdio')

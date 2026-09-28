@@ -190,7 +190,17 @@ python -m pytest -q
 python -m phase0.sar.validate
 ```
 
-当前测试套件包含 26 个模块、344 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。浏览器界面尚无纳入仓库的自动化测试，演示前需人工走查。
+当前测试套件包含 28 个模块、356 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制、在线验证脚本（模拟网络响应）、浏览器主路径，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。
+
+浏览器测试（`phase0/tests/test_browser.py`）用 Playwright 驱动 Chromium，以离线夹具覆盖“加入台账”、跨家族案例与“未展示原因”、证据卡质谱校验显示和六步工作流主路径；需安装 `requirements-browser.txt`，缺少 Playwright 或浏览器时自动跳过（CI 中为可选任务）。其余页面交互仍需人工走查。
+
+在线路径（Google Patents、ChEMBL）需在可联网的机器上核对：
+
+```sh
+python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时间>/report.md
+```
+
+脚本使用全新缓存和临时台账，依次检索两份专利、查询 ALK 靶点及一页测量、写入台账（仅待确认）、重复写入检查、断网重放；任一检查失败时返回非零退出码。尚未在可联网环境中运行过。
 
 冻结的 21 条规则未依据留出结果调参。既有诊断中，开发案例生成 8 条候选，目标关键词命中 1/3；独立案例生成 2 条候选，命中 0/2。这是代理指标，不能视为真实召回率。规则分值不是概率，MCS 高亮不是药效团或因果证明，数值关联不能直接证明作者动机。
 
@@ -208,7 +218,7 @@ python -m phase0.sar.validate
 | [phase0/sar/evidence_ledger.py](phase0/sar/evidence_ledger.py) / [evidence_pair.py](phase0/sar/evidence_pair.py) / [sar_workflow.py](phase0/sar/sar_workflow.py) | 六步台账、分子对分析、汇总与复核及候选方向 |
 | [phase0/sar/mass_check.py](phase0/sar/mass_check.py) | 质谱报告值与结构比对 |
 | [phase0/ledger](phase0/ledger) | 类型化台账、无损迁移、SQLite 存储与审计、分析读取入口、“加入台账” |
-| [phase0/tools](phase0/tools) | AI agent 工具层、MCP 服务、运行记录与重放 |
+| [phase0/tools](phase0/tools) / [.mcp.json.example](.mcp.json.example) | AI agent 工具层、MCP 服务、运行记录与重放、在线路径核对；MCP 客户端示例配置（默认不启用） |
 | [phase0/eval](phase0/eval) / [phase0/data/gold](phase0/data/gold) | 抽取评测框架与金标准 |
 | [phase0/extract](phase0/extract) | 分级抽取控制：页面分区、逐级调用、交叉校验、输出 |
 | [phase0/data/relations](phase0/data/relations) | 跨专利关系记录及展示条件 |

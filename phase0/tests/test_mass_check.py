@@ -4,7 +4,7 @@ import json
 import pytest
 from phase0.eval.extraction_metrics import evaluate
 from phase0.eval.gold import GOLD, load
-from phase0.sar.mass_check import check_mass, flag_prediction
+from phase0.sar.mass_check import check_mass, flag_prediction, summarise
 from phase0.sar.patent_evidence import attach_evidence, DATA
 
 LATE = load(GOLD / 'WO2013132376A1.json')
@@ -98,3 +98,18 @@ def test_evidence_cards_carry_the_mass_check():
     result = {'publication': 'WO2013132376A1', 'source_snapshot': {'sha256': package['source_html_sha256']}}
     attach_evidence(result)
     assert [c['mass_check']['status'] for c in result['evidence_cards']] == ['consistent'] * 3
+    assert all(c['mass_check']['summary']['level'] == 'ok' for c in result['evidence_cards'])
+    assert all(c['mass_check']['summary']['text'].startswith('质谱校验：一致') for c in result['evidence_cards'])
+
+
+@pytest.mark.parametrize('reported, level, phrase', [
+    (None, 'none', '未报告'),
+    ('n/a', 'warn', '无法解析'),
+    ('371', 'ok', '一致'),
+    ('358', 'warn', '不一致'),
+    ('370', 'warn', '与 M 相符'),
+])
+def test_summary_never_reads_as_confirmation(reported, level, phrase):
+    s = summarise(check_mass('CC(Oc1cc(-c2c(C)n(C)nc2C)cnc1N)c1cc(F)ccc1OC', reported))
+    assert s['level'] == level and phrase in s['text']
+    assert '确认' not in s['text']

@@ -89,6 +89,25 @@ def check_mass(smiles, reported, ion='[M+H]+'):
     return result
 
 
+def summarise(check):
+    """One-line reader-facing label: level is ok / warn / none, never 'confirmed'."""
+    status = check['status']
+    if status == 'no_report':
+        return {'level': 'none', 'text': '质谱校验：原文未报告质谱值，未校验'}
+    if status == 'unparsed_report':
+        return {'level': 'warn', 'text': f"质谱校验：无法解析原文质谱值“{check['reported']}”，需人工核对"}
+    if status == 'invalid_structure':
+        return {'level': 'warn', 'text': '质谱校验：转录结构无法解析，需人工核对'}
+    detail = (f"原文 {check['ion']} {check['reported']}，结构计算 {check['computed']:.2f}，"
+              f"差 {check['delta']:+.2f}（容差 {check['tolerance_rule']}）")
+    if status == 'consistent':
+        return {'level': 'ok', 'text': f'质谱校验：一致 · {detail}'}
+    if status == 'alternative_match':
+        ions = '、'.join(a['ion'] for a in check['alternatives'])
+        return {'level': 'warn', 'text': f'质谱校验：与声明离子不符，但与 {ions} 相符，需人工核对 · {detail}'}
+    return {'level': 'warn', 'text': f'质谱校验：不一致，转录结构可能有误，需人工核对 · {detail}'}
+
+
 def flags_for(check):
     """Extraction flags implied by a mass check (empty when nothing to report)."""
     return {'inconsistent': ['mass_mismatch'], 'alternative_match': ['mass_alternative_ion'],

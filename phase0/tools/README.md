@@ -8,6 +8,7 @@ python -m phase0.ledger.store init --db artifacts/ledger.sqlite
 python -m phase0.tools.mcp_server all --ledger-db artifacts/ledger.sqlite   # stdio
 python -m phase0.tools.replay artifacts/runs/<run_id>                      # 按轨迹重放
 python -m phase0.tools.demo                                                 # 离线演示：脚本化会话 + 重放
+python -m phase0.tools.verify_online                                        # 在线路径核对（需联网）
 ```
 
 ## 工具
@@ -52,7 +53,7 @@ MCP 注解：写入工具 `read_only_hint=false`、`destructive_hint=false`（�
 
 ## 连接到 Claude Code / Agent SDK
 
-在项目根目录的 `.mcp.json` 中登记（路径按实际环境调整）：
+仓库附带示例 [`.mcp.json.example`](../../.mcp.json.example)，默认不启用。需要时复制为项目根目录的 `.mcp.json`（路径按实际环境调整；Windows 下 `command` 改为 `.venv\Scripts\python.exe`），并先用 `python -m phase0.ledger.store init --db artifacts/ledger.sqlite` 建好台账。内容如下：
 
 ```json
 {
@@ -78,8 +79,22 @@ MCP 注解：写入工具 `read_only_hint=false`、`destructive_hint=false`（�
 
 Claude Agent SDK 使用同样的 stdio 服务配置，具体写法见其文档。测试中用官方 `mcp` 客户端以子进程方式启动 CLI（与上述客户端相同的路径）完成验证，无需 API key。
 
+## 在线路径核对
+
+`python -m phase0.tools.verify_online [--out 目录]` 在可联网的机器上核对真实来源，默认输出到 `artifacts/online-check/<时间>/`。它用全新缓存和由已提交数据构建的临时台账，通过本工具层依次：
+
+1. `patent_fetch` 两份专利（WO2011138751A2、WO2013132376A1）：记录页面哈希、索引结构数、证据卡数与质谱校验；
+2. 检索靶点“ALK”，核对候选中含 CHEMBL4247；
+3. `chembl_activities` 读取一页测量，统计限定符与无数值记录（原样保留）；
+4. `ledger_propose_chembl_activities` 提交整页，核对“新增 + 拒绝 + 已存在”等于请求数，列出拒绝原因；再提交一次，核对无新增；
+5. `ledger_propose_patent_index` 提交一份专利索引；核对所有新增记录均为 `proposed`；
+6. 断网重放整个运行，逐条比对。
+
+结果分为通过 / 注意 / 失败。**注意不是失败**：例如专利页面哈希与已整理证据包不一致时，证据卡按设计暂停使用，报告提示需要重新核对映射。任一检查失败时退出码非零。脚本本身由 `test_verify_online.py` 以模拟网络响应测试；真实运行结果补入 `docs/baseline.md`。
+
 ## 尚未完成
 
 - 计划中的 SureChEMBL 与 PDF（页面分区、结构图识别、表格抽取）工具，属于 I3 分级抽取。
 - 编排者、审查 agent 等（I6）；本层只提供工具，不包含 agent 本身。
 - 尚未用真实模型端到端运行过 agent；目前的验证覆盖工具、MCP 协议与重放。
+- 在线路径核对脚本尚未在可联网环境中运行。

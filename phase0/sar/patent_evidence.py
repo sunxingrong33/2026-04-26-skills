@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 from .features import compute_features
-from .mass_check import check_mass
+from .mass_check import check_mass, summarise
 from .units import normalise
 
 DATA = Path(__file__).resolve().parents[1]/'data'/'patent_evidence'
@@ -27,6 +27,7 @@ def attach_evidence(result):
         card['svg']=molecule_svg(card['smiles'])
         card['review_status']=package['review']['status']
         card['mass_check']=check_mass(card['smiles'],card.get('reported_lcms_m_plus_h'))
+        card['mass_check']['summary']=summarise(card['mass_check'])
         for m in card['measurements']:
             m['assay']=assays[m['assay_id']]
             m['source_url']=card['table_source']['url']

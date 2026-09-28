@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "sar-ledger": {
+      "type": "stdio",
+      "command": ".venv/bin/python",
+      "args": [
+        "-m",
+        "phase0.tools.mcp_server",
+        "ledger",
+        "--ledger-db",
+        "artifacts/ledger.sqlite"
+      ]
+    },
+    "sar-chem": {
+      "type": "stdio",
+      "command": ".venv/bin/python",
+      "args": [
+        "-m",
+        "phase0.tools.mcp_server",
+        "chem",
+        "--ledger-db",
+        "artifacts/ledger.sqlite"
+      ]
+    },
+    "sar-sources": {
+      "type": "stdio",
+      "command": ".venv/bin/python",
+      "args": [
+        "-m",
+        "phase0.tools.mcp_server",
+        "sources"
+      ]
+    }
+  }
+}

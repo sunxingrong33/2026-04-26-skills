@@ -21,3 +21,18 @@ jobs:
         with:
           name: sar-evidence-python-${{ matrix.python-version }}
           path: artifacts/
+  browser:
+    # Optional: real-browser checks of the main page paths (offline fixtures).
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements-browser.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest -q phase0/tests/test_browser.py
+        env:
+          SAR_REQUIRE_BROWSER: '1'

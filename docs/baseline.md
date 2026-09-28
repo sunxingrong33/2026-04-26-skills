@@ -35,6 +35,8 @@
 > 更新：加入分级抽取控制逻辑（`test_extract_cascade`，13 项）后为 **342 passed**。用金标准 v0 构造的桩抽取器端到端验证：抽取正确时评测全部正确；单一来源的数值错误计入错误但为已标记；两个来源给出同一错误同分异构体时被评为 high，评测计为 1 个未标记错误（已知边界）。
 >
 > 更新：加入两个离线演示命令 `phase0.tools.demo`、`phase0.extract.demo` 及其冒烟测试（`test_demos`，2 项）后为 **344 passed**。
+>
+> 更新（R1）：证据卡显示质谱校验结果（`test_mass_check` 由 13 项增至 18 项）；`.mcp.json.example` 与命令行一致性检查（`test_mcp_server` 增至 8 项）；在线路径核对脚本的模拟网络测试（`test_verify_online`，2 项）；浏览器测试入仓（`test_browser`，4 项，需 `requirements-browser.txt`，缺少时跳过）。合计 **356 passed**（未装 Playwright 时为 352 passed、4 skipped）。浏览器测试用本机 Chromium（`/opt/pw-browsers/chromium-1194`，经 `_executables()` 自动发现）运行。
 
 | 测试模块 | 数量 |
 |---|---:|
@@ -84,7 +86,16 @@ osimertinib-independent: 2 candidates; keyword proxy 0/2; human validation pendi
 
 `python -m phase0.eval.extraction_metrics --pred phase0/data/gold`（金标准自评，用于确认框架本身）：各项比例 100%，未标记错误、编造数值、可比性误判均为 0。金标准 v0 由现有证据包派生（6 个化合物、22 项测量、2 条未测记录），尚未独立复核。尚无真实抽取器的评测结果。
 
+### 在线路径
+
+核对脚本：`python -m phase0.tools.verify_online`（说明见 `phase0/tools/README.md`）。
+
+| 日期 | 环境 | 结论 | 说明 |
+|---|---|---|---|
+| 2026-09-28 | 开发环境（代理拒绝 patents.google.com、www.ebi.ac.uk） | 失败（预期） | 两份专利、靶点检索、靶点测量均报连接失败；脚本如实记为失败，未用样例替代；重放记为“注意”（只说明失败可复现） |
+| 待补 | 项目负责人可联网的本机 | — | 运行后把 `report.md` 的结论与各项结果填入此表 |
+
 ## 未覆盖
 
-- 需要联网的在线路径（Google Patents、ChEMBL）未在记录环境中端到端验证，需在可联网的机器上补测。
-- 浏览器界面交互未做自动化测试；演示前需人工走查。
+- 需要联网的在线路径（Google Patents、ChEMBL）未在可联网环境中端到端验证；核对脚本已就绪，待在本机运行。
+- 浏览器测试只覆盖主路径（见 `test_browser.py`）；其余交互演示前仍需人工走查。

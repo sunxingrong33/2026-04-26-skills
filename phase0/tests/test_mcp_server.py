@@ -10,7 +10,7 @@ from mcp import Client  # noqa: E402
 from phase0.ledger.migrate import build  # noqa: E402
 from phase0.ledger.store import LedgerStore  # noqa: E402
 from phase0.tools.core import Run, read_trace  # noqa: E402
-from phase0.tools.mcp_server import build_server, main  # noqa: E402
+from phase0.tools.mcp_server import build_server, main, parser  # noqa: E402
 
 
 @pytest.fixture
@@ -89,3 +89,18 @@ def test_stdio_subprocess_as_clients_launch_it(tmp_path):
     assert result.is_error is False and 'C2H6O' in result.content[0].text
     traces = list(tmp_path.glob('*/trace.jsonl'))
     assert len(traces) == 1 and '"chem_describe"' in traces[0].read_text(encoding='utf-8')
+
+
+def test_example_client_config_matches_cli_and_readme():
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    example = json.loads((root / '.mcp.json.example').read_text(encoding='utf-8'))
+    readme = (root / 'phase0' / 'tools' / 'README.md').read_text(encoding='utf-8')
+    assert json.loads(re.search(r'```json\n(.*?)```', readme, re.S).group(1)) == example
+    assert not (root / '.mcp.json').exists()  # not enabled by default
+    for name, server in example['mcpServers'].items():
+        assert server['args'][:2] == ['-m', 'phase0.tools.mcp_server']
+        args = parser().parse_args(server['args'][2:])
+        assert name == f'sar-{args.domain}'
+        assert args.ledger_db or args.domain == 'sources'
