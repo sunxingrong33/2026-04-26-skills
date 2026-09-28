@@ -59,13 +59,16 @@ def chembl_activities(ctx, entity: Literal['target', 'molecule'], chembl_id: str
 @tool('sources', open_world=True)
 def structure_search(ctx, smiles: str, method: Literal['exact', 'similarity', 'substructure'] = 'similarity',
                      threshold: Annotated[int, Field(ge=40, le=100)] = 70, standardize: bool = True,
-                     external: bool = True):
+                     external: bool = True, surechembl: bool = False):
     """按结构检索本地证据台账与 ChEMBL：精确（标准 InChIKey）、相似性（Tanimoto，阈值为百分比）或子结构。
 
     需要“从一个结构出发找相关化合物、文献和专利”时调用；ChEMBL 命中后可用 chembl_activities（entity=molecule）
     查看测量及其来源文档。相似度只用于排序，不说明活性相近、属于同一研发程序或被某专利覆盖；
     未命中不代表不存在。ChEMBL 命中已用本地 RDKit 复核，local_check 为 disagrees 的记录需回到原始记录核对。
     默认标准化（去盐、中和、互变异构；子结构查询不做互变异构），search.steps 记录实际做了哪些改动。
+    surechembl=true 时另查 SureChEMBL（专利中自动提取的化学结构；异步任务，可能需要一两分钟）；
+    命中只说明结构出现在专利文本或图像中，不说明是实施例或被权利要求覆盖。
+    需要看某个命中出现在哪些专利时，调用 surechembl_patents。引用时保留 SCHEMBL 编号并注明 SureChEMBL（CC BY 4.0）。
     """
     from phase0.sar import structure_search as ss
     from phase0.sar.discovery import fetch
@@ -79,7 +82,8 @@ def structure_search(ctx, smiles: str, method: Literal['exact', 'similarity', 's
         from phase0.ledger.migrate import build
         ledger = build()
     local = ss.local_search(q, mol, ledger)
-    data = {'search': q, 'notice': ss.NOTICE[method] + ss.ZERO_HITS, 'local': local, 'chembl': None}
+    data = {'search': q, 'notice': ss.NOTICE[method] + ss.ZERO_HITS, 'local': local, 'chembl': None,
+            'surechembl': None}
     if external:
         try:
             if method == 'exact':
@@ -102,7 +106,39 @@ def structure_search(ctx, smiles: str, method: Literal['exact', 'similarity', 's
         # cache_hit is transport detail; dropping it keeps results identical on replay.
         chembl['source'] = {k: v for k, v in chembl['source'].items() if k != 'cache_hit'}
         data['chembl'] = chembl
-    n = data['chembl']
+    if surechembl:
+        try:
+            sc = ss.surechembl_search(q, mol, ctx.cache_dir / 'discovery-cache' / 'surechembl')
+        except OSError:
+            raise ToolFailure('SureChEMBL 检索失败：连接失败或超时；可设 surechembl=false。') from None
+        except (ValueError, RuntimeError, KeyError) as exc:
+            raise ToolFailure(f'SureChEMBL 检索失败：{exc}；可设 surechembl=false。') from None
+        sc['source'] = {k: v for k, v in sc['source'].items() if k != 'cache_hit'}
+        data['surechembl'] = sc
+    n, sc = data['chembl'], data['surechembl']
     summary = (f"本地命中 {local['total']} 个" + ('' if n is None else
-               f"；ChEMBL 命中 {n['total']} 个（本页 {len(n['rows'])} 个{'，已截断' if n['truncated'] else ''}）"))
-    return envelope(summary + '。', data, (n['rows'] if n else local['rows'])[:PREVIEW])
+               f"；ChEMBL 命中 {n['total']} 个（本页 {len(n['rows'])} 个{'，已截断' if n['truncated'] else ''}）")
+               + ('' if sc is None else
+                  f"；SureChEMBL 命中 {sc['total']} 个（本页保留 {len(sc['rows'])} 个{'，已截断' if sc['truncated'] else ''}）"))
+    rows = (n['rows'] if n else []) + (sc['rows'] if sc else []) or local['rows']
+    return envelope(summary + '。', data, rows[:PREVIEW])
+
+
+@tool('sources', open_world=True)
+def surechembl_patents(ctx, compound: str):
+    """列出 SureChEMBL 在哪些专利中提取到某个化合物（前 20 份，附总数）。
+
+    需要知道某个 SureChEMBL 命中出现在哪些专利时调用；compound 为 SCHEMBL 编号（如 SCHEMBL1353），
+    通常来自 structure_search 的 SureChEMBL 命中。
+    结果说明该结构出现在专利文本或图像中，不说明是实施例、被权利要求覆盖或经过测试；
+    公开号需用 patent_fetch 读取原始专利页面核实。引用时保留 SCHEMBL 编号并注明 SureChEMBL（CC BY 4.0）。
+    """
+    from phase0.sar.discovery import surechembl_documents
+    try:
+        r = surechembl_documents({'id': compound}, ctx.cache_dir / 'discovery-cache')
+    except (ValueError, RuntimeError) as exc:
+        raise ToolFailure(str(exc)) from None
+    sources = [{k: v for k, v in x.items() if k != 'cache_hit'} for x in r['sources']]
+    data = {k: r[k] for k in ('id', 'total', 'truncated', 'patents', 'notice', 'attribution')} | {'sources': sources}
+    return envelope(f"{r['id']}：出现在 {r['total']} 份专利中（本页 {len(r['patents'])} 份）。", data,
+                    r['patents'][:PREVIEW])

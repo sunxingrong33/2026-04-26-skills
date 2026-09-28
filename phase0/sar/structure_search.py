@@ -175,19 +175,49 @@ def chembl_search(q, query_mol, cache, fetch, limit=20):
                'standard_inchi_key': structures.get('standard_inchi_key'), 'max_phase': r.get('max_phase')}
         if q['method'] == 'similarity':
             row['chembl_similarity'] = _number(r.get('similarity'))
-        if target is None:
-            row['local_check'] = {'status': 'no_structure', 'note': 'ChEMBL 未返回可解析结构，无法本地复核'}
-        else:
-            hit, detail = match(query_mol, target, q['method'], q['threshold'] or DEFAULT_THRESHOLD)
-            row['local_check'] = {'status': 'agrees' if hit else 'disagrees', **detail,
-                                  'note': '本地 RDKit 复核一致' if hit else
-                                  ('本地指纹相似度低于阈值（两边指纹算法不同）' if q['method'] == 'similarity'
-                                   else '本地未复现该子结构匹配，请核对')}
+        row['local_check'] = recheck(q, query_mol, target, 'ChEMBL')
         rows.append(row)
     meta = payload.get('page_meta') or {}
     total = meta.get('total_count')
     return {'total': total, 'truncated': bool(meta.get('next')) or (isinstance(total, int) and total > len(rows)),
             'rows': rows, 'source': source}
+
+
+def recheck(q, query_mol, target, source):
+    """Reproduce a remote hit with RDKit; a hit that cannot be reproduced is flagged, never dropped."""
+    if target is None:
+        return {'status': 'no_structure', 'note': f'{source} 未返回可解析结构，无法本地复核'}
+    hit, detail = match(query_mol, target, q['method'], q['threshold'] or DEFAULT_THRESHOLD)
+    note = ('本地 RDKit 复核一致' if hit else
+            '本地指纹相似度低于阈值（两边指纹算法不同）' if q['method'] == 'similarity' else
+            '本地未复现该精确匹配（可能是立体或互变异构差异），请核对' if q['method'] == 'exact' else
+            '本地未复现该子结构匹配，请核对')
+    return {'status': 'agrees' if hit else 'disagrees', **detail, 'note': note}
+
+
+def surechembl_search(q, query_mol, cache, limit=20):
+    """SureChEMBL structure search (patent chemistry), each hit re-checked locally.
+
+    SureChEMBL applies its own similarity cut-off and returns hits in server order, so
+    similarity hits below the requested threshold are dropped and the rest sorted by score."""
+    from . import surechembl
+    payload, source = surechembl.search(q['searched_smiles'], q['method'], cache, limit)
+    rows, below = [], 0
+    for r in payload['records']:
+        row = surechembl.compound_row(r)
+        score = row['surechembl_similarity']
+        if q['method'] == 'similarity' and score is not None and score * 100 < q['threshold']:
+            below += 1
+            continue
+        row['local_check'] = recheck(q, query_mol, prepared(row['smiles'], q['method'], q['standardize']),
+                                     'SureChEMBL')
+        rows.append(row)
+    if q['method'] == 'similarity':
+        rows.sort(key=lambda r: -(r['surechembl_similarity'] or 0))
+    total = payload['total']
+    return {'total': total, 'truncated': total > len(payload['records']), 'capped': total >= surechembl.CAP,
+            'below_threshold': below, 'rows': rows, 'source': source,
+            'notice': surechembl.NOTICE, 'attribution': surechembl.ATTRIBUTION}
 
 
 def _number(value):

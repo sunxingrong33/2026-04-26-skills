@@ -90,6 +90,7 @@ def discover(request, cache):
         result['notice'] = (ss.NOTICE[q['method']] + ' ChEMBL 精确检索按标准 InChIKey；相似性与子结构检索使用 ChEMBL 自身的算法，命中后用本地 RDKit 复核。'
                             + ss.ZERO_HITS)
         result['molecules'] = []
+        result['surechembl'] = surechembl_part(request, q, query_mol, cache)
         if request.get('external', False) is not True:
             result['external_status'] = 'not_requested'
             return result
@@ -106,6 +107,8 @@ def discover(request, cache):
             return result
         endpoint = 'molecule'
         params = {'molecule_structures__standard_inchi_key': result['structure']['inchikey'], 'limit': LIMIT}
+    elif mode == 'surechembl_documents':
+        return surechembl_documents(request, cache)
     elif mode == 'target':
         query = request.get('query')
         if not isinstance(query, str) or not query.strip() or len(query) > 120:
@@ -147,6 +150,34 @@ def discover(request, cache):
         result['external_status'] = 'failed'
         result['warning'] = 'ChEMBL 查询失败；以下仅为本地结构解析及本地证据匹配，不代表数据库无结果。'
     return result
+
+
+def surechembl_part(request, q, query_mol, cache):
+    """Optional SureChEMBL structure search; a failure never hides the local results."""
+    from . import structure_search as ss
+    if request.get('surechembl', False) is not True:
+        return {'status': 'not_requested'}
+    try:
+        page = ss.surechembl_search(q, query_mol, Path(cache) / 'surechembl', LIMIT)
+    except Exception:
+        return {'status': 'failed',
+                'warning': 'SureChEMBL 检索失败或超时；以下仅为其他来源结果，不代表 SureChEMBL 无结果。'}
+    return {'status': 'ok', **page}
+
+
+def surechembl_documents(request, cache):
+    """Patents SureChEMBL found one compound in; publication numbers still need checking."""
+    from . import surechembl
+    n = surechembl.schembl_id(request.get('id'))
+    try:
+        payload, source = surechembl.documents(n, Path(cache) / 'surechembl', LIMIT)
+    except Exception:
+        raise RuntimeError('SureChEMBL 暂不可用或响应无法解析，请稍后重试；未返回样例结果。') from None
+    rows = [surechembl.document_row(d) for d in payload['documents']]
+    return {'mode': 'surechembl_documents', 'id': f'SCHEMBL{n}', 'sources': [source],
+            'total': payload['total'], 'truncated': payload['total'] > len(rows), 'patents': rows,
+            'notice': surechembl.NOTICE + ' 专利公开号需加载原始专利页面核实。' + surechembl.ATTRIBUTION,
+            'attribution': surechembl.ATTRIBUTION}
 
 
 def discover_documents(request, cache):

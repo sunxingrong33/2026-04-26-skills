@@ -6,7 +6,8 @@ Uses a fresh cache and a fresh ledger built from committed evidence, then goes
 through the path a user or agent would: read two patents from Google Patents,
 look up the target in ChEMBL, read one page of its measurements, add that page
 and one patent index to the ledger (proposed only), run a similarity and a
-substructure search in ChEMBL, and replay the whole run with the network
+substructure search in ChEMBL, a SureChEMBL similarity search and the patents
+of its top hit, and replay the whole run with the network
 blocked. Writes ``report.md`` and ``report.json`` to the output
 directory and exits non-zero when any check fails.
 
@@ -119,6 +120,31 @@ def check_structure(checks, run):
         checks.add(name, status, detail)
 
 
+def check_surechembl(checks, run, publications):
+    name = '结构检索（SureChEMBL）'
+    r = checks.step(name, lambda: run.call('structure_search', {'smiles': LORLATINIB, 'method': 'similarity',
+                                                                 'threshold': 70, 'external': False,
+                                                                 'surechembl': True}))
+    if r is None:
+        return
+    rows = r['data']['surechembl']['rows']
+    same = next((x for x in rows if x['local_check'].get('similarity') == 1.0), None)
+    disagree = [x['schembl_id'] for x in rows if x['local_check']['status'] != 'agrees']
+    checks.add(name, 'fail' if not rows else 'pass' if same and not disagree else 'warn',
+               f"{r['summary']} 本地复核不一致 {len(disagree)} 个；" +
+               (f"查询分子本身为 {same['schembl_id']}" if same else '未命中查询分子本身'))
+    if same is None:
+        return
+    name = 'SureChEMBL 专利关联'
+    p = checks.step(name, lambda: run.call('surechembl_patents', {'compound': same['schembl_id']}))
+    if p is None:
+        return
+    found = sorted({x['publication'] for x in p['data']['patents']} & set(publications))
+    checks.add(name, 'pass' if found else 'warn',
+               p['summary'] + (f" 前 {len(p['data']['patents'])} 份中含已整理专利 {found}" if found else
+                               ' 前 20 份中不含已整理的两份专利（可能在后续页，或未被提取）'))
+
+
 def _record_ids(db):
     led = LedgerStore(db).load()
     return {(kind, r.id): r.review.record_status
@@ -178,6 +204,7 @@ def verify(out, publications=PUBLICATIONS):
     if activity_ids:
         check_intake(checks, run, db, activity_ids, publications[-1])
     check_structure(checks, run)
+    check_surechembl(checks, run, publications)
     earlier_failed = any(c['status'] == 'fail' for c in checks.items)
     result = checks.step('断网重放', lambda: replay(run.dir))
     if result is not None:

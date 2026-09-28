@@ -27,7 +27,8 @@ python -m phase0.tools.verify_online                                        # �
 | | `chem_compare_observations` | ✓ | | 两个分子逐实验可比性检查 / 骨架对齐 |
 | sources | `patent_fetch` | ✓ | ✓ | 专利元数据、实施例标题、化学实体索引、已整理证据卡 |
 | | `chembl_activities` | ✓ | ✓ | ChEMBL 一页测量记录 |
-| | `structure_search` | ✓ | ✓ | 精确 / 相似性 / 子结构检索本地证据台账与 ChEMBL（`external=false` 时只查本地）；ChEMBL 命中经本地 RDKit 复核，标准化步骤写入结果 |
+| | `structure_search` | ✓ | ✓ | 精确 / 相似性 / 子结构检索本地证据台账、ChEMBL（`external`）与 SureChEMBL（`surechembl`）；远程命中经本地 RDKit 复核，标准化步骤写入结果 |
+| | `surechembl_patents` | ✓ | ✓ | 某个 SureChEMBL 化合物出现在哪些专利中（前 20 份与总数）；公开号需再用 `patent_fetch` 核实 |
 
 每个工具返回 `{summary, data, preview}`：`summary` 一两句话，`data` 完整结果，`preview` 前几条供快速判断。
 
@@ -89,14 +90,15 @@ Claude Agent SDK 使用同样的 stdio 服务配置，具体写法见其文档�
 3. `chembl_activities` 读取一页测量，统计限定符与无数值记录（原样保留）；
 4. `ledger_propose_chembl_activities` 提交整页，核对“新增 + 拒绝 + 已存在”等于请求数，列出拒绝原因；再提交一次，核对无新增；
 5. `ledger_propose_patent_index` 提交一份专利索引；核对所有新增记录均为 `proposed`；
-6. `structure_search`：以洛拉替尼（WO2013132376A1 Example 2）做相似性检索、以两个 ALK 家族共有的氨基吡啶苄醚片段做子结构检索，记录命中数、是否截断、本地复核不一致的记录，以及相似性检索是否命中查询分子本身；
+6. `structure_search`：以洛拉替尼（WO2013132376A1 Example 2）做相似性检索、以两个 ALK 家族共有的氨基吡啶苄醚片段做子结构检索，记录命中数、是否截断、本地复核不一致的记录，以及相似性检索是否命中查询分子本身；再在 SureChEMBL 中做洛拉替尼相似性检索，并对命中的查询分子本身调用 `surechembl_patents`，核对前 20 份专利中是否含已整理的两份专利；
 7. 断网重放整个运行，逐条比对。
 
 结果分为通过 / 注意 / 失败。**注意不是失败**：例如专利页面哈希与已整理证据包不一致时，证据卡按设计暂停使用，报告提示需要重新核对映射。任一检查失败时退出码非零。脚本本身由 `test_verify_online.py` 以模拟网络响应测试；真实运行结果补入 `docs/baseline.md`。
 
 ## 尚未完成
 
-- 计划中的 SureChEMBL 与 PDF（页面分区、结构图识别、表格抽取）工具，属于 I3 分级抽取。
+- 计划中的 PDF（页面分区、结构图识别、表格抽取）工具，属于 I3 分级抽取。
+- SureChEMBL 接口行为依据第三方实测记录（见 `docs/surechembl-access.md`），本项目尚未实连。
 - 编排者、审查 agent 等（I6）；本层只提供工具，不包含 agent 本身。
 - 尚未用真实模型端到端运行过 agent；目前的验证覆盖工具、MCP 协议与重放。
 - 在线路径核对脚本尚未在可联网环境中运行。

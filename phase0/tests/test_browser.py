@@ -252,3 +252,30 @@ def test_similarity_search_shows_ranked_local_hits_and_flags_chembl_disagreement
     checks = page.eval_on_selector_all('.chembl-hit', 'n => n.map(x => x.dataset.localCheck)')
     assert checks == ['agrees', 'disagrees']
     assert page.errors == []
+
+
+def test_surechembl_hits_lead_to_patent_loading(app, page, monkeypatch):
+    from phase0.sar import surechembl
+    from phase0.tests.test_surechembl import Server
+    monkeypatch.setattr(surechembl, 'urlopen', Server())
+    monkeypatch.setattr(surechembl, 'SLEEP', lambda seconds: None)
+    base, _, _ = app
+    page.goto(base + '/')
+    page.select_option('#input-mode', 'smiles')
+    page.select_option('#search-method', 'similarity')
+    page.check('#surechembl-search')
+    page.fill('#publication', LORLATINIB)
+    page.click('#submit')
+    wait_status(page, '检索完成')
+    section = page.text_content('.surechembl')
+    assert 'SureChEMBL 专利化学命中 · 共 4 个' in section and 'CC BY 4.0' in section
+    assert '1 个命中的 SureChEMBL 相似度低于所选阈值' in section
+    checks = page.eval_on_selector_all('.surechembl-hit', 'n => n.map(x => x.dataset.localCheck)')
+    assert checks == ['agrees', 'agrees', 'disagrees']
+
+    page.locator('.surechembl-hit').first.get_by_role('button', name='查看含此化合物的专利').click()
+    wait_status(page, '检索完成')
+    assert 'SureChEMBL 专利 · SCHEMBL200' in page.text_content('#discovery-content')
+    page.get_by_role('button', name='核实并加载专利 WO2013132376A1').click()
+    page.wait_for_selector('#evidence-cards .mass', timeout=15000)  # the curated patent opens with its cards
+    assert page.errors == []

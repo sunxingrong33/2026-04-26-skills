@@ -164,6 +164,9 @@ def _offline(*args, **kwargs):
     raise URLError('重放时禁止联网')
 
 
+NETWORK = ('phase0.sar.discovery.urlopen', 'phase0.sar.patents.urlopen', 'phase0.sar.surechembl.urlopen')
+
+
 def replay(run_dir, allow_network=False):
     """Re-execute a recorded run against its starting snapshot and compare every result hash."""
     run_dir = Path(run_dir)
@@ -173,7 +176,7 @@ def replay(run_dir, allow_network=False):
               'network_blocked': not allow_network}
     with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
         if not allow_network:
-            for target in ('phase0.sar.discovery.urlopen', 'phase0.sar.patents.urlopen'):
+            for target in NETWORK:
                 stack.enter_context(mock.patch(target, _offline))
         db = None
         if meta['snapshot']:

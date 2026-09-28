@@ -9,12 +9,12 @@ function updateInputMode(){
   $('publication').placeholder=mode==='smiles'?'粘贴完整 SMILES':mode==='target'?'例如 ALK、EGFR 或 CHEMBL4247':'例如 WO2013132376A1';
   $('submit').textContent=mode==='patent'?'检索专利':mode==='smiles'?'检索结构':'检索靶点';
   $('fill').textContent=mode==='patent'?'填入洛拉替尼专利号':mode==='smiles'?'填入洛拉替尼 SMILES':'填入 ALK';
-  $('external-option').classList.toggle('hidden',mode!=='smiles');$('structure-options').classList.toggle('hidden',mode!=='smiles');
+  $('external-option').classList.toggle('hidden',mode!=='smiles');$('structure-options').classList.toggle('hidden',mode!=='smiles');$('surechembl-option').classList.toggle('hidden',mode!=='smiles');
   $('input-hint').textContent=mode==='smiles'?'默认只检索本地证据台账；勾选后同时查询 ChEMBL。':mode==='target'?'查询 ChEMBL；请按物种和靶点类型选择候选。':'输入完整公开号，例如 WO2013132376A1。';
 }
 $('input-mode').onchange=updateInputMode;
 $('fill').onclick=()=>{$('publication').value=$('input-mode').value==='smiles'?exampleSmiles:$('input-mode').value==='target'?'ALK':'WO2013132376A1';$('publication').focus()};
-$('lookup').onsubmit=e=>{e.preventDefault();const mode=$('input-mode').value;if(mode==='patent'){lookup($('publication').value);return}discoveryHistory=[];runDiscovery(mode==='smiles'?{mode,query:$('publication').value,external:$('external-search').checked,...searchOptions()}:{mode,query:$('publication').value})};
+$('lookup').onsubmit=e=>{e.preventDefault();const mode=$('input-mode').value;if(mode==='patent'){lookup($('publication').value);return}discoveryHistory=[];runDiscovery(mode==='smiles'?{mode,query:$('publication').value,external:$('external-search').checked,surechembl:$('surechembl-search').checked,...searchOptions()}:{mode,query:$('publication').value})};
 function searchOptions(){const method=$('search-method').value,o={method,standardize:$('search-standardize').checked};if(method==='similarity')o.threshold=Number($('search-threshold').value);return o}
 $('search-method').onchange=()=>$('threshold-option').classList.toggle('hidden',$('search-method').value!=='similarity');
 const methodNames={exact:'精确',similarity:'相似性',substructure:'子结构'};
@@ -25,7 +25,7 @@ function recordLink(type,id){return link(id||'来源缺失','https://www.ebi.ac.
 async function runDiscovery(request,back=false){
   if(busy)return;
   busy=true;$('submit').disabled=true;$('input-mode').disabled=true;
-  setStatus(request.mode==='smiles'&&!request.external?'正在本地核对结构…':'正在查询 ChEMBL，可能需要约 30 秒…');
+  setStatus(request.surechembl?'正在查询 SureChEMBL（异步检索），可能需要一两分钟…':request.mode==='surechembl_documents'?'正在查询 SureChEMBL 专利…':request.mode==='smiles'&&!request.external?'正在本地核对结构…':'正在查询 ChEMBL，可能需要约 30 秒…');
   $('discovery').classList.remove('hidden');const box=clear('discovery-content');box.append(el('p','正在检索…'));
   try{
     const response=await fetch('/api/discover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
@@ -37,7 +37,7 @@ async function runDiscovery(request,back=false){
 }
 function drawDiscovery(d,request){
   const box=clear('discovery-content');
-  box.append(el('h2',d.mode==='documents'?'来源文档与专利候选':d.mode==='target'?'选择靶点':d.mode==='smiles'?'结构检索结果':'测量与来源 · '+d.id),el('p',d.notice,'note'));
+  box.append(el('h2',d.mode==='surechembl_documents'?'SureChEMBL 专利 · '+d.id:d.mode==='documents'?'来源文档与专利候选':d.mode==='target'?'选择靶点':d.mode==='smiles'?'结构检索结果':'测量与来源 · '+d.id),el('p',d.notice,'note'));
   if(discoveryHistory.length>1)box.append(action('← 返回上一组结果',()=>{discoveryHistory.pop();runDiscovery(discoveryHistory[discoveryHistory.length-1],true)}));
   if(d.warning)box.append(el('p',d.warning,'error'));
   if(d.structure){
@@ -72,6 +72,8 @@ function drawDiscovery(d,request){
       if(m.canonical_smiles)c.append(el('pre',m.canonical_smiles));
       c.append(action('查看此分子的测量与靶点',()=>runDiscovery({mode:'activities',entity:'molecule',id:m.molecule_chembl_id,offset:0})));box.append(c)});
   }
+  if(d.surechembl)drawSureChEMBL(box,d,request);
+  if(d.patents)drawSureChEMBLPatents(box,d);
   if(d.documents)drawDocuments(box,d,request);
   if(d.activities){
     box.append(el('p','第 '+(d.activities.length?d.offset+1:0)+'–'+(d.offset+d.activities.length)+' 条 / '+(d.total??'未知')+' 条；每页最多 20 条。'));
@@ -139,3 +141,20 @@ function drawCandidates(){
   groups.forEach((items,key)=>{const group=el('article',undefined,'panel');group.append(el('h3',key));items.forEach(c=>{const loaded=docs.get(c.publication);group.append(el('p',c.publication+' · '+(loaded?.title||c.title||'标题待核实')+(loaded?' · 优先权 '+(loaded.priority_date||'未知'):'')),action(loaded?'查看已加载专利':'核实并加载专利',()=>openCandidate(c.publication)));c.trails.forEach(t=>drawTrail(group,t))});section.append(group)});
   if(!groups.size)section.append(el('p','尚未从已解析的来源文档中找到有效公开号。'));
 }
+
+function drawSureChEMBL(box,d,request){const S=d.surechembl;
+  if(S.status==='not_requested'){box.append(action('查询 SureChEMBL（专利中的化学结构，发送标准化后的 SMILES）',()=>runDiscovery({...request,surechembl:true})));return}
+  if(S.status==='failed'){box.append(el('p',S.warning,'error'),action('重试 SureChEMBL',()=>runDiscovery(request,true)));return}
+  const sec=el('section',undefined,'surechembl');sec.append(el('h3','SureChEMBL 专利化学命中 · 共 '+S.total+' 个'),el('p',S.notice,'note'),el('p',S.attribution,'muted'));
+  if(S.truncated)sec.append(el('p','仅取前 '+(S.rows.length+S.below_threshold)+' 个'+(S.capped?'（服务端上限 10000，实际命中可能更多）':'')+'；请提高阈值或细化片段。','error'));
+  if(S.below_threshold)sec.append(el('p',S.below_threshold+' 个命中的 SureChEMBL 相似度低于所选阈值，未显示。','muted'));
+  if(!S.rows.length)sec.append(el('p','SureChEMBL 未返回可显示的命中；未命中不代表不存在。'));
+  S.rows.forEach(m=>{const c=el('div',undefined,'panel surechembl-hit');c.dataset.localCheck=m.local_check.status;c.append(el('h3',m.schembl_id+(m.name?' · '+m.name:'')),link('SureChEMBL 化合物页',m.url));
+    if(m.surechembl_similarity!=null)c.append(el('p','SureChEMBL 相似度 '+m.surechembl_similarity+'（SureChEMBL 自身指纹算法）'));
+    const k=m.local_check;c.append(el('p',k.note+(k.similarity!==undefined?'（本地 '+k.similarity.toFixed(3)+'）':''),k.status==='agrees'?'muted':'error'));
+    if(m.smiles)c.append(el('pre',m.smiles));c.append(action('查看含此化合物的专利',()=>runDiscovery({mode:'surechembl_documents',id:m.schembl_id})));sec.append(c)});
+  box.append(sec)}
+function drawSureChEMBLPatents(box,d){box.append(el('p','共 '+d.total+' 份专利'+(d.truncated?'；仅显示前 '+d.patents.length+' 份':'')+'。'));
+  if(!d.patents.length)box.append(el('p','SureChEMBL 未返回专利；未命中不代表不存在。'));
+  d.patents.forEach(p=>{const c=el('div',undefined,'panel surechembl-patent');c.append(el('h3',p.doc_id),el('p',[p.title||'标题缺失',p.publication_date||'日期缺失',p.assignee||'申请人缺失'].join(' · ')),link('SureChEMBL 专利页',p.url));
+    if(p.publication)c.append(action('核实并加载专利 '+p.publication,async()=>{if(await lookup(p.publication)){showTab('evidence');$('evidence').scrollIntoView({behavior:'smooth'})}}));else c.append(el('p','编号无法规范化为公开号，未提供加载。','muted'));box.append(c)})}

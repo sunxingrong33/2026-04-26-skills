@@ -30,7 +30,7 @@ def session(server, fn):
 def test_tool_list_and_annotations(run):
     tools = session(build_server('all', run), lambda c: c.list_tools()).tools
     by_name = {t.name: t for t in tools}
-    assert len(by_name) == 13
+    assert len(by_name) == 14
     assert not any(w in n for n in by_name for w in ('confirm', 'reject', 'review', 'import'))
     assert by_name['ledger_propose'].annotations.read_only_hint is False
     assert by_name['ledger_propose'].annotations.destructive_hint is False
