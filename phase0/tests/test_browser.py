@@ -279,3 +279,25 @@ def test_surechembl_hits_lead_to_patent_loading(app, page, monkeypatch):
     page.get_by_role('button', name='核实并加载专利 WO2013132376A1').click()
     page.wait_for_selector('#evidence-cards .mass', timeout=15000)  # the curated patent opens with its cards
     assert page.errors == []
+
+
+def test_pubchem_links_from_structure_to_curated_patent(app, page, monkeypatch):
+    from phase0.sar import pubchem
+    from phase0.tests.test_pubchem import Server
+    monkeypatch.setattr(pubchem, 'urlopen', Server())
+    base, _, _ = app
+    page.goto(base + '/')
+    page.select_option('#input-mode', 'smiles')
+    page.fill('#publication', LORLATINIB)
+    page.click('#submit')
+    wait_status(page, '检索完成')
+    page.get_by_role('button', name='查询检索结构的 PubChem 专利与文献（发送标准 InChIKey）').click()
+    wait_status(page, '检索完成')
+    text = page.text_content('#discovery-content')
+    assert '关联专利 · 共 28 份（含已整理 WO2011138751A2、WO2013132376A1）' in text
+    assert '关联 PubMed 文献 · 共 3 篇' in text and '不当作相互独立的佐证' in text
+    flags = page.eval_on_selector_all('.pubchem-patent', 'n => n.map(x => x.dataset.curated)')
+    assert flags[:3] == ['true', 'true', 'false'] and len(flags) == 20
+    page.get_by_role('button', name='核实并加载专利 WO2013132376A1').click()
+    page.wait_for_selector('#evidence-cards .mass', timeout=15000)
+    assert page.errors == []

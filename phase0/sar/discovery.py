@@ -109,6 +109,8 @@ def discover(request, cache):
         params = {'molecule_structures__standard_inchi_key': result['structure']['inchikey'], 'limit': LIMIT}
     elif mode == 'surechembl_documents':
         return surechembl_documents(request, cache)
+    elif mode == 'pubchem_xrefs':
+        return pubchem_xrefs(request, cache)
     elif mode == 'target':
         query = request.get('query')
         if not isinstance(query, str) or not query.strip() or len(query) > 120:
@@ -178,6 +180,17 @@ def surechembl_documents(request, cache):
             'total': payload['total'], 'truncated': payload['total'] > len(rows), 'patents': rows,
             'notice': surechembl.NOTICE + ' 专利公开号需加载原始专利页面核实。' + surechembl.ATTRIBUTION,
             'attribution': surechembl.ATTRIBUTION}
+
+
+def pubchem_xrefs(request, cache):
+    """Patents and articles PubChem links to one exact structure (by standard InChIKey)."""
+    from . import pubchem
+    key = pubchem.inchikey(request.get('inchikey'))
+    try:
+        r = pubchem.lookup(key, Path(cache) / 'pubchem', LIMIT, pubchem.curated_publications())
+    except Exception:
+        raise RuntimeError('PubChem 暂不可用或响应无法解析，请稍后重试；未返回样例结果。') from None
+    return {'mode': 'pubchem_xrefs', 'id': key, **r}
 
 
 def discover_documents(request, cache):

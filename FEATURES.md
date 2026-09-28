@@ -4,7 +4,7 @@
 
 图例：✅ 已实现　⚠️ 已实现但有明确限制　⬜ 尚未实现
 
-最近更新（2026-09-28）：R1 收尾与加固（浏览器测试入仓、在线路径核对脚本、证据卡显示质谱校验、`.mcp.json.example`）；I2.6 结构检索入口（本地、ChEMBL 与 SureChEMBL）。
+最近更新（2026-09-28）：R1 收尾与加固（浏览器测试入仓、在线路径核对脚本、证据卡显示质谱校验、`.mcp.json.example`）；I2.6 结构检索入口（本地、ChEMBL、SureChEMBL 与 PubChem 交叉引用）。
 
 **核心原则**：数字只由确定性代码计算；工具与 AI 只能提交“待确认”记录，确认必须由具名的人完成；限定值、缺失值、跨来源数据不强行比较；证据不足时弃答。
 
@@ -16,8 +16,9 @@
 | 1.2 | SMILES 检索 | ✅ | 本地 RDKit 解析、二维结构、描述符；精确检索按标准化结构匹配证据卡，可选 ChEMBL 标准 InChIKey 查询 | `sar/discovery.py`、`web/discovery.js` |
 | 1.3 | 靶点检索 | ✅ | 按名称 / 基因符号 / ChEMBL ID 查询；按物种与类型消歧；测量结果分页（每页 20 条） | `sar/discovery.py` `/api/discover` |
 | 1.4 | 输入限制与失败处理 | ✅ | SMILES ≤ 2000 字符 / 200 原子；候选靶点 ≤ 20；测量最多浏览前 10020 条；在线失败与零命中分开提示 | `sar/discovery.py` |
-| 1.5 | 相似性 / 子结构检索 | ⚠️ | 迭代 I2.6：相似性（Morgan 半径 2、2048 位 Tanimoto，阈值 40–100%，默认 70%）与子结构（≥ 6 个重原子）检索本地证据台账、ChEMBL 与 SureChEMBL；远程命中逐个经本地 RDKit 复核，不一致标红不删除；截断与零命中如实提示；相似度只排序、不作证据。尚未在线实测；PubChem 未接入；命中结构暂无子结构高亮图 |
+| 1.5 | 相似性 / 子结构检索 | ⚠️ | 迭代 I2.6：相似性（Morgan 半径 2、2048 位 Tanimoto，阈值 40–100%，默认 70%）与子结构（≥ 6 个重原子）检索本地证据台账、ChEMBL 与 SureChEMBL；远程命中逐个经本地 RDKit 复核，不一致标红不删除；截断与零命中如实提示；相似度只排序、不作证据。尚未在线实测；命中结构暂无子结构高亮图 |
 | 1.7 | SureChEMBL 专利化学检索 | ⚠️ | 异步检索任务（精确对应 identical、相似性、子结构），每次取前 20 个命中，按所选阈值再过滤并显示过滤数，达到服务端 10,000 上限时提示；命中可查看“出现在哪些专利”，公开号规范化后一键“核实并加载专利”。命中只说明结构由自动标注从专利中提取，不说明是实施例或被权利要求覆盖。数据 CC BY 4.0，页面署名并保留 SCHEMBL 编号。接口行为依据第三方实测记录，**本项目尚未实连**（核实记录见 [docs/surechembl-access.md](docs/surechembl-access.md)） | `sar/surechembl.py` | `sar/structure_search.py` |
+| 1.8 | PubChem 交叉引用 | ⚠️ | 对检索结构、ChEMBL 命中或 SureChEMBL 命中，按标准 InChIKey 查 PubChem 关联专利与 PubMed 文献（各前 20 条附总数）；已整理证据包中的专利排最前并单独列出，公开号可一键“核实并加载专利”。与 SureChEMBL 并列显示、不合并、不当作独立佐证。每次最多 3 个请求。接口未经本项目实连（核实记录见 [docs/pubchem-access.md](docs/pubchem-access.md)） | `sar/pubchem.py` |
 | 1.6 | 结构标准化 | ✅ | 去盐和溶剂、中和、统一互变异构形式（子结构查询不做互变异构）；记录实际改动，互变异构改变立体信息时提示；页面并排显示标准化前后结构，可关闭 | 同上 |
 
 ## 2. 专利解析与来源
@@ -106,7 +107,7 @@
 
 | # | 功能 | 状态 | 说明 | 代码 |
 |---|---|---|---|---|
-| 9.1 | 14 个工具 | ✅ | 台账 7 个（概况、筛选观测、读记录、查格式、三种提交）；化学 3 个（结构性质、质谱校验、可比性检查 / 骨架对齐）；来源 4 个（专利、ChEMBL 测量页、结构检索含 SureChEMBL、SureChEMBL 化合物所在专利）；统一返回“摘要 + 数据 + 预览” | `tools/ledger_tools.py`、`chem_tools.py`、`source_tools.py` |
+| 9.1 | 15 个工具 | ✅ | 台账 7 个（概况、筛选观测、读记录、查格式、三种提交）；化学 3 个（结构性质、质谱校验、可比性检查 / 骨架对齐）；来源 5 个（专利、ChEMBL 测量页、结构检索含 SureChEMBL、SureChEMBL 化合物所在专利、PubChem 交叉引用）；统一返回“摘要 + 数据 + 预览” | `tools/ledger_tools.py`、`chem_tools.py`、`source_tools.py` |
 | 9.2 | 只有提交权 | ✅ | 没有确认、拒绝、导入工具；agent 写入者记为本次运行，理由写入审计日志；试图提交“已确认”记录会被拒绝 | 同上 |
 | 9.3 | 参数严格校验 | ✅ | 调用前按函数签名校验；MCP 发布的参数 schema 不接受额外参数，拼错的参数名直接报错而不是被静默忽略 | `tools/core.py`、`tools/mcp_server.py` |
 | 9.4 | 运行记录与重放 | ✅ | 每次运行保存调用记录（参数、结果哈希）与开始时的台账快照；重放在快照副本上逐条重新执行（含写入）并比对，重放时禁止联网 | `tools/core.py`、`python -m phase0.tools.replay` |
@@ -158,10 +159,10 @@
 | 13.4 | 抽取评测框架 | ✅ | 按字段评测；核心指标为**未标记错误数、编造数值数、可比性误判数**；格式不合规直接报错（`phase0/eval/`） |
 | 13.5 | 金标准 v0 | ⚠️ | 由现有 2 份专利证据包派生（6 个化合物、22 项测量、2 条未测），**待独立复核**；尚无真实抽取器的评测结果 |
 | 13.6 | 回归基线 | ✅ | [docs/baseline.md](docs/baseline.md) 记录每次改动后的测试数与离线验证输出 |
-| 13.7 | 自动化测试 | ✅ | `phase0/tests/` 30 个测试模块、381 项测试（含 6 项浏览器测试，缺少 Playwright 或浏览器时自动跳过），无需联网 |
+| 13.7 | 自动化测试 | ✅ | `phase0/tests/` 31 个测试模块、390 项测试（含 7 项浏览器测试，缺少 Playwright 或浏览器时自动跳过），无需联网 |
 | 13.8 | CI | ✅ | GitHub Actions，Python 3.10 / 3.12：安装 `requirements-agent.txt`，运行 pytest 与离线页面生成；另有可选的浏览器测试任务（`requirements-browser.txt`，失败不阻断） |
 | 13.9 | 浏览器界面自动化测试 | ✅ | `test_browser.py`（Playwright + Chromium，离线夹具）：专利与 ChEMBL 测量“加入台账”、跨家族案例与证据卡质谱校验显示、“未展示原因”、六步工作流主路径（同一替换在两个实验方向相反，候选方向随实验变化）、结构相似性检索（标准化记录、本地命中排序、ChEMBL 截断与复核不一致提示）。其他页面交互仍需人工走查 |
-| 13.10 | 在线路径验证脚本 | ⚠️ | `python -m phase0.tools.verify_online`：全新缓存下检索两份专利、查询 ALK 靶点与一页测量、写入台账（仅 proposed）、重复写入不新增、ChEMBL 相似性与子结构检索、SureChEMBL 相似性检索及首个命中的专利关联、断网重放，输出 `report.md` / `report.json`。已用模拟网络响应测试；**尚未在可联网环境中运行**（本开发环境无法访问 Google Patents / ChEMBL / SureChEMBL） |
+| 13.10 | 在线路径验证脚本 | ⚠️ | `python -m phase0.tools.verify_online`：全新缓存下检索两份专利、查询 ALK 靶点与一页测量、写入台账（仅 proposed）、重复写入不新增、ChEMBL 相似性与子结构检索、SureChEMBL 相似性检索及首个命中的专利关联、PubChem 交叉引用、断网重放，输出 `report.md` / `report.json`。已用模拟网络响应测试；**尚未在可联网环境中运行**（本开发环境无法访问 Google Patents / ChEMBL / SureChEMBL / PubChem） |
 
 ## 14. 本机服务接口
 
@@ -177,7 +178,7 @@
 | GET | `/api/lineage` | 跨家族关联案例（含 `withheld` 未展示原因） |
 | GET | `/api/evidence` | 统一证据台账 |
 | GET | `/api/ledger/status` | 台账数据库是否启用及各类记录复核状态计数 |
-| POST | `/api/discover` | 结构检索（`method`：exact / similarity / substructure，`threshold`、`standardize`、`external`（ChEMBL）、`surechembl`）、SureChEMBL 化合物所在专利（`mode: surechembl_documents`）、靶点、测量与来源文档发现 |
+| POST | `/api/discover` | 结构检索（`method`：exact / similarity / substructure，`threshold`、`standardize`、`external`（ChEMBL）、`surechembl`）、SureChEMBL 化合物所在专利（`mode: surechembl_documents`）、PubChem 交叉引用（`mode: pubchem_xrefs`，`inchikey`）、靶点、测量与来源文档发现 |
 | POST | `/api/compare` | A/B 分子对照 |
 | POST | `/api/programs` | 候选研发程序聚类 |
 | POST | `/api/scaffolds` | 骨架与 R 基团对齐 |

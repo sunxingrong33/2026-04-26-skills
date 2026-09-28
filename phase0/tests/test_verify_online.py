@@ -44,6 +44,9 @@ def run(tmp_path, monkeypatch):
     monkeypatch.setattr(discovery, 'urlopen', fake_urlopen(calls))
     monkeypatch.setattr(surechembl, 'urlopen', Server())
     monkeypatch.setattr(surechembl, 'SLEEP', lambda seconds: None)
+    from phase0.sar import pubchem
+    from phase0.tests.test_pubchem import Server as PubChemServer
+    monkeypatch.setattr(pubchem, 'urlopen', PubChemServer())
     report = verify(tmp_path / 'out', publications=(FIXTURE_ID,))
     return report, {c['check']: c for c in report['checks']}, calls
 
@@ -64,6 +67,8 @@ def test_full_path_passes_with_changed_page_as_warning(tmp_path, monkeypatch):
     assert checks['结构检索（SureChEMBL）']['status'] == 'warn'  # the fake server returns one non-matching hit
     assert '查询分子本身为 SCHEMBL200' in checks['结构检索（SureChEMBL）']['detail']
     assert checks['SureChEMBL 专利关联']['status'] == 'pass'  # WO-2013132376-A1 maps to the curated patent
+    assert checks['PubChem 交叉引用']['status'] == 'pass'
+    assert "含已整理专利 ['WO2013132376A1']" in checks['PubChem 交叉引用']['detail']
     assert checks['断网重放']['status'] == 'pass'
     assert report['verdict'] == '通过（有注意项）'
     assert any('patents.google.com' in u for u in calls) and any('ebi.ac.uk' in u for u in calls)
@@ -80,6 +85,8 @@ def test_unreachable_sources_fail_and_replay_does_not_hide_it(tmp_path, monkeypa
     monkeypatch.setattr(patents, 'urlopen', down)
     monkeypatch.setattr(discovery, 'urlopen', down)
     monkeypatch.setattr(surechembl, 'urlopen', down)
+    from phase0.sar import pubchem
+    monkeypatch.setattr(pubchem, 'urlopen', down)
     report = verify(tmp_path / 'out', publications=(FIXTURE_ID,))
     checks = {c['check']: c for c in report['checks']}
     assert report['verdict'] == '失败'

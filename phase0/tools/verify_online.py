@@ -7,7 +7,7 @@ through the path a user or agent would: read two patents from Google Patents,
 look up the target in ChEMBL, read one page of its measurements, add that page
 and one patent index to the ledger (proposed only), run a similarity and a
 substructure search in ChEMBL, a SureChEMBL similarity search and the patents
-of its top hit, and replay the whole run with the network
+of its top hit, PubChem patent and literature links for lorlatinib, and replay the whole run with the network
 blocked. Writes ``report.md`` and ``report.json`` to the output
 directory and exits non-zero when any check fails.
 
@@ -145,6 +145,18 @@ def check_surechembl(checks, run, publications):
                                ' 前 20 份中不含已整理的两份专利（可能在后续页，或未被提取）'))
 
 
+def check_pubchem(checks, run, publications):
+    from rdkit import Chem
+    name = 'PubChem 交叉引用'
+    key = Chem.MolToInchiKey(Chem.MolFromSmiles(LORLATINIB))
+    r = checks.step(name, lambda: run.call('pubchem_xrefs', {'inchikey': key}))
+    if r is None:
+        return
+    found = sorted(set(r['data']['patents']['curated_matches']) & set(publications))
+    status = 'fail' if not r['data']['cids'] else 'pass' if found else 'warn'
+    checks.add(name, status, r['summary'] + (f" 含已整理专利 {found}" if found else ' 未关联到已整理的专利'))
+
+
 def _record_ids(db):
     led = LedgerStore(db).load()
     return {(kind, r.id): r.review.record_status
@@ -205,6 +217,7 @@ def verify(out, publications=PUBLICATIONS):
         check_intake(checks, run, db, activity_ids, publications[-1])
     check_structure(checks, run)
     check_surechembl(checks, run, publications)
+    check_pubchem(checks, run, publications)
     earlier_failed = any(c['status'] == 'fail' for c in checks.items)
     result = checks.step('断网重放', lambda: replay(run.dir))
     if result is not None:

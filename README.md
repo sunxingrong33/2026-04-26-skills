@@ -34,7 +34,7 @@
 | 候选方向 | 输入结构精确匹配本批 A 后，按具体 assay 和数值方向筛选已有 B；保留相反案例与验证计划，证据不足时弃答 |
 | 类型化证据台账 | 实体与复核状态由数据模型强制；320 条观测无损迁移（还原哈希一致）；SQLite 存储与只追加审计日志；被拒绝记录只退出分析、不删除 |
 | 加入台账 | 专利结构索引与 ChEMBL 测量可写入为待确认；只用服务端读取的数据，无法映射的记录说明原因 |
-| AI agent 工具层 | 14 个 MCP 工具；台账只能查询与提交待确认记录；参数严格校验；每次运行留快照与记录，可逐条重放 |
+| AI agent 工具层 | 15 个 MCP 工具；台账只能查询与提交待确认记录；参数严格校验；每次运行留快照与记录，可逐条重放 |
 | 抽取评测与分级抽取 | 按字段评测，核心指标为未标记错误数；分级抽取控制逻辑（页面分区、逐级调用、冲突保留、置信度）已就绪，真实抽取器尚未接入 |
 
 ## 快速开始
@@ -118,6 +118,8 @@ python -m phase0.tools.verify_online                                         # �
   默认先标准化（去盐和溶剂、中和、统一互变异构形式；子结构查询不做互变异构），页面显示实际做了哪些改动，并可关闭。默认只检索本地证据台账（范围与命中数一并显示）；勾选“同时查询 ChEMBL”或点击结果中的查询按钮后，才向 ChEMBL 发送标准 InChIKey（精确）或标准化后的 SMILES（相似性、子结构）。ChEMBL 命中逐个用本地 RDKit 复核，复现不了的标红提示而不删除；返回被截断时明确提示；未命中不代表不存在。命中分子可继续查看测量、来源文档和专利候选。
 
   勾选“同时查询 SureChEMBL”后，另在 SureChEMBL（专利中自动提取的化学结构）中检索。检索是服务端异步任务，可能需要一两分钟；每次取前 20 个命中，按所选阈值再过滤并显示过滤数量，同样逐个用 RDKit 复核。点“查看含此化合物的专利”可列出它出现在哪些专利中，公开号可一键“核实并加载专利”进入专利工作台。SureChEMBL 命中只说明结构出现在专利文本或图像中，不说明是实施例或被权利要求覆盖；数据为 CC BY 4.0，页面署名并保留 SCHEMBL 编号。接口行为依据第三方实测记录，本项目尚未实连，核实记录见 [docs/surechembl-access.md](docs/surechembl-access.md)。
+
+  检索结构、ChEMBL 命中和 SureChEMBL 命中旁都有“PubChem 专利与文献”按钮：按标准 InChIKey 查 PubChem 登记的关联专利与 PubMed 文献（各前 20 条附总数），已整理证据包中的专利排在最前，公开号可一键核实加载。PubChem 的专利关联与 SureChEMBL 可能同源，两者并列显示、不合并，也不当作相互独立的佐证。每次最多 3 个请求，远低于 PubChem 的限速；接口未经本项目实连，核实记录见 [docs/pubchem-access.md](docs/pubchem-access.md)。
 - **靶点**：输入 `ALK`、`EGFR` 等名称/基因符号，或 `CHEMBL4247` 等 ID，查询 ChEMBL。先选择候选的物种和靶点类型，再查看测量。人源 ALK 另提供已整理双家族案例入口，不代表该靶点的完整专利清单。
 - **测量结果**：每页最多 20 条，按 activity_id 排列，可翻页；保留限定符、缺失值和质量标记，附 activity、assay、document 原始响应链接。可将记录中的 SMILES 再用于本地证据检索。不同协议不自动合并，也不按返回顺序认定药效强弱。
 
@@ -146,7 +148,7 @@ python -m phase0.tools.mcp_server all --ledger-db artifacts/ledger.sqlite  # std
 python -m phase0.tools.replay artifacts/runs/<run_id>                    # 按运行记录重放
 ```
 
-14 个工具覆盖台账查询与提交、结构性质、质谱校验、可比性检查与骨架对齐、专利与 ChEMBL 读取、结构检索（含 SureChEMBL）与 SureChEMBL 化合物所在专利。**没有确认、拒绝、导入工具**；agent 的写入记为本次运行并附依据。参数先按签名校验，拼错的参数名直接报错而不是被静默忽略。每次运行保存开始时的台账快照与调用记录，重放时在快照副本上逐条重新执行（包括写入）并比对结果，禁止联网。尚未用真实模型端到端运行 agent。`structure_search` 与页面结构检索共用同一实现。说明见 [phase0/tools/README.md](phase0/tools/README.md)；MCP 客户端示例配置为 [.mcp.json.example](.mcp.json.example)（默认不启用，需要时复制为 `.mcp.json`）。
+15 个工具覆盖台账查询与提交、结构性质、质谱校验、可比性检查与骨架对齐、专利与 ChEMBL 读取、结构检索（含 SureChEMBL）、SureChEMBL 化合物所在专利与 PubChem 交叉引用。**没有确认、拒绝、导入工具**；agent 的写入记为本次运行并附依据。参数先按签名校验，拼错的参数名直接报错而不是被静默忽略。每次运行保存开始时的台账快照与调用记录，重放时在快照副本上逐条重新执行（包括写入）并比对结果，禁止联网。尚未用真实模型端到端运行 agent。`structure_search` 与页面结构检索共用同一实现。说明见 [phase0/tools/README.md](phase0/tools/README.md)；MCP 客户端示例配置为 [.mcp.json.example](.mcp.json.example)（默认不启用，需要时复制为 `.mcp.json`）。
 
 ## 抽取评测与分级抽取
 
@@ -201,7 +203,7 @@ python -m pytest -q
 python -m phase0.sar.validate
 ```
 
-当前测试套件包含 30 个模块、381 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制、结构检索、在线验证脚本（模拟网络响应）、浏览器主路径，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。
+当前测试套件包含 31 个模块、390 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制、结构检索、在线验证脚本（模拟网络响应）、浏览器主路径，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。
 
 浏览器测试（`phase0/tests/test_browser.py`）用 Playwright 驱动 Chromium，以离线夹具覆盖“加入台账”、跨家族案例与“未展示原因”、证据卡质谱校验显示和六步工作流主路径；需安装 `requirements-browser.txt`，缺少 Playwright 或浏览器时自动跳过（CI 中为可选任务）。其余页面交互仍需人工走查。
 
@@ -211,7 +213,7 @@ python -m phase0.sar.validate
 python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时间>/report.md
 ```
 
-脚本使用全新缓存和临时台账，依次检索两份专利、查询 ALK 靶点及一页测量、写入台账（仅待确认）、重复写入检查、ChEMBL 相似性与子结构检索、SureChEMBL 检索与专利关联、断网重放；任一检查失败时返回非零退出码。尚未在可联网环境中运行过。
+脚本使用全新缓存和临时台账，依次检索两份专利、查询 ALK 靶点及一页测量、写入台账（仅待确认）、重复写入检查、ChEMBL 相似性与子结构检索、SureChEMBL 检索与专利关联、PubChem 交叉引用、断网重放；任一检查失败时返回非零退出码。尚未在可联网环境中运行过。
 
 冻结的 21 条规则未依据留出结果调参。既有诊断中，开发案例生成 8 条候选，目标关键词命中 1/3；独立案例生成 2 条候选，命中 0/2。这是代理指标，不能视为真实召回率。规则分值不是概率，MCS 高亮不是药效团或因果证明，数值关联不能直接证明作者动机。
 
@@ -225,7 +227,7 @@ python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时�
 |---|---|
 | [phase0/sar/serve.py](phase0/sar/serve.py) / [patents.py](phase0/sar/patents.py) | 本机接口、专利检索、来源缓存与解析 |
 | [phase0/sar/patent_evidence.py](phase0/sar/patent_evidence.py) / [lineage.py](phase0/sar/lineage.py) | 证据映射、测量比较与显式跨家族关联 |
-| [phase0/sar/discovery.py](phase0/sar/discovery.py) / [structure_search.py](phase0/sar/structure_search.py) / [surechembl.py](phase0/sar/surechembl.py) / [phase0/web/discovery.js](phase0/web/discovery.js) | SMILES 与靶点入口、结构检索（精确 / 相似性 / 子结构、标准化）、ChEMBL 查询与来源展示 |
+| [phase0/sar/discovery.py](phase0/sar/discovery.py) / [structure_search.py](phase0/sar/structure_search.py) / [surechembl.py](phase0/sar/surechembl.py) / [pubchem.py](phase0/sar/pubchem.py) / [phase0/web/discovery.js](phase0/web/discovery.js) | SMILES 与靶点入口、结构检索（精确 / 相似性 / 子结构、标准化）、ChEMBL 查询与来源展示 |
 | [phase0/sar/evidence_ledger.py](phase0/sar/evidence_ledger.py) / [evidence_pair.py](phase0/sar/evidence_pair.py) / [sar_workflow.py](phase0/sar/sar_workflow.py) | 六步台账、分子对分析、汇总与复核及候选方向 |
 | [phase0/sar/mass_check.py](phase0/sar/mass_check.py) | 质谱报告值与结构比对 |
 | [phase0/ledger](phase0/ledger) | 类型化台账、无损迁移、SQLite 存储与审计、分析读取入口、“加入台账” |
@@ -241,7 +243,7 @@ python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时�
 | [phase0/README.md](phase0/README.md) | 数据导入、CLI、可选模型配置及模块说明 |
 | [FEATURES.md](FEATURES.md) / [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（v1：[docs/iteration-plan.md](docs/iteration-plan.md)） / [docs/baseline.md](docs/baseline.md) | 功能清单、迭代方案与进度、回归基线 |
 
-接下来：在可联网的机器上运行一次在线核对（`python -m phase0.tools.verify_online`）并记录结果；结构检索补 PubChem 交叉引用（SureChEMBL 已接入，待在线实测）；取得专利 PDF 原文与更多金标准标注（ALK 另 3 份专利、礼来 DACRA 3 份专利），接入 PDF 文字提取与开源结构图识别工具，用未标记错误数做第一次真实抽取评测；同时补齐独立化学家复核及跨专利实验可比性证据。扩大外部验证程序集后再评估通用抽取与推断能力；如果依据留出结果修改规则，需要更换验证协议与留出集。
+接下来：在可联网的机器上运行一次在线核对（`python -m phase0.tools.verify_online`）并记录结果；（结构检索的 ChEMBL、SureChEMBL 与 PubChem 部分均已接入，待这次在线核对首次实连）；取得专利 PDF 原文与更多金标准标注（ALK 另 3 份专利、礼来 DACRA 3 份专利），接入 PDF 文字提取与开源结构图识别工具，用未标记错误数做第一次真实抽取评测；同时补齐独立化学家复核及跨专利实验可比性证据。扩大外部验证程序集后再评估通用抽取与推断能力；如果依据留出结果修改规则，需要更换验证协议与留出集。
 
 ## 从检索结果追溯来源文档和专利
 

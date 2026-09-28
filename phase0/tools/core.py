@@ -164,7 +164,8 @@ def _offline(*args, **kwargs):
     raise URLError('重放时禁止联网')
 
 
-NETWORK = ('phase0.sar.discovery.urlopen', 'phase0.sar.patents.urlopen', 'phase0.sar.surechembl.urlopen')
+NETWORK = ('phase0.sar.discovery.urlopen', 'phase0.sar.patents.urlopen', 'phase0.sar.surechembl.urlopen',
+           'phase0.sar.pubchem.urlopen')
 
 
 def replay(run_dir, allow_network=False):

@@ -158,7 +158,9 @@
 
 **SureChEMBL（2026-09-28）**：访问方式与许可已核实并记录（`docs/surechembl-access.md`：公开 REST API、无需 key、无公开配额；数据 CC BY 4.0，需署名并保留 SCHEMBL 编号），决定接入。已完成 `phase0/sar/surechembl.py`（异步检索任务、化合物所在专利、按查询缓存、断网重放）、页面选项与“查看含此化合物的专利 → 核实并加载专利”、MCP 工具 `surechembl_patents`（第 14 个）、在线核对两项；测试 381 项。接口行为依据第三方客户端的实测记录，本环境不可达，**待首次在线核对**。
 
-**待完成**：在可联网本机运行 `phase0.tools.verify_online`（含 ChEMBL 与 SureChEMBL 结构检索）并记录；PubChem 交叉引用；命中结构的子结构高亮图。
+**PubChem（2026-09-28）**：访问方式与使用条款已核实并记录（`docs/pubchem-access.md`：PUG-REST，无需 key，限速 5 次/秒、400 次/分钟；NCBI 不限制使用，提交者可能保有权利，需注明来源）。已完成 `phase0/sar/pubchem.py`（InChIKey → CID → 关联专利与 PubMed 文献，已整理专利排前，按 URL 缓存可重放）、检索结构与各命中旁的入口、MCP 工具 `pubchem_xrefs`（第 15 个）、在线核对一项；测试 390 项。与 SureChEMBL 并列显示、不合并。**待首次在线核对**。
+
+**待完成**：在可联网本机运行 `phase0.tools.verify_online`（含 ChEMBL、SureChEMBL 与 PubChem）并记录；命中结构的子结构高亮图。
 
 ### I4 并行抽取与规模化（约 3 周，I3b 达标后）
 
@@ -226,7 +228,7 @@ v1 第 6 节风险全部沿用，另增：
 
 1. **在线核对**（项目负责人，可联网本机）：运行 `python -m phase0.tools.verify_online`，覆盖两份专利、ALK 靶点测量、加入台账、ChEMBL 相似性与子结构检索、断网重放；把 `report.md` 的结论补入 `docs/baseline.md`。完成后 R1 验收完成，I2.6 的 ChEMBL 部分完成在线验证。
 2. ~~**结构检索补 SureChEMBL**~~（开发，**已完成**，待第 1 项在线核对）：访问方式与许可已核实（`docs/surechembl-access.md`），已接入结构检索与化合物所在专利；在线核对用洛拉替尼相似性检索及其专利关联核对 ALK 案例。核实结果同时供 I3b（L1 结构化来源）使用。
-3. **PubChem 交叉引用**（开发）：对命中分子读取 PubChem 的专利与文献交叉引用，作为补充来源单独标注；与 ChEMBL 结果不合并、不去重为“同一证据”，并进入运行记录与重放。
+3. ~~**PubChem 交叉引用**~~（开发，**已完成**，待第 1 项在线核对）：检索结构与各命中可查 PubChem 关联专利与文献，单独标注，与 SureChEMBL / ChEMBL 不合并；进入运行记录与重放（`docs/pubchem-access.md`）。
 
 **其后（需要项目负责人）**：
 

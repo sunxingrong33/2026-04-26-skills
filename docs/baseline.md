@@ -36,6 +36,8 @@
 >
 > 更新：加入两个离线演示命令 `phase0.tools.demo`、`phase0.extract.demo` 及其冒烟测试（`test_demos`，2 项）后为 **344 passed**。
 >
+> 更新（I2.6 · PubChem）：接入 PubChem 交叉引用（`test_pubchem`，8 项：已整理专利排前、截断与计数、“查不到”缓存可重放、服务繁忙不缓存、只发送标准 InChIKey、断网重放）；浏览器测试增加从检索结构到 PubChem 关联专利再到加载专利的路径（`test_browser` 7 项）；MCP 工具 15 个；在线核对增加一项。合计 **390 passed**。PubChem 在本环境不可达，接口未实连（见 `docs/pubchem-access.md`）。
+>
 > 更新（I2.6 · SureChEMBL）：接入 SureChEMBL 结构检索与化合物所在专利（`test_surechembl`，7 项，以按接口协议模拟的服务端驱动：异步任务、去重、缓存、错误信封、阈值过滤、断网重放）；浏览器测试增加 SureChEMBL 命中到加载专利的路径（`test_browser` 6 项）；MCP 工具 14 个；重放时同时拦截 SureChEMBL 网络。合计 **381 passed**。SureChEMBL 在本环境不可达，接口未实连（见 `docs/surechembl-access.md`）。
 >
 > 更新（I2.6）：结构检索（`test_structure_search`，16 项，含模拟 ChEMBL 响应与断网重放）；浏览器测试增加结构相似性检索（`test_browser` 5 项）；MCP 工具 13 个；在线核对脚本增加结构检索两项。合计 **373 passed**。同时修正测试夹具 `fixtures.py` 中手写的洛拉替尼 SMILES：氟原子画在了错误的环位置（区域异构体，分子式与分子量不变，原核对方法查不出），由精确结构检索发现；修正后与台账中 Example 2 / 8k 的 InChIKey 一致并加测试守护，其余测试结果不变。

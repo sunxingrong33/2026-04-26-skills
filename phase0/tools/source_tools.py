@@ -142,3 +142,23 @@ def surechembl_patents(ctx, compound: str):
     data = {k: r[k] for k in ('id', 'total', 'truncated', 'patents', 'notice', 'attribution')} | {'sources': sources}
     return envelope(f"{r['id']}：出现在 {r['total']} 份专利中（本页 {len(r['patents'])} 份）。", data,
                     r['patents'][:PREVIEW])
+
+
+@tool('sources', open_world=True)
+def pubchem_xrefs(ctx, inchikey: str):
+    """列出 PubChem 中与某个结构（标准 InChIKey 精确匹配）关联的专利与 PubMed 文献（各前 20 条，附总数）。
+
+    需要从一个具体分子找相关专利和文献时调用；InChIKey 可用 chem_describe 得到，或取自 structure_search 命中。
+    关联由提交者登记，不说明是实施例、被权利要求覆盖或经过测试；专利关联与 SureChEMBL 可能同源，不要当作独立佐证。
+    curated_matches 列出已整理证据包中的专利；其余公开号需用 patent_fetch 读取原始页面核实。引用时注明 PubChem 与 CID。
+    """
+    from phase0.sar.discovery import pubchem_xrefs as lookup
+    try:
+        r = lookup({'inchikey': inchikey}, ctx.cache_dir / 'discovery-cache')
+    except (ValueError, RuntimeError) as exc:
+        raise ToolFailure(str(exc)) from None
+    r['sources'] = [{k: v for k, v in x.items() if k != 'cache_hit'} for x in r['sources']]
+    summary = (f"{r['id']}：未找到 PubChem 化合物。" if not r['cids'] else
+               f"CID {', '.join(map(str, r['cids']))}：专利 {r['patents']['total']} 份"
+               f"（已整理 {len(r['patents']['curated_matches'])} 份），PubMed 文献 {r['literature']['total']} 篇。")
+    return envelope(summary, r, r['patents']['rows'][:PREVIEW])
