@@ -1,8 +1,10 @@
 # SAR Atlas 功能清单
 
-项目定位：竞对 SAR（构效关系）证据工作台研究原型。以专利公开号、SMILES 或靶点为入口，展示结构、测量与来源，并严格区分事实、假设与证据缺口。状态说明见 [README](README.md)，迭代进度见 [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（原始方案 v1 见 [docs/iteration-plan.md](docs/iteration-plan.md)），回归基线见 [docs/baseline.md](docs/baseline.md)。
+项目定位：竞对 SAR（构效关系）证据工作台研究原型。以专利公开号、结构（精确 / 相似性 / 子结构检索）或靶点为入口，展示结构、测量与来源，并严格区分事实、假设与证据缺口。状态说明见 [README](README.md)，迭代进度见 [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（原始方案 v1 见 [docs/iteration-plan.md](docs/iteration-plan.md)），回归基线见 [docs/baseline.md](docs/baseline.md)。
 
 图例：✅ 已实现　⚠️ 已实现但有明确限制　⬜ 尚未实现
+
+最近更新（2026-09-28）：R1 收尾与加固（浏览器测试入仓、在线路径核对脚本、证据卡显示质谱校验、`.mcp.json.example`）；I2.6 结构检索入口（ChEMBL 与本地部分）。
 
 **核心原则**：数字只由确定性代码计算；工具与 AI 只能提交“待确认”记录，确认必须由具名的人完成；限定值、缺失值、跨来源数据不强行比较；证据不足时弃答。
 
@@ -110,7 +112,7 @@
 | 9.5 | MCP 服务 | ✅ | ledger / chem / sources / all 四种组合，stdio 启动；测试覆盖进程内与子进程两种连接方式；示例配置 `.mcp.json.example`（默认不启用，测试核对其与命令行参数一致） | `tools/mcp_server.py` |
 | 9.6 | 离线演示 | ✅ | `python -m phase0.tools.demo`：查询、对照、提交、被拒绝的确认、拼错参数、重复记录阻断比值，最后重放 8/8 一致 | `tools/demo.py` |
 | 9.7 | 真实模型端到端运行 | ⬜ | 工具、协议与重放已测试；尚未接入真实模型跑 agent | — |
-| 9.8 | SureChEMBL 与 PDF 工具 | ⬜ | 随第 10 节抽取器一起做 | — |
+| 9.8 | SureChEMBL 与 PDF 工具 | ⬜ | PDF 工具随第 10 节抽取器一起做；SureChEMBL 的结构检索（I2.6）与文档记录（I3b）待核实访问方式与许可后接入 | — |
 
 ## 10. 分级抽取控制（I3）
 
@@ -174,7 +176,7 @@
 | GET | `/api/lineage` | 跨家族关联案例（含 `withheld` 未展示原因） |
 | GET | `/api/evidence` | 统一证据台账 |
 | GET | `/api/ledger/status` | 台账数据库是否启用及各类记录复核状态计数 |
-| POST | `/api/discover` | SMILES / 靶点 / 来源文档发现 |
+| POST | `/api/discover` | 结构检索（`method`：exact / similarity / substructure，`threshold`、`standardize`、`external`）、靶点、测量与来源文档发现 |
 | POST | `/api/compare` | A/B 分子对照 |
 | POST | `/api/programs` | 候选研发程序聚类 |
 | POST | `/api/scaffolds` | 骨架与 R 基团对齐 |
