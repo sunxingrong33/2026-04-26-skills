@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse
 import json
+import os
 import threading
 from rdkit import Chem
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -10,10 +11,12 @@ from .patents import retrieve, normalize_id
 from .report import ROOT, structure_pair
 from .features import FEATURE_LABELS
 from .lineage import build_lineage
-from .discovery import discover
+from .discovery import discover, discover_documents
 from .programs import analyse_programs
 from .scaffolds import align_evidence
-from phase0.ledger.access import analysis_view
+from phase0.ledger.access import ENV as LEDGER_ENV, analysis_view
+from phase0.ledger.intake import from_activities, from_patent
+from phase0.ledger.store import KINDS, LedgerStore
 from .evidence_pair import analyse_pair
 from .sar_workflow import run_workflow
 from .patent_evidence import compare_measurements, provisional_direction
@@ -63,6 +66,8 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == '/examples':
             path = ROOT/'artifacts/sar-explorer.html'
             return self.reply(200, path.read_bytes(), 'text/html; charset=utf-8') if path.exists() else self.reply(404, {'error':'请先运行 python -m phase0.sar.demo'})
+        if url.path == '/api/ledger/status':
+            return self.ledger_status()
         if url.path == '/api/health':
             return self.reply(200, {'service':'SAR patent explorer'})
         if url.path == '/api/lineage':
@@ -101,6 +106,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.analysis_request()
         if self.path == '/api/discover':
             return self.discover_request()
+        if self.path == '/api/ledger/propose':
+            return self.ledger_propose()
         if self.path != '/api/compare':
             return self.reply(404, {'error':'未找到接口。'})
         try:
@@ -212,9 +219,96 @@ class Handler(BaseHTTPRequestHandler):
 
 
 
-def create_server(port=8766, cache=None):
+    def ledger_store(self):
+        path = self.server.ledger_db or os.environ.get(LEDGER_ENV)
+        if not path:
+            return None
+        store = LedgerStore(path)
+        return None if store.is_empty() else store
+
+    def ledger_status(self):
+        store = self.ledger_store()
+        if store is None:
+            return self.reply(200, {'enabled': False,
+                'notice': '未启用台账数据库；用 python -m phase0.sar.serve --ledger-db artifacts/ledger.sqlite 启动。'})
+        ledger = store.load()
+        counts = {k: {} for k in KINDS}
+        for k in KINDS:
+            for r in getattr(ledger, k):
+                counts[k][r.review.record_status] = counts[k].get(r.review.record_status, 0) + 1
+        return self.reply(200, {'enabled': True, 'counts': counts})
+
+    def ledger_propose(self):
+        try:
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 4096:
+                raise ValueError()
+            request = json.loads(self.rfile.read(size))
+            if not isinstance(request, dict) or request.get('source') not in ('patent', 'activities'):
+                raise ValueError()
+        except (ValueError, TypeError):
+            return self.reply(400, {'error': '请求格式无效。'})
+        store = self.ledger_store()
+        if store is None:
+            return self.reply(409, {'error': '未启用台账数据库，未写入任何记录。请用 --ledger-db 启动服务。'})
+        if not self.server.work_lock.acquire(blocking=False):
+            return self.reply(429, {'error': '正在处理另一请求，请稍后重试。'})
+        try:
+            if request['source'] == 'patent':
+                pid = normalize_id(request.get('publication', ''))
+                if pid not in self.server.results:
+                    return self.reply(400, {'error': '请先检索该专利；只写入服务端已读取的结果。'})
+                items, refused = from_patent(self.server.results[pid])
+                present, note = [], {'source': 'patent', 'publication': pid,
+                                     'sha256': self.server.results[pid].get('source_snapshot', {}).get('sha256')}
+            else:
+                wanted = request.get('activity_ids')
+                if not isinstance(wanted, list) or not 1 <= len(wanted) <= 20:
+                    raise ValueError('请选择 1–20 条测量。')
+                wanted = {str(x) for x in wanted}
+                query = {k: request.get(k) for k in ('entity', 'id', 'offset')}
+                cache = self.server.cache.parent / 'discovery-cache'
+                page = discover({**query, 'mode': 'activities'}, cache)
+                chosen = [a for a in page['activities'] if str(a.get('activity_id')) in wanted]
+                missing = wanted - {str(a.get('activity_id')) for a in chosen}
+                docs = discover_documents(query, cache)['documents'] if chosen else []
+                items, refused, present = from_activities(
+                    chosen, {d['id']: d['document'] for d in docs if d.get('document')}, store.load())
+                refused += [{'id': x, 'reason': '不在服务端读取的该页结果中'} for x in sorted(missing)]
+                note = {'source': 'chembl_activities', **query, 'sources': [x['sha256'] for x in page['sources']]}
+            result = store.propose_batch(items, 'workbench', note=json.dumps(note, ensure_ascii=False))
+            added, present_counts = {}, {}
+            for kind, _ in result['added']:
+                added[kind] = added.get(kind, 0) + 1
+            for kind, _ in result['already_present']:
+                present_counts[kind] = present_counts.get(kind, 0) + 1
+            if present:
+                present_counts['observations'] = present_counts.get('observations', 0) + len(present)
+            notice = '状态均为待确认；确认或拒绝须经人工复核。'
+            if request['source'] == 'patent':
+                notice += '结构索引条目未映射实施例、尚无测量，不会出现在分析视图中。'
+            else:
+                notice += '测量已进入证据台账页（带待复核缺口），可比性仍按原规则判断。'
+            self.reply(200, {
+                'added': added,
+                'already_present': sorted(set(present) | {i for k, i in result['already_present'] if k == 'observations'}),
+                'already_present_counts': present_counts,
+                'refused': refused,
+                'notice': notice})
+        except ValueError as exc:
+            self.reply(400, {'error': str(exc) or '请求内容无效。'})
+        except PermissionError as exc:
+            self.reply(403, {'error': str(exc)})
+        except Exception:
+            self.reply(502, {'error': '写入台账失败，未写入部分记录。'})
+        finally:
+            self.server.work_lock.release()
+
+
+def create_server(port=8766, cache=None, ledger_db=None):
     server = ThreadingHTTPServer(('127.0.0.1',port),Handler)
     server.cache = cache or ROOT/'artifacts/patent-cache'
+    server.ledger_db = ledger_db
     server.work_lock = threading.Lock()
     server.results = {}
     return server
@@ -223,8 +317,16 @@ def create_server(port=8766, cache=None):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8766)
+    parser.add_argument('--ledger-db',help='启用 SQLite 台账（空库时从已提交数据初始化）；分析也改为读取该库')
     args=parser.parse_args()
-    server=create_server(args.port)
+    if args.ledger_db:
+        store = LedgerStore(args.ledger_db)
+        if store.is_empty():
+            from phase0.ledger.migrate import build
+            store.import_ledger(build(), 'serve --ledger-db')
+            print(f'已从已提交数据初始化台账：{args.ledger_db}', flush=True)
+        os.environ[LEDGER_ENV] = args.ledger_db
+    server=create_server(args.port, ledger_db=args.ledger_db)
     print(f'Open http://127.0.0.1:{server.server_port}',flush=True)
     try:
         server.serve_forever()

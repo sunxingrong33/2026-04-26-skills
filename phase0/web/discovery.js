@@ -16,6 +16,7 @@ $('input-mode').onchange=updateInputMode;
 $('fill').onclick=()=>{$('publication').value=$('input-mode').value==='smiles'?exampleSmiles:$('input-mode').value==='target'?'ALK':'WO2013132376A1';$('publication').focus()};
 $('lookup').onsubmit=e=>{e.preventDefault();const mode=$('input-mode').value;if(mode==='patent'){lookup($('publication').value);return}discoveryHistory=[];runDiscovery({mode,query:$('publication').value,external:$('external-search').checked})};
 function action(label,fn){const b=el('button',label);b.type='button';b.onclick=fn;return b}
+async function proposeToLedger(payload,button){if(button)button.disabled=true;setStatus('正在写入台账（待确认）…');try{const r=await fetch('/api/ledger/propose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw new Error(d.error||'写入失败');const names={documents:'文档',compounds:'结构',assays:'实验',observations:'测量'};const added=Object.entries(d.added).map(([k,n])=>(names[k]||k)+' '+n).join('、')||'无新增';let text='已加入台账（待确认）：'+added+'。';const present=Object.entries(d.already_present_counts||{}).map(([k,n])=>(names[k]||k)+' '+n).join('、');if(present)text+=' 已在台账中：'+present+'。';if(d.refused.length)text+=' 未写入 '+d.refused.length+' 条：'+d.refused.slice(0,3).map(x=>x.id+' '+x.reason).join('；')+(d.refused.length>3?' …':'')+'。';setStatus(text+' '+d.notice)}catch(e){setStatus(e.message,true)}finally{if(button)button.disabled=false}}
 function recordLink(type,id){return link(id||'来源缺失','https://www.ebi.ac.uk/chembl/api/data/'+type+'/'+encodeURIComponent(id||'')+'.json')}
 async function runDiscovery(request,back=false){
   if(busy)return;
@@ -61,6 +62,7 @@ function drawDiscovery(d,request){
     box.append(el('p','第 '+(d.activities.length?d.offset+1:0)+'–'+(d.offset+d.activities.length)+' 条 / '+(d.total??'未知')+' 条；每页最多 20 条。'));
     if(!d.activities.length)box.append(el('p','未返回测量记录；不代表该对象无活性。'));
     if(d.activities.length)box.append(action('解析本页来源文档与专利候选',()=>runDiscovery({...request,mode:'documents'})));
+    if(d.activities.length){const add=action('将本页测量加入台账（待确认）',()=>proposeToLedger({source:'activities',entity:d.entity,id:d.id,offset:d.offset,activity_ids:d.activities.map(a=>a.activity_id)},add));box.append(document.createTextNode(' '),add)}
     d.activities.forEach(a=>{const c=el('article',undefined,'panel');
       let raw=a.standard_value==null?(a.standard_text_value||'数值未报告'):(a.standard_relation||'限定符未报告')+' '+a.standard_value+' '+(a.standard_units||'单位未报告');
       if(a.standard_upper_value!=null)raw+='；区间上界 '+a.standard_upper_value+' '+(a.standard_units||'');

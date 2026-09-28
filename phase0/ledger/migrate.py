@@ -160,7 +160,7 @@ def to_legacy(ledger):
             row.update(relation=o.relation or '', value=o.value, unit=o.unit or '',
                        quality_flag=o.quality_flag or '')
         if patent:
-            row.update(source_html_sha256=d.source_sha256['html'], source_pdf_sha256=d.source_sha256['pdf'],
+            row.update(source_html_sha256=d.source_sha256.get('html'), source_pdf_sha256=d.source_sha256.get('pdf'),
                        stereochemistry_note=c.stereochemistry_note)
         row['gaps'] = list(o.review.gaps)
         rows.append(row)

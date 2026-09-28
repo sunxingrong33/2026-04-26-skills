@@ -27,6 +27,8 @@
 > 更新：加入质谱分子量校验（`test_mass_check`，13 项）后为 **287 passed**。`python -m phase0.sar.mass_check`：6 个已整理实施例的 LCMS 报告值与转录结构全部一致（整数报告值比单同位素 [M+H]⁺ 低 0.15–0.19 Da，属于低分辨率名义质量）。
 >
 > 更新：加入 SQLite 台账存储与统一读取入口（`test_ledger_store`，12 项）后为 **299 passed**。`/api/evidence` 与配对分析改为经类型化台账读取，输出与原实现逐项一致。
+>
+> 更新：加入“加入台账”入口（`test_ledger_intake`，11 项）后为 **310 passed**。另用 Playwright + 本机 Chromium 离线驱动真实页面（专利夹具页面、模拟 ChEMBL 响应）点击两个入口按钮：写入、重复点击不新增、拒绝原因展示均符合预期，无 JS 错误。该浏览器脚本未纳入仓库测试（Playwright 未加入依赖）。
 
 | 测试模块 | 数量 |
 |---|---:|

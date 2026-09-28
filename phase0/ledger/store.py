@@ -140,6 +140,39 @@ class LedgerStore:
             self._audit(con, actor, 'propose', kind, item.id, None, body, note)
         return item
 
+    def propose_batch(self, items, actor, note=None):
+        """Add several new records atomically; ids already in the store are skipped, not overwritten.
+
+        ``items`` is a list of ``(kind, record)``. The whole ledger is validated once with
+        every addition before anything is written, so a batch lands completely or not at all.
+        """
+        ledger = self.load()
+        existing = {k: {x.id for x in getattr(ledger, k)} for k in KINDS}
+        data = json.loads(ledger.model_dump_json(exclude_unset=True))
+        added, skipped = [], []
+        for kind, record in items:
+            if kind not in KINDS:
+                raise ValueError(f'未知记录类型：{kind}')
+            item = KINDS[kind].model_validate(record)
+            if item.review.record_status != RecordStatus.proposed.value:
+                raise PermissionError('新写入的记录只能是 proposed；确认或拒绝须经人工复核')
+            if item.id in existing[kind]:
+                skipped.append((kind, item.id))
+                continue
+            existing[kind].add(item.id)
+            data[kind].append(json.loads(item.model_dump_json(exclude_unset=True)))
+            added.append((kind, item))
+        Ledger.model_validate(data)
+        with self._connect() as con:
+            for kind, item in added:
+                ord_ = con.execute('SELECT COALESCE(MAX(ord), -1) + 1 FROM records WHERE kind = ?',
+                                   (kind,)).fetchone()[0]
+                body = item.model_dump_json(exclude_unset=True)
+                con.execute('INSERT INTO records (kind, id, ord, record_status, body) VALUES (?, ?, ?, ?, ?)',
+                            (kind, item.id, ord_, item.review.record_status, body))
+                self._audit(con, actor, 'propose', kind, item.id, None, body, note)
+        return {'added': [(k, i.id) for k, i in added], 'already_present': skipped}
+
     def review(self, kind, record_id, status, reviewer, note):
         """Confirm or reject an existing record; a named reviewer and a reason are required."""
         if status not in (RecordStatus.confirmed.value, RecordStatus.rejected.value):
