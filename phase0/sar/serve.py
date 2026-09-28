@@ -55,6 +55,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, (ROOT/'phase0/web/patents.html').read_bytes(), 'text/html; charset=utf-8')
         if url.path == '/programs.js':
             return self.reply(200, (ROOT/'phase0/web/programs.js').read_bytes(), 'text/javascript; charset=utf-8')
+        if url.path == '/project':
+            return self.reply(200, (ROOT/'phase0/web/project.html').read_bytes(), 'text/html; charset=utf-8')
+        if url.path == '/project.js':
+            return self.reply(200, (ROOT/'phase0/web/project.js').read_bytes(), 'text/javascript; charset=utf-8')
         if url.path == '/evidence':
             return self.reply(200, (ROOT/'phase0/web/evidence.html').read_bytes(), 'text/html; charset=utf-8')
         if url.path == '/evidence-workflow.js':
@@ -111,6 +115,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.analysis_request()
         if self.path == '/api/discover':
             return self.discover_request()
+        if self.path == '/api/project-sar':
+            return self.project_sar_request()
         if self.path == '/api/ledger/propose':
             return self.ledger_propose()
         if self.path != '/api/compare':
@@ -154,6 +160,26 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(200,result)
         except (KeyError, IndexError, TypeError, ValueError):
             self.reply(400, {'error':'请选择两项已检索的结构；服务重启后需要重新检索。'})
+
+    def project_sar_request(self):
+        from .project_sar import handle
+        try:
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 32000:
+                raise ValueError('请求大小无效。')
+            request = json.loads(self.rfile.read(size))
+        except ValueError:
+            return self.reply(400, {'error': '请求格式或大小无效。'})
+        if not self.server.work_lock.acquire(blocking=False):
+            return self.reply(429, {'error': '正在处理另一请求，请稍后重试。'})
+        try:
+            self.reply(200, handle(request))
+        except ValueError as exc:
+            self.reply(400, {'error': str(exc)})
+        except Exception:
+            self.reply(422, {'error': '分析未完成，未用默认结果替代。'})
+        finally:
+            self.server.work_lock.release()
 
     def evidence_pair_request(self):
         try:

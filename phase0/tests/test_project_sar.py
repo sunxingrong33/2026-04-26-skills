@@ -1,0 +1,196 @@
+"""Goal-driven multi-property SAR (I2.7 part 1): pairs, mapping, per-assay rules, grades."""
+import json
+import threading
+from types import SimpleNamespace
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
+import pytest
+from rdkit import Chem
+
+from phase0.ledger.migrate import build
+from phase0.sar import project_sar as ps
+from phase0.sar.mmp import H, find_pairs, fragments
+
+LEDGER = build()
+LABEL = {c.id: c.label.split(' ·')[0] for c in LEDGER.compounds}
+N_METHYL = 'C[*:1]>>[H][*:1]'
+
+
+def goal(template='cell_potency_efflux', focus='ALK', **override):
+    s = ps.suggest(LEDGER, template, focus=focus)
+    props = [{'id': p['id'], 'label': p['label'], 'direction': p['direction'],
+              'assay_ids': [h['assay_id'] for h in p['suggested']], 'threshold': p['threshold']}
+             for p in s['properties'] if p['suggested']]
+    for p in props:
+        p.update(override.get(p['id'], {}))
+    return {'label': s['label'], 'properties': props}
+
+
+def pair_row(result, a, b):
+    for t in result['transforms']:
+        for r in t['pairs']:
+            if (LABEL[r['a']], LABEL[r['b']]) == (a, b):
+                return t, r
+    raise AssertionError(f'{a} -> {b} not found')
+
+
+# --- matched pairs -----------------------------------------------------------
+
+def test_pairs_include_hydrogen_replacements_found_by_rdkit():
+    pairs = find_pairs(LEDGER.compounds)
+    named = {(LABEL[p['a']], LABEL[p['b']], f"{p['from']}>>{p['to']}") for p in pairs}
+    assert ('6f', '6e', N_METHYL) in named                      # amide N-methyl removed
+    assert ('Example 7', 'Example 6', N_METHYL) in named        # pyrazole N-methyl removed (early patent)
+    for p in pairs:  # the two structures really differ only by the stated parts
+        a = next(c for c in LEDGER.compounds if c.id == p['a'])
+        b = next(c for c in LEDGER.compounds if c.id == p['b'])
+        assert Chem.MolToInchiKey(Chem.MolFromSmiles(a.smiles)) != Chem.MolToInchiKey(Chem.MolFromSmiles(b.smiles))
+        assert (p['key'], p['from']) in fragments(a.smiles) and (p['key'], p['to']) in fragments(b.smiles)
+
+
+def test_variable_part_limit_and_identical_structures():
+    same = SimpleNamespace(id='x', smiles='c1ccccc1F'), SimpleNamespace(id='y', smiles='Fc1ccccc1')
+    assert find_pairs(same) == []  # same molecule written twice is not a pair
+    fh = SimpleNamespace(id='f', smiles='CCOc1ccc(F)cc1'), SimpleNamespace(id='h', smiles='CCOc1ccccc1')
+    assert [(p['from'], p['to']) for p in find_pairs(fh)] == [('F[*:1]', H)]
+    big = SimpleNamespace(id='big', smiles='c1ccccc1CCCCCCCCCCCC'), SimpleNamespace(id='small', smiles='c1ccccc1C')
+    assert find_pairs(big, max_change=3) == []
+
+
+# --- goal mapping ------------------------------------------------------------
+
+def test_mapping_suggestions_separate_cell_enzyme_efflux_and_skip_ratios():
+    s = ps.suggest(LEDGER, 'cell_potency_efflux', focus='ALK')
+    by = {p['id']: {h['assay_id'] for h in p['suggested']} for p in s['properties']}
+    assert {'CHEMBL3286195:CHEMBL3293163', 'CHEMBL3286195:CHEMBL3293164'} <= by['cell_potency']
+    assert by['efflux'] == {'CHEMBL3286195:CHEMBL3293391', 'CHEMBL3286195:CHEMBL3293392'}
+    assert {'CHEMBL3286195:CHEMBL3293161', 'CHEMBL3286195:CHEMBL3293162'} <= by['enzyme_potency']
+    assert not by['cell_potency'] & by['enzyme_potency']
+    endpoints = {a.id: a.endpoint for a in LEDGER.assays}
+    assert not any('ratio' in endpoints[a].lower() for a in by['cell_potency'] | by['enzyme_potency'])
+    assert 'CHEMBL3286195:CHEMBL3293393' not in by['enzyme_potency']  # TRKB, an off-target
+    assert all(p['threshold']['source'] == ps.PENDING for p in s['properties'])
+    assert 'CHEMBL3286195:CHEMBL3293393' in {u['assay_id'] for u in s['unmapped']}
+
+
+@pytest.mark.parametrize('patch, message', [
+    ({'direction': 'up'}, '方向'),
+    ({'assay_ids': ['nope']}, '实验'),
+    ({'threshold': {'kind': 'fold', 'value': 1.0}}, '倍数阈值'),
+    ({'threshold': {'kind': 'delta', 'value': 0}}, '差值阈值'),
+])
+def test_goal_is_validated(patch, message):
+    g = goal()
+    g['properties'][0].update(patch)
+    with pytest.raises(ValueError, match=message):
+        ps.check_goal(g, LEDGER)
+
+
+# --- the acceptance case: 6f -> 6e -------------------------------------------
+
+def test_6f_to_6e_enzyme_favorable_efflux_unfavorable_cell_missing():
+    r = ps.analyse(LEDGER, goal())
+    t, row = pair_row(r, '6f', '6e')
+    p = row['properties']
+    assert t['transform'] == N_METHYL
+    assert p['enzyme_potency']['result'] == 'favorable'
+    assert p['enzyme_potency']['assays']['CHEMBL3286195:CHEMBL3293161']['ratio_b_over_a'] == 0.1273
+    assert p['efflux']['result'] == 'unfavorable'
+    assert p['efflux']['assays']['CHEMBL3286195:CHEMBL3293391']['ratio_b_over_a'] == 2.2368
+    assert p['logd']['result'] == 'unchanged'
+    assert p['cell_potency']['result'] == 'missing'
+    gap = next(g for g in t['gaps'] if g['a'] == row['a'] and g['property_id'] == 'cell_potency')
+    assert gap['lacking'] == ['A'] and 'CHEMBL3286195:CHEMBL3293163' in gap['assays']
+    assert '默认阈值' in r['notice'] and r['pending_defaults']
+
+
+def test_threshold_decides_unchanged_and_user_value_is_recorded():
+    # efflux B/A = 2.24: past a 2-fold threshold, inside a 3-fold one
+    r = ps.analyse(LEDGER, goal(efflux={'threshold': {'kind': 'fold', 'value': 3.0, 'source': 'user'}}))
+    _, row = pair_row(r, '6f', '6e')
+    assert row['properties']['efflux']['result'] == 'unchanged'
+    assert '外排比' not in r['pending_defaults']
+
+
+def test_other_documents_assays_are_not_counted_as_missing():
+    r = ps.analyse(LEDGER, goal())
+    _, row = pair_row(r, 'Example 7', 'Example 6')
+    assert row['properties']['efflux']['result'] == 'no_assay'
+    assert set(row['properties']['enzyme_potency']['assays']) <= {a.id for a in LEDGER.assays
+                                                                   if a.document_id == 'WO2011138751A2'}
+    cell = row['properties']['cell_potency']
+    assert cell['result'] == 'missing' and all('not_tested' in x['note'] for x in cell['assays'].values())
+
+
+def obs(value, relation='=', unit='nM', status='measured'):
+    return SimpleNamespace(id=f'o{value}', status=status, relation=relation, value=value, unit=unit)
+
+
+PROP = {'direction': 'lower', 'threshold': {'kind': 'fold', 'value': 2.0}}
+
+
+@pytest.mark.parametrize('a, b, status, note', [
+    ([obs(10, '<')], [obs(5)], 'not_comparable', '限定值'),
+    ([obs(10), obs(12)], [obs(5)], 'not_comparable', '重复观测'),
+    ([obs(10)], [obs(5, unit=None)], 'not_comparable', '单位'),
+    ([], [obs(5)], 'missing', 'A在'),
+    ([obs(None, relation=None, unit=None, status='not_tested')], [obs(5)], 'missing', 'not_tested'),
+])
+def test_values_that_are_never_turned_into_numbers(a, b, status, note):
+    r = ps.compare(a, b, PROP)
+    assert r['status'] == status and note in r['note'] and 'ratio_b_over_a' not in r
+
+
+def test_units_are_normalised_and_direction_respected():
+    r = ps.compare([obs(1, unit='uM')], [obs(100)], PROP)
+    assert r['ratio_b_over_a'] == 0.1 and r['outcome'] == 'favorable'
+    r = ps.compare([obs(1, unit='uM')], [obs(100)], {**PROP, 'direction': 'higher'})
+    assert r['outcome'] == 'unfavorable'
+
+
+def test_grades_follow_the_written_rules():
+    def rows(*cells):
+        return [{'document': d, 'properties': {'p': {'result': res}}} for d, res in cells]
+    assert ps.grade(rows(('D1', 'missing')), 'p') == 'none'
+    assert ps.grade(rows(('D1', 'favorable'), ('D1', 'unfavorable')), 'p') == 'conflicting'
+    assert ps.grade(rows(('D1', 'favorable'), ('D2', 'unchanged')), 'p') == 'inconsistent'
+    assert ps.grade(rows(('D1', 'favorable'), ('D2', 'favorable')), 'p') == 'strong'
+    assert ps.grade(rows(('D1', 'favorable'), ('D1', 'favorable')), 'p') == 'moderate'
+    assert ps.grade(rows(('D1', 'favorable')), 'p') == 'weak'
+    assert {g['grade'] for g in ps.analyse(LEDGER, goal())['grade_rules']} == {k for k, _, _ in ps.GRADE_RULES}
+
+
+def test_no_composite_score_anywhere():
+    text = json.dumps(ps.analyse(LEDGER, goal()), ensure_ascii=False)
+    assert 'score' not in text and '综合分' not in text.replace('不合成综合分数', '')
+
+
+# --- API ---------------------------------------------------------------------
+
+def test_http_api_modes_and_validation(tmp_path):
+    from phase0.sar.serve import create_server
+    server = create_server(0, tmp_path)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    url = f'http://127.0.0.1:{server.server_port}/api/project-sar'
+
+    def post(body):
+        return json.load(urlopen(Request(url, data=json.dumps(body).encode(), headers={'Content-Type': 'application/json'})))
+    try:
+        assert 'cell_potency_efflux' in {t['id'] for t in post({'mode': 'templates'})['templates']}
+        s = post({'mode': 'suggest', 'template': 'cell_potency_efflux', 'focus': 'ALK'})
+        assert s['properties'][1]['id'] == 'efflux'
+        r = post({'mode': 'analyse', 'goal': goal(), 'documents': ['CHEMBL3286195'], 'max_change': 12})
+        assert r['scope']['documents'] == ['CHEMBL3286195'] and r['pair_count'] > 0
+        for bad in ({'mode': 'analyse', 'goal': goal(), 'max_change': 99},
+                    {'mode': 'suggest', 'template': 'nope'},
+                    {'mode': 'suggest', 'template': 'cell_potency_efflux', 'documents': ['WO000']},
+                    {'mode': 'other'}):
+            with pytest.raises(HTTPError) as exc:
+                post(bad)
+            assert exc.value.code == 400
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()

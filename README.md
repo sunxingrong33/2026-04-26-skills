@@ -30,6 +30,7 @@
 | 固定文献案例 | 31 个结构的离线页面，含系列浏览、结构与测量对照、来源及验证状态 |
 | 统一证据台账 | 320 条观测保留原值、限定符、实验条件、来源定位和复核缺口；可筛选及下载 |
 | 台账分子对分析 | 论文与专利 A/B 的共同锚点、R 片段与歧义；逐 assay 检查暂定可比性，排除限定、重复、缺失及协议缺证项 |
+| 项目目标与多性质 SAR | 选择项目目标（如改善细胞活性、同时控制外排），确认各性质对应的实验与阈值；在台账中自动找分子对（MMP），按替换并排列出各性质的有利 / 不利 / 未变 / 缺失与证据等级；不合成综合分数 |
 | SAR 批次汇总 | 每批 1–8 个用户所选分子对；按核心、位点、替换方向、文档和实验分组，去重正反向对照，保留未纳入原因 |
 | 证据审查 | 自动规则与人工复核分开；本机追加保存复核人、结论、理由及报告快照 |
 | 候选方向 | 输入结构精确匹配本批 A 后，按具体 assay 和数值方向筛选已有 B；保留相反案例与验证计划，证据不足时弃答 |
@@ -101,6 +102,16 @@ python -m phase0.tools.verify_online                                         # �
 批次保存在页面会话中，刷新会清空；请下载 JSON 留档。人工复核及报告快照保存在 `artifacts/sar-reviews/<report_id>/`，不提交 Git。重新选择同一批证据并汇总可读取对应复核记录；证据变化后不沿用旧记录。最新复核为“拒绝”或“待补证据”时暂停候选输出。
 
 **适用边界**：数值变化不代表统计显著性、单一基团因果效果或真实优化顺序。自动审查不等于化学家复核，人工接受也不清除原始数据缺口。建议仅限本批中与输入 A 精确匹配的已记录 A→B 替换，不外推到任意新骨架或预测未实测 ADMET。当前所有数据仍待独立复核，论文原图/表格定位尚未逐项补齐。
+
+### 项目目标与多性质 SAR（`/project`）
+
+从工作台顶部的“项目目标”或 `/evidence` 页面进入：
+
+1. 选择目标模板（例如“改善细胞活性，同时控制外排”），可填写靶点关键词（如 `ALK`），点“生成实验映射建议”。
+2. 逐项核对每个性质对应的实验、方向（越低越好 / 越高越好 / 仅参考）和阈值。阈值默认活性与比值按 2 倍、LogD 按差值 0.5，标注“默认值，待化学家确认”，修改后记为用户设定。
+3. 点“确认映射并分析”：系统用 MMP 在台账中自动找分子对，每个性质按实验逐项比较（只比同一文档内的实验，限定值、重复、缺失不计算），按替换汇总并给出证据等级，列出目标性质缺失的分子对。
+
+案例：替换 `C[*:1]>>[H][*:1]` 中，6f → 6e 的酶 Ki 有利（B/A 0.127），MDR1 外排比不利（B/A 2.24），LogD 未变，6f 没有细胞 IC50 记录。输出是讨论材料，不是结论；覆盖报告、补测排序和导出属于 I2.7 第二段，尚未实现。
 
 ### 专利检索体验流程
 
@@ -226,7 +237,7 @@ python -m pytest -q
 python -m phase0.sar.validate
 ```
 
-当前测试套件包含 31 个模块、390 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制、结构检索（含 SureChEMBL 与 PubChem 适配器，以模拟服务器测试）、在线验证脚本（模拟网络响应）、浏览器主路径，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。
+当前测试套件包含 33 个模块、417 项测试，无需联网；覆盖证据保留、结构身份校验、测量门控、批次去重、审查快照、候选筛选/弃答、台账无损迁移与写入权限、工具层与 MCP 协议（含子进程方式启动）、运行重放、抽取评测与分级抽取控制、结构检索（含 SureChEMBL 与 PubChem 适配器，以模拟服务器测试）、项目目标与多性质 SAR、在线验证脚本（模拟网络响应）、浏览器主路径，以及既有检索和分析功能。每次改动后的测试数与离线验证输出记录在 [docs/baseline.md](docs/baseline.md)。CI 在 Python 3.10 / 3.12 上安装 `requirements-agent.txt`，运行测试及离线页面生成；本地通过不等同于远端 CI 或科学验收通过。
 
 浏览器测试（`phase0/tests/test_browser.py`）用 Playwright 驱动 Chromium，以离线夹具覆盖“加入台账”、跨家族案例与“未展示原因”、证据卡质谱校验显示、六步工作流主路径、结构相似性检索，以及从 SureChEMBL / PubChem 命中到加载原始专利的路径；需安装 `requirements-browser.txt`，缺少 Playwright 或浏览器时自动跳过（CI 中为可选任务）。其余页面交互仍需人工走查。
 
@@ -251,6 +262,7 @@ python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时�
 | [phase0/sar/serve.py](phase0/sar/serve.py) / [patents.py](phase0/sar/patents.py) | 本机接口、专利检索、来源缓存与解析 |
 | [phase0/sar/patent_evidence.py](phase0/sar/patent_evidence.py) / [lineage.py](phase0/sar/lineage.py) | 证据映射、测量比较与显式跨家族关联 |
 | [phase0/sar/discovery.py](phase0/sar/discovery.py) / [structure_search.py](phase0/sar/structure_search.py) / [surechembl.py](phase0/sar/surechembl.py) / [pubchem.py](phase0/sar/pubchem.py) / [phase0/web/discovery.js](phase0/web/discovery.js) | 结构与靶点入口、结构检索（精确 / 相似性 / 子结构、标准化）、ChEMBL / SureChEMBL / PubChem 查询与来源展示 |
+| [phase0/sar/project_sar.py](phase0/sar/project_sar.py) / [mmp.py](phase0/sar/mmp.py) / [phase0/web/project.html](phase0/web/project.html) | 项目目标、实验映射、自动配对与多性质证据总结 |
 | [phase0/sar/evidence_ledger.py](phase0/sar/evidence_ledger.py) / [evidence_pair.py](phase0/sar/evidence_pair.py) / [sar_workflow.py](phase0/sar/sar_workflow.py) | 六步台账、分子对分析、汇总与复核及候选方向 |
 | [phase0/sar/mass_check.py](phase0/sar/mass_check.py) | 质谱报告值与结构比对 |
 | [phase0/ledger](phase0/ledger) | 类型化台账、无损迁移、SQLite 存储与审计、分析读取入口、“加入台账” |

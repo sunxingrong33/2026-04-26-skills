@@ -301,3 +301,25 @@ def test_pubchem_links_from_structure_to_curated_patent(app, page, monkeypatch):
     page.get_by_role('button', name='核实并加载专利 WO2013132376A1').click()
     page.wait_for_selector('#evidence-cards .mass', timeout=15000)
     assert page.errors == []
+
+
+def test_project_goal_page_shows_multi_property_tradeoff(app, page):
+    base, _, _ = app
+    page.goto(base + '/project')
+    page.wait_for_selector('#template option', state='attached')
+    page.fill('#focus', 'ALK')
+    page.click('#suggest')
+    page.wait_for_selector('.prop[data-id="efflux"]')
+    assert page.locator('.prop[data-id="efflux"] .badge').first.text_content() == '默认值，待化学家确认'
+    page.click('#analyse')
+    card = page.locator('.tf[data-transform="C[*:1]>>[H][*:1]"]')
+    card.wait_for(timeout=20000)
+    grade = {p: card.locator(f'tr[data-property="{p}"] td').last.text_content()
+             for p in ('cell_potency', 'efflux', 'enzyme_potency')}
+    assert grade == {'cell_potency': '无可比数据', 'efflux': '较弱', 'enzyme_potency': '不一致'}
+    card.locator('details summary').last.click()
+    pair = card.locator('[data-pair="6f>6e"]')
+    assert '不利' in pair.locator('[data-property="efflux"]').text_content()
+    assert '有利' in pair.locator('[data-property="enzyme_potency"]').text_content()
+    assert '6f' in card.text_content() and '细胞活性：A 无记录' in card.text_content()
+    assert page.errors == []
