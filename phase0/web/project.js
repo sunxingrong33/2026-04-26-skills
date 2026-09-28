@@ -158,7 +158,7 @@ function drawGroups() {
   const r = lastResult; if (!r) return;
   const bySite = $('group-by').value === 'site';
   const groups = bySite ? r.sites : r.transforms, props = r.goal.properties, box = $('transforms'); box.replaceChildren();
-  if (bySite) box.append(el('p', '位点 = 连接点在不变部分中 ' + r.site_radius + ' 个键以内的化学环境。环境相同即视为同一位置；对称或重复的环境可能把远处不同的位置合在一起，请核对每个分子对的完整不变部分。', 'muted'));
+  if (bySite) box.append(el('p', '位点 = 连接点在不变部分中 ' + r.site_radius + ' 个键以内的化学环境。环境相同即视为同一位置；对称或重复的环境可能把远处不同的位置合在一起，请核对每个分子对的完整不变部分。同一位点下汇总的是不同的替换，“结论矛盾”通常说明不同替换效果不同，而不是数据互相冲突；请展开明细或切回“按替换”查看。', 'muted'));
   if (!groups.length) box.append(el('p', '范围内没有找到分子对。可放宽可变部分的上限或扩大文档范围。'));
   groups.forEach(t => {
     const card = el('article', undefined, 'tf');
