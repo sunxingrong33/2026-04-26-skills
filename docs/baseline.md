@@ -23,6 +23,8 @@
 > 更新：加入类型化台账（`test_ledger_schema`，22 项；新增依赖 pydantic 2.13.5）后为 **260 passed**。离线验证输出不变。
 >
 > 更新：跨专利关系改为数据记录（`test_lineage` 由 11 项增至 25 项）后为 **274 passed**。`/api/lineage` 在原有字段上与改动前逐项一致。
+>
+> 更新：加入质谱分子量校验（`test_mass_check`，13 项）后为 **287 passed**。`python -m phase0.sar.mass_check`：6 个已整理实施例的 LCMS 报告值与转录结构全部一致（整数报告值比单同位素 [M+H]⁺ 低 0.15–0.19 Da，属于低分辨率名义质量）。
 
 | 测试模块 | 数量 |
 |---|---:|
