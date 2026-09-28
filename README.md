@@ -1,8 +1,8 @@
 # SAR Atlas · 专利与文献证据工作台
 
-从专利公开号出发，查看专利家族、优先权日期、实施例和结构；对已整理的分子证据卡，比较结构与原始测量，并回到 PDF 核查。
+从专利公开号、一个结构或一个靶点出发，查看专利家族、优先权日期、实施例和结构；对已整理的分子证据卡，比较结构与原始测量，并回到 PDF 核查。
 
-项目目标是构建“竞对 SAR 演化时间线”：输入化合物、专利号或靶点，输出结构与属性变化，以及有证据支撑的研发问题假说。**当前已提供三类检索入口，以及基于已整理数据的六步 SAR 工作流：证据整理、结构对齐、可比性检查、批次汇总、证据审查和候选方向。在此之上，已建成带审计日志的类型化证据台账、供 AI agent 调用的 MCP 工具层（只能提交待确认记录、每次运行可重放）、按字段统计的抽取评测框架，以及分级抽取的控制逻辑。仍是研究原型。** 真实的专利抽取器、任意专利自动抽取和经过证据确认的历史演化路线尚未实现。
+项目目标是构建“竞对 SAR 演化时间线”：输入化合物、专利号或靶点，输出结构与属性变化，以及有证据支撑的研发问题假说。**当前已提供三类检索入口（其中结构检索支持精确、相似性和子结构三种方式），以及基于已整理数据的六步 SAR 工作流：证据整理、结构对齐、可比性检查、批次汇总、证据审查和候选方向。在此之上，已建成带审计日志的类型化证据台账、供 AI agent 调用的 MCP 工具层（只能提交待确认记录、每次运行可重放）、按字段统计的抽取评测框架，以及分级抽取的控制逻辑。仍是研究原型。** 真实的专利抽取器、任意专利自动抽取和经过证据确认的历史演化路线尚未实现。
 
 核心原则：数字只由确定性代码计算；工具与 AI 只能提交“待确认”记录，确认必须由具名的人完成；限定值、缺失值和跨来源数据不强行比较；证据不足时弃答。完整功能清单见 [FEATURES.md](FEATURES.md)，迭代进度见 [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（原始方案 v1 见 [docs/iteration-plan.md](docs/iteration-plan.md)）。
 
@@ -64,13 +64,15 @@ python -m pip install -r requirements.txt
 python -m phase0.sar.serve --port 8766
 ```
 
-打开 [本机工作台](http://127.0.0.1:8766/)。服务只绑定本机，关闭服务后页面接口不可用。
+看到 `Open http://127.0.0.1:8766` 后打开 [本机工作台](http://127.0.0.1:8766/)（六步工作流在 [/evidence](http://127.0.0.1:8766/evidence)）。服务只绑定本机，运行服务的终端窗口要保持打开；浏览器提示“拒绝连接”（`ERR_CONNECTION_REFUSED`）说明服务没有在运行，或端口不是 8766。
 
 可选：
 
 ```sh
 python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite   # 启用台账数据库与“加入台账”
 python -m pip install -r requirements-agent.txt                              # AI agent 工具层（MCP）依赖
+python -m pip install -r requirements-browser.txt                            # 浏览器测试（Playwright）依赖
+python -m phase0.tools.verify_online                                         # 在可联网的机器上核对在线路径
 ```
 
 ### 六步 SAR 工作流
@@ -111,6 +113,8 @@ python -m pip install -r requirements-agent.txt                              # A
   - **相似性**：Morgan 指纹（半径 2、2048 位）Tanimoto，阈值 40–100%，默认 70%；相似度只用于排序和筛选，不说明活性相近、属于同一研发程序或被某专利覆盖；
   - **子结构**：输入片段 SMILES，至少 6 个重原子，避免命中过多。
 
+  示例（已整理的 ALK 案例）：以洛拉替尼做相似性检索，阈值降到 50% 也只能找到同一篇论文里的类似物，找不回早期无环专利家族（大环化后 Morgan 相似度只有 0.19–0.27）；改用两个家族共有的片段 `Nc1ncccc1OCc1ccccc1` 做子结构检索，两个家族的实施例全部找回。**相似度适合找类似物，找骨架变化较大的跨系列关联时请用子结构检索。**
+
   默认先标准化（去盐和溶剂、中和、统一互变异构形式；子结构查询不做互变异构），页面显示实际做了哪些改动，并可关闭。默认只检索本地证据台账（范围与命中数一并显示）；勾选“同时查询 ChEMBL”或点击结果中的查询按钮后，才向 ChEMBL 发送标准 InChIKey（精确）或标准化后的 SMILES（相似性、子结构）。ChEMBL 命中逐个用本地 RDKit 复核，复现不了的标红提示而不删除；返回被截断时明确提示；未命中不代表不存在。命中分子可继续查看测量、来源文档和专利候选。
 - **靶点**：输入 `ALK`、`EGFR` 等名称/基因符号，或 `CHEMBL4247` 等 ID，查询 ChEMBL。先选择候选的物种和靶点类型，再查看测量。人源 ALK 另提供已整理双家族案例入口，不代表该靶点的完整专利清单。
 - **测量结果**：每页最多 20 条，按 activity_id 排列，可翻页；保留限定符、缺失值和质量标记，附 activity、assay、document 原始响应链接。可将记录中的 SMILES 再用于本地证据检索。不同协议不自动合并，也不按返回顺序认定药效强弱。
@@ -140,7 +144,7 @@ python -m phase0.tools.mcp_server all --ledger-db artifacts/ledger.sqlite  # std
 python -m phase0.tools.replay artifacts/runs/<run_id>                    # 按运行记录重放
 ```
 
-13 个工具覆盖台账查询与提交、结构性质、质谱校验、可比性检查与骨架对齐、专利与 ChEMBL 读取、结构检索。**没有确认、拒绝、导入工具**；agent 的写入记为本次运行并附依据。参数先按签名校验，拼错的参数名直接报错而不是被静默忽略。每次运行保存开始时的台账快照与调用记录，重放时在快照副本上逐条重新执行（包括写入）并比对结果，禁止联网。尚未用真实模型端到端运行 agent。说明及 `.mcp.json` 配置示例见 [phase0/tools/README.md](phase0/tools/README.md)。
+13 个工具覆盖台账查询与提交、结构性质、质谱校验、可比性检查与骨架对齐、专利与 ChEMBL 读取、结构检索。**没有确认、拒绝、导入工具**；agent 的写入记为本次运行并附依据。参数先按签名校验，拼错的参数名直接报错而不是被静默忽略。每次运行保存开始时的台账快照与调用记录，重放时在快照副本上逐条重新执行（包括写入）并比对结果，禁止联网。尚未用真实模型端到端运行 agent。`structure_search` 与页面结构检索共用同一实现。说明见 [phase0/tools/README.md](phase0/tools/README.md)；MCP 客户端示例配置为 [.mcp.json.example](.mcp.json.example)（默认不启用，需要时复制为 `.mcp.json`）。
 
 ## 抽取评测与分级抽取
 
@@ -235,7 +239,7 @@ python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时�
 | [phase0/README.md](phase0/README.md) | 数据导入、CLI、可选模型配置及模块说明 |
 | [FEATURES.md](FEATURES.md) / [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（v1：[docs/iteration-plan.md](docs/iteration-plan.md)） / [docs/baseline.md](docs/baseline.md) | 功能清单、迭代方案与进度、回归基线 |
 
-接下来：取得专利 PDF 原文与更多金标准标注（ALK 另 3 份专利、礼来 DACRA 3 份专利），接入 PDF 文字提取与开源结构图识别工具，用未标记错误数做第一次真实抽取评测；同时补齐独立化学家复核及跨专利实验可比性证据。扩大外部验证程序集后再评估通用抽取与推断能力；如果依据留出结果修改规则，需要更换验证协议与留出集。
+接下来：在可联网的机器上运行一次在线核对（`python -m phase0.tools.verify_online`）并记录结果；结构检索补齐 SureChEMBL（先核实访问方式与许可）与 PubChem 交叉引用；取得专利 PDF 原文与更多金标准标注（ALK 另 3 份专利、礼来 DACRA 3 份专利），接入 PDF 文字提取与开源结构图识别工具，用未标记错误数做第一次真实抽取评测；同时补齐独立化学家复核及跨专利实验可比性证据。扩大外部验证程序集后再评估通用抽取与推断能力；如果依据留出结果修改规则，需要更换验证协议与留出集。
 
 ## 从检索结果追溯来源文档和专利
 
