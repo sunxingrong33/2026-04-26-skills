@@ -255,6 +255,7 @@ python -m phase0.tools.verify_online      # 输出 artifacts/online-check/<时�
 | [phase0/data/curated](phase0/data/curated) | 固定文献结构与测量 |
 | [phase0/tests](phase0/tests) | 自动化回归测试 |
 | [phase0/README.md](phase0/README.md) | 数据导入、CLI、可选模型配置及模块说明 |
+| [docs/demo-scenarios](docs/demo-scenarios) | 给药物化学家的六个演示场景：截图、操作步骤、讲解要点，以及重新截图的脚本 |
 | [FEATURES.md](FEATURES.md) / [docs/iteration-plan_v1.2.md](docs/iteration-plan_v1.2.md)（v1：[docs/iteration-plan.md](docs/iteration-plan.md)） / [docs/baseline.md](docs/baseline.md) | 功能清单、迭代方案与进度、回归基线 |
 
 接下来：在可联网的机器上运行一次在线核对（`python -m phase0.tools.verify_online`）并记录结果；（结构检索的 ChEMBL、SureChEMBL 与 PubChem 部分均已接入，待这次在线核对首次实连）；取得专利 PDF 原文与更多金标准标注（ALK 另 3 份专利、礼来 DACRA 3 份专利），接入 PDF 文字提取与开源结构图识别工具，用未标记错误数做第一次真实抽取评测；同时补齐独立化学家复核及跨专利实验可比性证据。扩大外部验证程序集后再评估通用抽取与推断能力；如果依据留出结果修改规则，需要更换验证协议与留出集。

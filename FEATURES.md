@@ -213,4 +213,5 @@
 | `python -m phase0.tools.replay <运行目录>` | 按运行记录重放 |
 | `python -m phase0.tools.demo` | agent 工具层离线演示 |
 | `python -m phase0.extract.demo` | 分级抽取离线演示 |
+| `python docs/demo-scenarios/capture.py` | 重新生成演示场景截图（离线、真实工作台，需 Playwright） |
 | `python -m phase0.tools.verify_online [--out 目录]` | 在线路径核对（需联网），输出核对报告 |
