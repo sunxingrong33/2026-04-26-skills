@@ -34,6 +34,7 @@ def test_counts_match_the_documented_ledger():
     assert s['compounds'] == 37 and s['observations'] == 320 and s['assays'] == 108
     assert s['observation_status'] == {'measured': 311, 'not_reported': 7, 'not_tested': 2}
     assert s['relations'] == {'=': 285, '<': 26}
+    assert s['document_relations'] == {'related_series': 1}
 
 
 def test_nothing_is_confirmed_and_unannotated_roles_are_gaps():

@@ -16,6 +16,7 @@ python -m phase0.ledger.schema                    # 重新导出 ledger.schema.j
 | `Compound` | 结构、结构来源与编号对应来源（`Location`）、立体说明、原文质谱值；**`role` 必填**：example / intermediate / reference / reagent / unspecified |
 | `Assay` | 台账内编号为 `<文档>:<原 assay 编号>`，不同文档的同名 assay 不合并；终点、协议及定位、单位、协议变体、分级定义 |
 | `Observation` | **`status`**：measured / not_tested / blank / not_reported / not_applicable；限定符原样保留；分级值用 `relation="grade"` 与 `grade`；原始记录 `raw` 原样保存 |
+| `DocumentRelation` | 文档间关系：类型（同族 / 姊妹申请 / 引用 / 发明人重叠 / 相关系列）、可机器核对的展示条件、事实 / 假设 / 缺口分开；见 `phase0/data/relations/README.md` |
 | `Review` | 每条记录都有：`record_status`（proposed / confirmed / rejected）、来源处理状态原文、复核人、显式缺口 |
 
 Emax 等激动剂终点作为独立的 `Assay`（例如 endpoint 为 `Emax`、单位 `%`），不另设字段。
@@ -46,4 +47,3 @@ Emax 等激动剂终点作为独立的 `Assay`（例如 endpoint 为 `Emax`、�
 
 - 存储层（SQLite）与读写接口。
 - 现有分析模块（`evidence_pair`、`sar_workflow` 等）改为读取类型化台账。
-- `lineage.py` 的跨专利关系改为 `Relation` 记录（计划中的下一项）。

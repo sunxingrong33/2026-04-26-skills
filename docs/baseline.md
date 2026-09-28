@@ -21,6 +21,8 @@
 > 更新：加入评测框架（`test_eval_metrics`，22 项）后为 **238 passed**。
 >
 > 更新：加入类型化台账（`test_ledger_schema`，22 项；新增依赖 pydantic 2.13.5）后为 **260 passed**。离线验证输出不变。
+>
+> 更新：跨专利关系改为数据记录（`test_lineage` 由 11 项增至 25 项）后为 **274 passed**。`/api/lineage` 在原有字段上与改动前逐项一致。
 
 | 测试模块 | 数量 |
 |---|---:|

@@ -97,6 +97,17 @@
    "title": "Assay",
    "type": "object"
   },
+  "CheckKind": {
+   "enum": [
+    "family_id",
+    "priority_date",
+    "snapshot_matches_evidence",
+    "has_evidence_cards",
+    "cites"
+   ],
+   "title": "CheckKind",
+   "type": "string"
+  },
   "Compound": {
    "additionalProperties": false,
    "properties": {
@@ -227,6 +238,113 @@
    ],
    "title": "DocumentKind",
    "type": "string"
+  },
+  "DocumentRelation": {
+   "additionalProperties": false,
+   "properties": {
+    "basis": {
+     "description": "全部满足才展示该关系",
+     "items": {
+      "$ref": "#/$defs/RelationCheck"
+     },
+     "minItems": 1,
+     "title": "Basis",
+     "type": "array"
+    },
+    "facts": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Facts",
+     "type": "array"
+    },
+    "from_publication": {
+     "title": "From Publication",
+     "type": "string"
+    },
+    "gaps": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Gaps",
+     "type": "array"
+    },
+    "hypothesis": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "研究假设，不是原文确认的结论",
+     "title": "Hypothesis"
+    },
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "pair": {
+     "anyOf": [
+      {
+       "additionalProperties": {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "预设的 A/B 分子对照",
+     "title": "Pair"
+    },
+    "review": {
+     "$ref": "#/$defs/Review"
+    },
+    "sources": {
+     "items": {
+      "$ref": "#/$defs/RelationSource"
+     },
+     "title": "Sources",
+     "type": "array"
+    },
+    "status": {
+     "description": "对外展示的关系状态，例如 related_series_not_direct_evolution",
+     "title": "Status",
+     "type": "string"
+    },
+    "to_publication": {
+     "title": "To Publication",
+     "type": "string"
+    },
+    "type": {
+     "$ref": "#/$defs/RelationType"
+    }
+   },
+   "required": [
+    "id",
+    "type",
+    "from_publication",
+    "to_publication",
+    "status",
+    "label",
+    "basis",
+    "facts",
+    "gaps",
+    "sources",
+    "review"
+   ],
+   "title": "DocumentRelation",
+   "type": "object"
   },
   "InputFile": {
    "additionalProperties": false,
@@ -468,6 +586,93 @@
    "title": "Relation",
    "type": "string"
   },
+  "RelationCheck": {
+   "additionalProperties": false,
+   "description": "One condition that must hold on the loaded sources before the relation is shown.",
+   "properties": {
+    "check": {
+     "$ref": "#/$defs/CheckKind"
+    },
+    "expected": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "family_id / priority_date / cites 的期望值",
+     "title": "Expected"
+    },
+    "publication": {
+     "title": "Publication",
+     "type": "string"
+    }
+   },
+   "required": [
+    "check",
+    "publication"
+   ],
+   "title": "RelationCheck",
+   "type": "object"
+  },
+  "RelationSource": {
+   "additionalProperties": false,
+   "description": "A fixed URL, or the loaded publication's source page plus an optional fragment.",
+   "properties": {
+    "fragment": {
+     "default": "",
+     "title": "Fragment",
+     "type": "string"
+    },
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "publication": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publication"
+    },
+    "url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Url"
+    }
+   },
+   "required": [
+    "label"
+   ],
+   "title": "RelationSource",
+   "type": "object"
+  },
+  "RelationType": {
+   "enum": [
+    "same_family",
+    "sibling_application",
+    "citation",
+    "inventor_overlap",
+    "related_series"
+   ],
+   "title": "RelationType",
+   "type": "string"
+  },
   "Review": {
    "additionalProperties": false,
    "properties": {
@@ -547,6 +752,13 @@
     "$ref": "#/$defs/Observation"
    },
    "title": "Observations",
+   "type": "array"
+  },
+  "relations": {
+   "items": {
+    "$ref": "#/$defs/DocumentRelation"
+   },
+   "title": "Relations",
    "type": "array"
   },
   "schema_version": {

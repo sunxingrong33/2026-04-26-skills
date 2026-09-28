@@ -2,7 +2,15 @@
 import copy
 import json
 import pytest
-from phase0.sar.lineage import EARLY, LATE, EXPECTED, build_lineage
+from pathlib import Path
+from pydantic import ValidationError
+from phase0.ledger.schema import DocumentRelation, Ledger
+from phase0.sar.lineage import build_lineage, load_relations
+
+RELATION = load_relations()[0]
+EARLY, LATE = RELATION.from_publication, RELATION.to_publication
+_basis = {(c.publication, c.check): c.expected for c in RELATION.basis}
+EXPECTED = {p: (_basis[(p, 'family_id')], _basis[(p, 'priority_date')]) for p in (EARLY, LATE)}
 from phase0.sar.patent_evidence import DATA, attach_evidence, compare_measurements
 
 
@@ -99,3 +107,71 @@ def test_http_lineage_and_cross_comparison_are_scoped_to_loaded_documents(tmp_pa
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def relation(**patch):
+    data = RELATION.model_dump()
+    data.update(patch)
+    return DocumentRelation.model_validate(data)
+
+
+def test_withheld_relation_explains_which_condition_failed():
+    a, b = document(EARLY), document(LATE)
+    b['references'] = []
+    graph = build_lineage([a, b])
+    assert graph['edges'] == []
+    assert graph['withheld'][0]['id'] == RELATION.id
+    assert graph['withheld'][0]['failed'] == [f'{LATE} 的引用列表不含 {EARLY}']
+
+
+def test_unloaded_end_is_neither_shown_nor_listed_as_withheld():
+    graph = build_lineage([document(EARLY)])
+    assert graph['edges'] == [] and graph['withheld'] == []
+
+
+def test_new_relation_needs_only_a_data_record():
+    sibling = relation(id='sibling-demo', type='sibling_application', status='sibling_not_same_priority',
+                       label='姊妹申请示例', hypothesis=None, pair=None,
+                       basis=[{'check': 'has_evidence_cards', 'publication': EARLY},
+                              {'check': 'has_evidence_cards', 'publication': LATE}])
+    graph = build_lineage([document(EARLY), document(LATE)], relations=[sibling])
+    assert [(e['id'], e['type']) for e in graph['edges']] == [('sibling-demo', 'sibling_application')]
+    assert graph['edges'][0]['review_status'] == 'proposed'
+
+
+def test_dynamic_sources_resolve_to_the_loaded_source_page():
+    edge = build_lineage([document(EARLY), document(LATE)])['edges'][0]
+    assert edge['sources'][1]['url'] == f'https://patents.google.com/patent/{LATE}/en#patentCitations'
+
+
+@pytest.mark.parametrize('patch, message', [
+    ({'basis': []}, 'at least 1'),
+    ({'to_publication': EARLY}, '同一文档'),
+    ({'basis': [{'check': 'cites', 'publication': 'US8680111B2', 'expected': EARLY}]}, '两端以外'),
+    ({'basis': [{'check': 'family_id', 'publication': EARLY}]}, 'expected 设置不正确'),
+    ({'basis': [{'check': 'has_evidence_cards', 'publication': EARLY, 'expected': 'x'}]}, 'expected 设置不正确'),
+    ({'basis': [{'check': 'filing_date_same_day', 'publication': EARLY}]}, 'check'),
+    ({'sources': [{'label': 'x', 'url': 'https://example.org', 'publication': EARLY}]}, '只能给出'),
+    ({'type': 'evolution'}, 'type'),
+])
+def test_malformed_relation_records_are_rejected(patch, message):
+    with pytest.raises(ValidationError, match=message):
+        relation(**patch)
+
+
+def test_ledger_rejects_relation_to_unknown_document():
+    from phase0.ledger.migrate import build, dump
+    data = json.loads(dump(build()))
+    assert [r['id'] for r in data['relations']] == [RELATION.id]
+    data['relations'][0]['to_publication'] = 'WO9999999999A1'
+    data['relations'][0]['basis'] = [{'check': 'has_evidence_cards', 'publication': EARLY}]
+    data['relations'][0]['sources'] = []
+    with pytest.raises(ValidationError, match='不存在的文档 WO9999999999A1'):
+        Ledger.model_validate(data)
+
+
+def test_lineage_code_holds_no_publication_numbers():
+    import re
+    from phase0.sar import lineage
+    source = Path(lineage.__file__).read_text(encoding='utf8')
+    assert not re.search(r'\b(WO|US|EP)\d{6,}', source)

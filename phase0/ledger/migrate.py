@@ -16,6 +16,7 @@ from collections import Counter
 from pathlib import Path
 
 from phase0.sar.evidence_ledger import DATA, NOTICE, SCOPE, assemble, build_ledger
+from phase0.sar.lineage import load_relations
 from .schema import (Assay, Compound, CompoundRole, Document, InputFile, Ledger, Location,
                      Observation, ObservationStatus, RecordStatus, Review)
 
@@ -121,7 +122,8 @@ def build(data_dir=DATA):
 
     return Ledger(scope=SCOPE, notice=NOTICE, inputs=[InputFile(**i) for i in legacy['inputs']],
                   documents=list(documents.values()), compounds=list(compounds.values()),
-                  assays=list(assays.values()), observations=observations)
+                  assays=list(assays.values()), observations=observations,
+                  relations=load_relations(data_dir / 'relations') if (data_dir / 'relations').exists() else [])
 
 
 def to_legacy(ledger):
@@ -196,6 +198,7 @@ def summary(ledger):
         'observation_status': dict(Counter(o.status for o in ledger.observations)),
         'relations': dict(Counter(o.relation for o in ledger.observations if o.relation)),
         'record_status': dict(Counter(o.review.record_status for o in ledger.observations)),
+        'document_relations': dict(Counter(r.type for r in ledger.relations)),
     }
 
 

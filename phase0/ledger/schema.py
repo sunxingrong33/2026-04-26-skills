@@ -10,7 +10,9 @@ Contract enforced here rather than by convention:
   never a continuous value;
 * compound role (example / intermediate / reference / reagent) is explicit;
   ``unspecified`` means nobody has annotated it yet and is listed as a gap;
-* every observation resolves to a document, a compound and an assay.
+* every observation resolves to a document, a compound and an assay;
+* a relation between documents is a curated record whose basis is a list of
+  machine-checkable conditions; dates or citations alone never create one.
 
     python -m phase0.ledger.schema            # write ledger.schema.json
     python -m phase0.ledger.schema --check    # fail if the committed schema drifted
@@ -64,6 +66,22 @@ class Relation(str, Enum):
     ge = '>='
     approx = '~'
     grade = 'grade'
+
+
+class RelationType(str, Enum):
+    same_family = 'same_family'
+    sibling_application = 'sibling_application'
+    citation = 'citation'
+    inventor_overlap = 'inventor_overlap'
+    related_series = 'related_series'
+
+
+class CheckKind(str, Enum):
+    family_id = 'family_id'
+    priority_date = 'priority_date'
+    snapshot_matches_evidence = 'snapshot_matches_evidence'
+    has_evidence_cards = 'has_evidence_cards'
+    cites = 'cites'
 
 
 class _Model(BaseModel):
@@ -168,6 +186,61 @@ class Observation(_Model):
         return self
 
 
+class RelationCheck(_Model):
+    """One condition that must hold on the loaded sources before the relation is shown."""
+    check: CheckKind
+    publication: str
+    expected: Optional[str] = Field(default=None, description='family_id / priority_date / cites 的期望值')
+
+    @model_validator(mode='after')
+    def _expected_when_needed(self):
+        needs = {CheckKind.family_id.value, CheckKind.priority_date.value, CheckKind.cites.value}
+        if (self.check in needs) != (self.expected is not None):
+            raise ValueError(f'条件 {self.check} 的 expected 设置不正确')
+        return self
+
+
+class RelationSource(_Model):
+    """A fixed URL, or the loaded publication's source page plus an optional fragment."""
+    label: str
+    url: Optional[str] = None
+    publication: Optional[str] = None
+    fragment: str = ''
+
+    @model_validator(mode='after')
+    def _one_target(self):
+        if (self.url is None) == (self.publication is None):
+            raise ValueError(f'来源 {self.label} 必须且只能给出 url 或 publication 之一')
+        return self
+
+
+class DocumentRelation(_Model):
+    id: str
+    type: RelationType
+    from_publication: str
+    to_publication: str
+    status: str = Field(description='对外展示的关系状态，例如 related_series_not_direct_evolution')
+    label: str
+    basis: list[RelationCheck] = Field(min_length=1, description='全部满足才展示该关系')
+    facts: list[str]
+    hypothesis: Optional[str] = Field(default=None, description='研究假设，不是原文确认的结论')
+    gaps: list[str]
+    sources: list[RelationSource]
+    pair: Optional[dict[str, dict[str, Any]]] = Field(default=None, description='预设的 A/B 分子对照')
+    review: Review
+
+    @model_validator(mode='after')
+    def _scoped(self):
+        ends = {self.from_publication, self.to_publication}
+        if len(ends) != 2:
+            raise ValueError(f'关系 {self.id} 两端不能是同一文档')
+        stray = [c.publication for c in self.basis if c.publication not in ends]
+        stray += [s.publication for s in self.sources if s.publication and s.publication not in ends]
+        if stray:
+            raise ValueError(f'关系 {self.id} 的条件或来源引用了两端以外的文档：{"、".join(stray)}')
+        return self
+
+
 class InputFile(_Model):
     path: str
     sha256: str
@@ -182,11 +255,12 @@ class Ledger(_Model):
     compounds: list[Compound]
     assays: list[Assay]
     observations: list[Observation]
+    relations: list[DocumentRelation] = Field(default_factory=list)
 
     @model_validator(mode='after')
     def _integrity(self):
         problems = []
-        for name in ('documents', 'compounds', 'assays', 'observations'):
+        for name in ('documents', 'compounds', 'assays', 'observations', 'relations'):
             ids = [x.id for x in getattr(self, name)]
             dupes = sorted({i for i in ids if ids.count(i) > 1})
             if dupes:
@@ -212,6 +286,10 @@ class Ledger(_Model):
                 problems.append(f'观测 {o.id} 的 assay 属于另一文档 {assay.document_id}')
             elif o.relation == Relation.grade.value and o.grade not in (assay.grade_definitions or {}):
                 problems.append(f'观测 {o.id} 的等级 {o.grade} 未在 assay {assay.id} 中定义')
+        for r in self.relations:
+            for end in (r.from_publication, r.to_publication):
+                if end not in docs:
+                    problems.append(f'关系 {r.id} 引用了不存在的文档 {end}')
         if problems:
             raise ValueError('；'.join(problems[:20]))
         return self
