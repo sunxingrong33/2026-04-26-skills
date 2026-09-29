@@ -19,6 +19,7 @@ judgement. The output is discussion material, not a conclusion.
 import math
 from collections import defaultdict
 
+from .lead import check_pair, patterns, read_constraints, read_lead, read_reference
 from .mmp import MAX_CHANGE, find_pairs, site, transform
 from .units import normalise
 
@@ -315,10 +316,19 @@ def _groups(pairs, field, goal):
 
 CATEGORY = {
     'candidate': '候选方向：目标性质有利，未见不利',
+    'out_of_scope': '超出约束范围：破坏了必须保留的片段',
     'tradeoff': '取舍：部分目标性质有利、部分不利',
     'unfavorable': '不利：目标性质不利，未见有利',
     'insufficient': '证据不足：目标性质没有可比较的变化',
 }
+
+
+def _constraint_summary(rows, compiled):
+    """How the keep fragments fared across a group's pairs."""
+    out = [r for r in rows if not r['constraints']['ok']]
+    return {'checked': bool(compiled), 'out_of_scope_pairs': len(out), 'pairs': len(rows),
+            'all_out': bool(compiled) and len(out) == len(rows),
+            'lost': sorted({x for r in out for x in r['constraints']['lost']})}
 
 
 def classify(group, goal):
@@ -350,7 +360,7 @@ def property_coverage(goal, comps, obs, assay_doc):
     return out
 
 
-def followups(pairs, goal, measured, limit=20):
+def followups(pairs, goal, measured, limit=20, constrained=False):
     """Missing goal measurements ranked by how many pair judgements they would unlock (fixed rules).
 
     Order: pairs unlocked, then pairs that already look favourable on another goal property, then how
@@ -360,6 +370,8 @@ def followups(pairs, goal, measured, limit=20):
     goal_props = [p for p in goal['properties'] if p['direction'] != 'none']
     found = {}
     for r in pairs:
+        if constrained and not r['constraints']['ok']:
+            continue  # the replacement leaves the constrained space; measuring it does not open a direction
         for p in goal_props:
             for aid, x in r['properties'][p['id']]['assays'].items():
                 if x.get('lacking') not in ('A', 'B'):
@@ -382,7 +394,8 @@ def followups(pairs, goal, measured, limit=20):
                        + f"；该实验已有 {i['assay_measured']} 条测量")
     return {'items': ranked[:limit], 'total': len(ranked),
             'rule': '排序规则：可判断的分子对数 → 其中在其他目标性质上已有利的分子对数 → 该实验已有的测量数。'
-                    '只计单侧缺失；是否有样品、实验能否安排需另行确认。'}
+                    '只计单侧缺失；是否有样品、实验能否安排需另行确认。'
+                    + ('已排除破坏必须保留片段的分子对。' if constrained else '')}
 
 
 def synthesis_items(pair, comps):
@@ -417,9 +430,18 @@ def synthesis_items(pair, comps):
     return items
 
 
-def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE):
-    """Matched pairs in scope, each property compared per assay, summarised per transformation."""
+def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE, constraints=None, lead=None, reference=None):
+    """Matched pairs in scope, each property compared per assay, summarised per transformation.
+
+    ``lead`` anchors the question (it never contributes a number); ``constraints`` marks the pairs that
+    break a fragment the project must keep; ``reference`` carries the chemist's own numbers as text.
+    """
+    from rdkit import Chem, rdBase
     goal = check_goal(goal, ledger)
+    lead = read_lead(lead, ledger)
+    constraints = read_constraints(constraints)
+    reference = read_reference(reference, goal)
+    compiled = patterns(constraints)
     comps = [c for c in ledger.compounds if c.review.record_status != 'rejected'
              and (not documents or c.document_id in documents)]
     names = {c.id: c.label for c in comps}
@@ -429,12 +451,15 @@ def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE):
     for o in ledger.observations:
         if o.review.record_status != 'rejected':
             obs[(o.compound_id, o.assay_id)].append(o)
+    _ = rdBase.BlockLogs()
+    mols = {c.id: Chem.MolFromSmiles(c.smiles) for c in comps} if compiled else {}
     pairs = []
     for p in find_pairs(comps, max_change):
         row = {'a': p['a'], 'b': p['b'], 'a_label': names[p['a']], 'b_label': names[p['b']],
                'document': docs[p['a']] if docs[p['a']] == docs[p['b']] else f"{docs[p['a']]} / {docs[p['b']]}",
                'transform': transform(p), 'key': p['key'], 'site': site(p['key'], SITE_RADIUS),
-               'change_heavy_atoms': p['change'], 'properties': {}}
+               'change_heavy_atoms': p['change'], 'properties': {},
+               'constraints': check_pair(mols.get(p['a']), mols.get(p['b']), compiled)}
         same_doc = docs[p['a']] == docs[p['b']]
         for prop in goal['properties']:
             # Only the pair's own document can hold comparable measurements; other documents' assays are not
@@ -457,11 +482,19 @@ def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE):
     for g in sites:
         g['site'] = g.pop('group')
         g['transforms'] = sorted({r['transform'] for r in g['pairs']})
+    for g in transforms + sites:
+        g['category'] = classify(g, goal)
+        g['constraints'] = _constraint_summary(g['pairs'], compiled)
+        if g['constraints']['all_out']:  # breaking the scaffold is never a candidate direction
+            g['category'] = {'key': 'out_of_scope', 'label': CATEGORY['out_of_scope'],
+                             'favorable': g['category']['favorable'], 'unfavorable': g['category']['unfavorable'],
+                             'was': g['category']['key'], 'was_label': CATEGORY[g['category']['key']],
+                             'lost': g['constraints']['lost']}
     for g in transforms:
-        g['category'] = classify(g, goal)
         g['synthesis_items'] = synthesis_items(g['pairs'][0], comps)
-    for g in sites:
-        g['category'] = classify(g, goal)
+        if constraints['synthesis_notes']:
+            g['synthesis_items'] = [f"项目限制（用户填写）：{n}" for n in constraints['synthesis_notes']] \
+                + g['synthesis_items']
     measured = defaultdict(int)
     for o in ledger.observations:
         if o.status == 'measured' and o.review.record_status != 'rejected':
@@ -470,12 +503,16 @@ def analyse(ledger, goal, documents=None, max_change=MAX_CHANGE):
     return {'goal': goal, 'scope': {'documents': sorted(documents) if documents else '全部', 'compounds': len(comps),
                                     'max_change_heavy_atoms': max_change},
             'coverage': property_coverage(goal, comps, obs, assay_doc),
-            'followups': followups(pairs, goal, measured),
+            'followups': followups(pairs, goal, measured, constrained=bool(compiled)),
+            'lead': lead, 'constraints': constraints, 'reference': reference,
             'pair_count': len(pairs), 'transforms': transforms, 'sites': sites, 'site_radius': SITE_RADIUS,
             'grade_rules': [{'grade': k, 'label': v, 'rule': d} for k, v, d in GRADE_RULES],
             'pending_defaults': defaults,
             'notice': ('讨论材料，不是结论。分子对由 MMP 单切自动找出；各性质按实验逐项比较，限定值、重复观测和缺失不计算；'
-                       '阈值内记为“未变”；不合成综合分数。' + (f"以下性质使用默认阈值，待化学家确认：{'、'.join(defaults)}。" if defaults else ''))}
+                       '阈值内记为“未变”；不合成综合分数。'
+                      + (f"破坏必须保留片段的替换单独归为“{CATEGORY['out_of_scope']}”，仍然显示但不作为候选。"
+                         if compiled else '')
+                      + ('当前测量值由用户填写、未经核实，只作对照，不参与任何计算。' if reference else '') + (f"以下性质使用默认阈值，待化学家确认：{'、'.join(defaults)}。" if defaults else ''))}
 
 
 OUTCOME_LABEL = {'favorable': '有利', 'unfavorable': '不利', 'unchanged': '未变', 'changed': '有变化',
@@ -512,6 +549,24 @@ def report(result):
              '## 1. 目标与实验映射', '', '| 性质 | 方向与阈值 | 实验 |', '|---|---|---|']
     for p in goal['properties']:
         lines.append(f"| {p['label']} | {_rule(p)} | {'、'.join(p['assay_ids'])} |")
+    lead, cons, ref = result.get('lead'), result.get('constraints') or {}, result.get('reference') or []
+    if lead:
+        lines += ['', f"先导结构（锚点，不产生数值）：`{lead['smiles']}`"
+                  + (f"（输入 `{lead['input']}`，已标准化）" if lead['smiles'] != lead['original_smiles'] else '')
+                  + f" — {lead['note']}"]
+        if lead['ledger_matches']:
+            lines.append('台账中对应：' + '、'.join(f"{m['label']}（{m['compound_id']}）" for m in lead['ledger_matches']))
+    if cons.get('keep'):
+        lines += ['', '必须保留的片段：' + '；'.join(f"{k['label']} `{k['pattern']}`" for k in cons['keep'])
+                  + '。破坏这些片段的替换单独归类，不作为候选。']
+    if cons.get('synthesis_notes'):
+        lines += ['', '合成限制（用户填写，仅作标签，不参与判断）：' + '；'.join(cons['synthesis_notes'])]
+    if ref:
+        lines += ['', '### 先导化合物当前测量值（用户提供，未核实）', '',
+                  '这些值按原文保存为文本，不参与任何比较、倍数或证据等级计算。', '',
+                  '| 性质 | 值 | 备注 |', '|---|---|---|']
+        for r in ref:
+            lines.append(f"| {r['property']} | {r['value']} | {r['note'] or ''} |")
     scope = result['scope']
     docs = '、'.join(scope['documents']) if isinstance(scope['documents'], list) else scope['documents']
     lines += ['', '## 2. 范围与覆盖', '',
@@ -520,8 +575,11 @@ def report(result):
               '| 性质 | 有测量的化合物 | 涉及文档 |', '|---|---|---|']
     for c in result['coverage']:
         lines.append(f"| {c['property']} | {c['compounds_measured']} / {c['compounds_total']} | {'、'.join(c['documents'])} |")
-    for key, title in (('candidate', '3. 候选方向'), ('tradeoff', '4. 取舍'), ('unfavorable', '5. 不利的替换'),
-                       ('insufficient', '6. 证据不足')):
+    sections = [('candidate', '3. 候选方向'), ('tradeoff', '4. 取舍'), ('unfavorable', '5. 不利的替换'),
+                ('insufficient', '6. 证据不足')]
+    if cons.get('keep'):
+        sections.append(('out_of_scope', '7. 超出约束范围'))
+    for key, title in sections:
         groups = [g for g in result['transforms'] if g['category']['key'] == key]
         lines += ['', f'## {title}（{len(groups)} 种替换）', '']
         if not groups:
@@ -529,6 +587,8 @@ def report(result):
         for g in groups:
             lines += [f"### `{g['transform']}`", '',
                       f"{len(g['pairs'])} 个分子对；来源 {'、'.join(g['documents'])}。"
+                      + (f"破坏了必须保留的片段：{'、'.join(g['category']['lost'])}"
+                         f"（若不计该约束，属于“{g['category']['was_label']}”）。" if key == 'out_of_scope' else '')
                       + (f"有利：{'、'.join(g['category']['favorable'])}。" if g['category']['favorable'] else '')
                       + (f"不利：{'、'.join(g['category']['unfavorable'])}。" if g['category']['unfavorable'] else ''), '',
                       '| 性质 | 结果计数 | 证据等级 |', '|---|---|---|']
@@ -546,13 +606,13 @@ def report(result):
             if key in ('candidate', 'tradeoff'):
                 lines += ['', '合成可行性待评估项：' + '；'.join(g['synthesis_items']), '']
     f = result['followups']
-    lines += ['', '## 7. 补测建议', '', f['rule'], '']
+    lines += ['', f"## {8 if cons.get('keep') else 7}. 补测建议", '', f['rule'], '']
     if not f['items']:
         lines.append('没有单侧缺失的目标测量。')
     for i in f['items']:
         lines.append(f"{i['rank']}. {i['compound']} — {i['property']}（{i['assay_id']}）：{i['reason']}；"
                      f"涉及 {'、'.join(p['pair'] for p in i['pairs'])}")
-    lines += ['', '## 8. 规则', '', '- 可比性：同一文档、同一实验、各一个精确值、单位一致；限定值、重复观测、缺失不计算。',
+    lines += ['', f"## {9 if cons.get('keep') else 8}. 规则", '', '- 可比性：同一文档、同一实验、各一个精确值、单位一致；限定值、重复观测、缺失不计算。',
               '- 阈值内记为“未变”；目标区间：向区间靠近且超出阈值为有利，远离为不利。']
     lines += [f"- 证据等级“{g['label']}”：{g['rule']}" for g in result['grade_rules']]
     if result['pending_defaults']:
@@ -578,11 +638,15 @@ def handle(request, ledger=None):
         focus = request.get('focus')
         if focus is not None and (not isinstance(focus, str) or len(focus) > 40):
             raise ValueError('靶点关键词不超过 40 个字符。')
-        return {**suggest(ledger, request.get('template'), documents, focus), 'documents': known}
+        return {**suggest(ledger, request.get('template'), documents, focus), 'documents': known,
+                'lead': read_lead(request.get('lead'), ledger),
+                'constraints': read_constraints(request.get('constraints'))}
     if mode in ('analyse', 'report'):
         max_change = request.get('max_change', MAX_CHANGE)
         if type(max_change) is not int or not 1 <= max_change <= 20:
             raise ValueError('可变部分的重原子数上限须为 1–20 的整数。')
-        result = analyse(ledger, request.get('goal'), documents, max_change)
+        result = analyse(ledger, request.get('goal'), documents, max_change,
+                         constraints=request.get('constraints'), lead=request.get('lead'),
+                         reference=request.get('reference'))
         return {'markdown': report(result), 'analysis': result} if mode == 'report' else result
     raise ValueError('mode 必须是 templates、suggest、analyse 或 report。')

@@ -1,5 +1,6 @@
 /* Project goal page. All source-provided strings go through textContent. */
 const $ = id => document.getElementById(id);
+const CATEGORY_NOTE = {out_of_scope: '破坏了必须保留的片段：仍然显示，但不作为候选方向，也不进入补测排序。'};
 const OUTCOME = {favorable: '有利', unfavorable: '不利', unchanged: '未变', changed: '有变化（仅参考）', mixed: '各实验不一致',
   not_comparable: '不可比', missing: '缺失', no_assay: '本文档无该实验'};
 const DIRECTION = {lower: '越低越好', higher: '越高越好', range: '目标区间', none: '仅参考'};
@@ -15,6 +16,57 @@ async function call(body) {
   const d = await r.json();
   if (!r.ok) throw new Error(d.error || '请求失败');
   return d;
+}
+
+function leadSpec() {
+  const smiles = $('lead-smiles').value.trim();
+  if (!smiles) return null;
+  return {smiles, label: $('lead-label').value.trim() || null};
+}
+
+function keepRow(value) {
+  const row = el('div', undefined, 'row keep');
+  const pattern = el('input'); pattern.className = 'keep-pattern'; pattern.maxLength = 200; pattern.style.flex = '1'; pattern.style.minWidth = '220px';
+  pattern.placeholder = '片段 SMARTS 或 SMILES，例如 Nc1ncccc1OC'; if (value) pattern.value = value;
+  const label = el('input'); label.className = 'keep-label'; label.maxLength = 40; label.style.width = '140px'; label.placeholder = '名称（可选）';
+  const remove = el('button', '移除'); remove.type = 'button'; remove.onclick = () => row.remove();
+  row.append(pattern, label, remove); return row;
+}
+$('add-keep').onclick = () => $('keep-rows').append(keepRow());
+
+function constraintSpec() {
+  const keep = [...document.querySelectorAll('.keep')].map(r => ({
+    pattern: r.querySelector('.keep-pattern').value.trim(), label: r.querySelector('.keep-label').value.trim() || null,
+  })).filter(k => k.pattern);
+  const notes = $('synthesis-notes').value.split(/[;；]/).map(x => x.trim()).filter(Boolean);
+  return keep.length || notes.length ? {keep, synthesis_notes: notes} : null;
+}
+
+function referenceRow(properties) {
+  const row = el('div', undefined, 'row reference');
+  const pick = el('select'); pick.className = 'reference-property';
+  properties.forEach(p => { const o = el('option', p.label); o.value = p.id; pick.append(o); });
+  const value = el('input'); value.className = 'reference-value'; value.maxLength = 60; value.placeholder = '值（按原文填写，例如 “约 120 nM”）'; value.style.width = '240px';
+  const note = el('input'); note.className = 'reference-note'; note.maxLength = 200; note.placeholder = '备注（可选）'; note.style.flex = '1'; note.style.minWidth = '160px';
+  const remove = el('button', '移除'); remove.type = 'button'; remove.onclick = () => row.remove();
+  row.append(pick, value, note, el('span', '用户提供，未核实', 'badge'), remove); return row;
+}
+$('add-reference').onclick = () => { if (suggestion) $('reference-rows').append(referenceRow(suggestion.properties)); };
+
+function referenceSpec() {
+  const rows = [...document.querySelectorAll('.reference')].map(r => ({
+    property_id: r.querySelector('.reference-property').value, value: r.querySelector('.reference-value').value.trim(),
+    note: r.querySelector('.reference-note').value.trim() || null,
+  })).filter(r => r.value);
+  return rows.length ? rows : null;
+}
+
+function drawLead(lead) {
+  const box = $('lead-result'); box.replaceChildren();
+  if (!lead) return;
+  box.append(el('p', '检索结构：' + lead.smiles + (lead.smiles !== lead.original_smiles ? '（已标准化：' + lead.steps.map(s => s.note).join('；') + '）' : ''), 'muted'));
+  box.append(el('p', lead.note, lead.in_ledger ? 'muted' : 'note'));
+  if (lead.ledger_matches.length) box.append(el('p', '台账中对应：' + lead.ledger_matches.map(m => m.label + '（' + m.compound_id + '）').join('、'), 'muted'));
 }
 
 function scope() {
@@ -98,6 +150,8 @@ function propertyCard(p, custom) {
 
 function drawMapping(s) {
   suggestion = s;
+  drawLead(s.lead);
+  $('reference-rows').replaceChildren();
   const box = $('properties'); box.replaceChildren();
   s.properties.forEach(p => box.append(propertyCard(p, false)));
   const un = $('unmapped'); un.replaceChildren(el('p', s.unmapped.length + ' 个实验未归入任何性质，不参与分析。', 'muted'));
@@ -150,6 +204,21 @@ function drawResults(r) {
   $('result-head').replaceChildren(el('p', r.notice, 'note'),
     el('p', '范围：' + (Array.isArray(r.scope.documents) ? r.scope.documents.join('、') : r.scope.documents) + ' · ' + r.scope.compounds + ' 个化合物 · 可变部分 ≤ ' + r.scope.max_change_heavy_atoms + ' 个重原子 · ' + r.pair_count + ' 个分子对 · ' + r.transforms.length + ' 种替换 · ' + r.sites.length + ' 个位点'));
   const rules = $('rules'); rules.replaceChildren(); r.grade_rules.forEach(g => rules.append(el('p', g.label + '：' + g.rule)));
+  const ctx = $('context'); ctx.replaceChildren();
+  if (r.lead) { ctx.append(el('h3', '先导结构（锚点）')); drawLeadInto(ctx, r.lead); }
+  if (r.constraints.keep.length) {
+    ctx.append(el('h3', '必须保留的片段'));
+    r.constraints.keep.forEach(k => ctx.append(el('p', '· ' + k.label + '（' + k.pattern + '，' + k.atoms + ' 个原子）', 'muted')));
+  }
+  if (r.constraints.synthesis_notes.length) ctx.append(el('p', '合成限制（仅作标签，不参与判断）：' + r.constraints.synthesis_notes.join('；'), 'muted'));
+  if (r.reference.length) {
+    ctx.append(el('h3', '当前测量值（用户提供，未核实）'));
+    const rt = el('table'), rh = el('tr'); ['性质', '值', '备注'].forEach(x => rh.append(el('th', x))); rt.append(rh);
+    r.reference.forEach(x => { const tr = el('tr'); [x.property, x.value, x.note || ''].forEach(v => tr.append(el('td', v))); rt.append(tr); });
+    ctx.append(rt, el('p', '按原文保存为文本，不参与任何计算。', 'muted'));
+  }
+  ctx.append(el('p', r.constraints.notice, 'muted'));
+  $('context-box').hidden = !(r.lead || r.constraints.keep.length || r.constraints.synthesis_notes.length || r.reference.length);
   const cov = $('coverage'), ct = el('table'), ch = el('tr'); ['性质', '有测量的化合物', '涉及文档'].forEach(x => ch.append(el('th', x))); ct.append(ch);
   r.coverage.forEach(c => { const tr = el('tr'); tr.dataset.property = c.property_id; [c.property, c.compounds_measured + ' / ' + c.compounds_total, c.documents.join('、')].forEach(v => tr.append(el('td', v))); ct.append(tr); });
   cov.replaceChildren(ct, el('p', '只统计所选范围和所选实验；台账之外的数据不在其中。', 'muted'));
@@ -160,6 +229,11 @@ function drawResults(r) {
   fu.append(ol); if (r.followups.total > r.followups.items.length) fu.append(el('p', '共 ' + r.followups.total + ' 项，显示前 ' + r.followups.items.length + ' 项。', 'muted'));
   drawGroups();
   $('results').hidden = false;
+}
+
+function drawLeadInto(box, lead) {
+  box.append(el('p', lead.smiles + (lead.label ? '（' + lead.label + '）' : ''), 'muted'), el('p', lead.note, 'muted'));
+  if (lead.ledger_matches.length) box.append(el('p', '台账中对应：' + lead.ledger_matches.map(m => m.label).join('、'), 'muted'));
 }
 
 function drawGroups() {
@@ -180,6 +254,8 @@ function drawGroups() {
     }
     card.firstChild.after(el('span', t.category.label, 'cat ' + t.category.key));
     card.dataset.category = t.category.key;
+    if (t.category.key === 'out_of_scope') card.append(el('p', '破坏了必须保留的片段：' + t.category.lost.join('、')
+      + '。若不计该约束，属于“' + t.category.was_label + '”。' + CATEGORY_NOTE.out_of_scope, 'note'));
     if (t.synthesis_items && ['candidate', 'tradeoff'].includes(t.category.key)) card.append(el('p', '合成可行性待评估项：' + t.synthesis_items.join('；'), 'muted'));
     const wrap = el('div', undefined, 'wrap'), table = el('table'), head = el('tr');
     ['性质', '方向与阈值', ...COLUMNS.map(c => OUTCOME[c]), '证据等级'].forEach(h => head.append(el('th', h)));
@@ -225,9 +301,10 @@ async function run(button, body, draw, message) {
   finally { busy = false; button.disabled = false; }
 }
 
-$('suggest').onclick = () => guard(() => run($('suggest'), {mode: 'suggest', template: $('template').value, focus: $('focus').value || null, documents: scope()},
-  drawMapping, '正在生成映射建议…'));
-$('analyse').onclick = () => guard(() => run($('analyse'), lastRequest = {mode: 'analyse', goal: goal(), documents: scope(), max_change: Number($('max-change').value)},
+$('suggest').onclick = () => guard(() => run($('suggest'), {mode: 'suggest', template: $('template').value, focus: $('focus').value || null,
+  documents: scope(), lead: leadSpec(), constraints: constraintSpec()}, drawMapping, '正在生成映射建议…'));
+$('analyse').onclick = () => guard(() => run($('analyse'), lastRequest = {mode: 'analyse', goal: goal(), documents: scope(),
+  max_change: Number($('max-change').value), lead: leadSpec(), constraints: constraintSpec(), reference: referenceSpec()},
   drawResults, '正在寻找分子对并比较…'));
 function guard(fn) { try { return fn(); } catch (e) { status(e.message, true); } }
 init();

@@ -36,6 +36,8 @@
 >
 > 更新：加入两个离线演示命令 `phase0.tools.demo`、`phase0.extract.demo` 及其冒烟测试（`test_demos`，2 项）后为 **344 passed**。
 >
+> 更新（I2.8 A、C）：先导结构锚点（标准化、台账匹配，不产生数值、不入台账）；必须保留的片段约束（破坏者归“超出约束范围”，仍显示、不作候选、不进补测排序）；合成限制作为标签；用户填写的当前测量值按文本隔离。新增 `test_lead_constraints.py` 19 项、浏览器测试 11 项。合计 **459 passed**。
+>
 > 更新（I2.7 第二段）：检索覆盖报告；SureChEMBL 命中作为专利结构入台账（服务端核对）；范围覆盖、分类、补测建议、合成可行性待评估项、Markdown 讨论材料；MCP 工具 17 个（`test_project_sar` 37 项、`test_structure_search` 17 项、`test_surechembl` 8 项、`test_browser` 10 项）。合计 **439 passed**。
 >
 > 更新（I2.7 第一段补齐）：自定义性质、目标区间方向、按位点汇总（`test_project_sar` 增至 32 项；`test_browser` 9 项）。合计 **431 passed**。台账上 18 个分子对归为 15 种替换、5 个位点。

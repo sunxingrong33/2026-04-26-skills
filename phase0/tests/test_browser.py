@@ -377,3 +377,35 @@ def test_project_page_followups_categories_and_report_download(app, page):
     text = open(info.value.path(), encoding='utf-8').read()
     assert text.startswith('# SAR 讨论材料：改善细胞活性，同时控制外排') and '## 7. 补测建议' in text
     assert page.errors == []
+
+
+def test_project_page_lead_constraints_and_unverified_values(app, page):
+    """I2.8 A and C: the lead anchors, a broken fragment leaves the candidate set, typed values stay text."""
+    base, _, _ = app
+    page.goto(base + '/project')
+    page.wait_for_selector('#template option', state='attached')
+    page.fill('#focus', 'ALK')
+    page.fill('#lead-smiles', 'CN(C)C(=O)c1ccc2c(c1)nc(n2C)-c1ccccc1')  # not in the ledger: anchor only
+    page.click('#add-keep')
+    page.fill('.keep-pattern', 'CN(C)C=O')
+    page.fill('.keep-label', 'N,N-二甲酰胺')
+    page.fill('#synthesis-notes', '不接受新增手性中心；优先已有中间体')
+    page.click('#suggest')
+    page.wait_for_selector('.prop[data-id="efflux"]')
+    assert '只用作锚点' in page.locator('#lead-result').text_content()
+    page.locator('#reference-box summary').click()
+    page.click('#add-reference')
+    page.select_option('.reference-property', 'efflux')
+    page.fill('.reference-value', '7.6（内部批次）')
+    page.click('#analyse')
+    page.locator('.tf').first.wait_for(timeout=20000)
+    out = page.locator('.tf[data-category="out_of_scope"]')
+    assert out.count() >= 1
+    text = out.first.text_content()
+    assert '破坏了必须保留的片段：N,N-二甲酰胺' in text and '若不计该约束' in text
+    assert '不作为候选方向' in text
+    context = page.locator('#context').text_content()
+    assert '用户提供，未核实' in context and '7.6（内部批次）' in context
+    assert '不参与任何计算' in context and '不接受新增手性中心' in context
+    assert '已排除破坏必须保留片段的分子对' in page.locator('#followups').text_content()
+    assert page.errors == []

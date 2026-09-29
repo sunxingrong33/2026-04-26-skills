@@ -99,16 +99,23 @@ def project_goal_suggest(ctx, template: Literal['cell_potency_efflux', 'potency_
 
 @tool('chem')
 def project_sar_analyse(ctx, goal: dict[str, Any], documents: Optional[list[str]] = None,
-                        max_change: Annotated[int, Field(ge=1, le=20)] = 12, include_report: bool = False):
+                        max_change: Annotated[int, Field(ge=1, le=20)] = 12, include_report: bool = False,
+                        lead: Optional[dict[str, Any]] = None, constraints: Optional[dict[str, Any]] = None,
+                        reference: Optional[list[dict[str, Any]]] = None):
     """按确认过的项目目标，在台账中自动找分子对（MMP），逐性质、逐实验比较并按替换 / 位点汇总，给出补测建议。
 
     在 project_goal_suggest 之后、目标（性质、实验、方向、阈值、可选目标区间）确认后调用。
     结果是讨论材料：候选方向 / 取舍 / 不利 / 证据不足按固定规则分类，证据等级按公开规则，不合成综合分数；
     默认阈值待化学家确认，合成可行性只列待评估项。include_report=true 时附 Markdown 讨论材料。
+
+    lead 为先导结构（{"smiles": ...}），只作锚点，不产生任何数值，也不写入台账。
+    constraints 可给 keep（必须保留的片段，SMARTS 或 SMILES）与 synthesis_notes（合成限制，仅作标签）：
+    破坏保留片段的替换单独归为“超出约束范围”，仍然显示但不作候选，也不进补测排序。
+    reference 为用户填写的先导化合物当前测量值，按文本原样保存，不参与任何计算。
     """
     from phase0.sar.project_sar import handle
     request = {'mode': 'report' if include_report else 'analyse', 'goal': goal, 'documents': documents,
-               'max_change': max_change}
+               'max_change': max_change, 'lead': lead, 'constraints': constraints, 'reference': reference}
     try:
         r = handle(request, _ledger(ctx))
     except ValueError as exc:
