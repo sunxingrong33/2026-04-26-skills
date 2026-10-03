@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>SAR 分析</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;family=Noto+Serif+SC:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F3EC}
+a{color:#0A5F55}a:hover{color:#063F38}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1420px; box-sizing: border-box; background: #F5F3EC; color: #16242A; font-family: 'Noto Sans SC', sans-serif; display: flex; flex-direction: column">
+  <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 0 40px; background: #16242A; color: #F5F3EC">
+    <a href="Main.dc.html" style="font-family: 'Noto Serif SC', serif; font-size: 18px; font-weight: 700; color: #F5F3EC; text-decoration: none">SAR Atlas</a>
+    <span style="font-size: 13px; color: #8FA09E">/</span>
+    <a href="Main.dc.html" style="font-size: 13px; color: #B8C4C2; text-decoration: none">我的调研</a>
+    <span style="font-size: 13px; color: #8FA09E">/</span>
+    <span style="font-size: 13px; color: #F5F3EC">ALK 大环系列 · 辉瑞</span>
+    <div style="flex-grow: 1"></div>
+    <a href="Review.dc.html" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 6px; color: #F5F3EC; text-decoration: none; font-size: 14px; background: #24363C">复核队列<span style="min-width: 22px; height: 22px; border-radius: 11px; background: #E8A33D; color: #16242A; font: 600 12px 'IBM Plex Mono', monospace; display: flex; align-items: center; justify-content: center">6</span></a>
+  </header>
+  <div style="flex-shrink: 0; display: flex; align-items: flex-end; gap: 32px; padding: 20px 40px 0; background: #FFFFFF; border-bottom: 1px solid #DDD8CC">
+    <div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 14px">
+      <span style="font-family: 'Noto Serif SC', serif; font-size: 24px; font-weight: 700">ALK 大环系列 · 辉瑞</span>
+      <span style="font: 500 13px 'IBM Plex Mono', monospace; color: #4E5F63">靶点 ALK · 人源 · CHEMBL4247 · 2 个专利家族 · 1 篇论文</span>
+    </div>
+    <nav style="display: flex; gap: 4px; flex-grow: 1">
+      <a href="Overview.dc.html" style="height: 48px; padding: 0 16px; display: flex; align-items: center; font-size: 15px; color: #4E5F63; text-decoration: none; border-bottom: 3px solid transparent">概览</a>
+      <a href="Evidence.dc.html" style="height: 48px; padding: 0 16px; display: flex; align-items: center; font-size: 15px; color: #4E5F63; text-decoration: none; border-bottom: 3px solid transparent">证据</a>
+      <a href="Analysis.dc.html" style="height: 48px; padding: 0 16px; display: flex; align-items: center; font-size: 15px; font-weight: 600; color: #0A5F55; text-decoration: none; border-bottom: 3px solid #0A5F55">SAR 分析</a>
+      <a href="Timeline.dc.html" style="height: 48px; padding: 0 16px; display: flex; align-items: center; font-size: 15px; color: #4E5F63; text-decoration: none; border-bottom: 3px solid transparent">时间线与程序</a>
+      <a href="Compare.dc.html" style="height: 48px; padding: 0 16px; display: flex; align-items: center; font-size: 15px; color: #4E5F63; text-decoration: none; border-bottom: 3px solid transparent">对照</a>
+      <a href="Report.dc.html" style="height: 48px; padding: 0 16px; display: flex; align-items: center; font-size: 15px; color: #4E5F63; text-decoration: none; border-bottom: 3px solid transparent">报告</a>
+    </nav>
+    <div style="display: flex; gap: 8px; padding-bottom: 14px">
+      <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 14px 'Noto Sans SC', sans-serif">导出讨论材料</button>
+    </div>
+  </div>
+
+  <main style="flex-grow: 1; display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 24px; padding: 24px 40px 40px; align-items: start">
+    <aside style="display: flex; flex-direction: column; gap: 16px">
+      <section style="display: flex; flex-direction: column; gap: 12px; padding: 20px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">① 项目目标</h2>
+        <label style="display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 12px; color: #4E5F63">目标模板</span>
+          <select style="height: 40px; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; font: 14px 'Noto Sans SC', sans-serif"><option>改善细胞活性，同时控制外排</option><option>保持活性，同时改善代谢稳定性</option><option>自定义</option></select>
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 12px; color: #4E5F63">先导化合物（只作配对锚点，不产生数值）</span>
+          <input type="text" value="6e · CHEMBL3286809" style="height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 6px; font: 13px 'IBM Plex Mono', monospace">
+        </label>
+        <span style="font-size: 12px; color: #0A5F55">台账中已有该结构，参与本次配对</span>
+        <label style="display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 12px; color: #4E5F63">必须保留的片段（SMARTS / SMILES，可选）</span>
+          <input type="text" placeholder="例如 2-氨基吡啶：Nc1ncccc1" style="height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 6px; font: 13px 'IBM Plex Mono', monospace">
+        </label>
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4E5F63">
+          <span>范围：CHEMBL3286195 · WO2011138751A2 · WO2013132376A1</span>
+          <span>可变部分最多 12 个重原子</span>
+        </div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 10px; padding: 20px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+        <div style="display: flex; align-items: baseline; gap: 8px">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 700">② 性质与实验映射</h2>
+          <span style="font-size: 12px; color: #0A5F55">已由你确认</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #ECE8DE; border-radius: 8px">
+          <div style="display: flex; justify-content: space-between"><b style="font-size: 14px">细胞活性</b><span style="font-size: 12px; color: #4E5F63">越低越好 · ≥ 2 倍</span></div>
+          <span style="font: 11.5px 'IBM Plex Mono', monospace; color: #4E5F63">CHEMBL3293163 · CHEMBL3293164</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #ECE8DE; border-radius: 8px">
+          <div style="display: flex; justify-content: space-between"><b style="font-size: 14px">外排比</b><span style="font-size: 12px; color: #4E5F63">目标区间 ≤ 2.5 · ≥ 2 倍</span></div>
+          <span style="font: 11.5px 'IBM Plex Mono', monospace; color: #4E5F63">CHEMBL3293391（MDR1）· CHEMBL3293392</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #ECE8DE; border-radius: 8px">
+          <div style="display: flex; justify-content: space-between"><b style="font-size: 14px">酶活性</b><span style="font-size: 12px; color: #4E5F63">越低越好 · ≥ 2 倍</span></div>
+          <span style="font: 11.5px 'IBM Plex Mono', monospace; color: #4E5F63">CHEMBL3293161 · CHEMBL3293162</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #ECE8DE; border-radius: 8px">
+          <div style="display: flex; justify-content: space-between"><b style="font-size: 14px">LogD</b><span style="font-size: 12px; color: #4E5F63">仅参考 · 差值 ≥ 0.5</span></div>
+          <span style="font: 11.5px 'IBM Plex Mono', monospace; color: #4E5F63">CHEMBL3293165</span>
+        </div>
+        <div style="padding: 10px 12px; background: #FDF3E4; border-radius: 6px; font-size: 12px; color: #5C3408; line-height: 1.6">噪声阈值为默认值，待化学家确认。未归入：TRKB Ki（脱靶，不当作活性）。</div>
+      </section>
+    </aside>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <div style="display: flex; border: 1px solid #C9C3B5; border-radius: 6px; overflow: hidden">
+          <button type="button" style="height: 36px; padding: 0 14px; border: none; background: #16242A; color: #FFFFFF; font: 600 13px 'Noto Sans SC', sans-serif">按替换</button>
+          <button type="button" style="height: 36px; padding: 0 14px; border: none; background: #FFFFFF; color: #16242A; font: 500 13px 'Noto Sans SC', sans-serif">按位点</button>
+        </div>
+        <span style="font-size: 13px; color: #4E5F63">自动配对（MMP：单切与氢替换）· 只比较同一文档内的实验 · 不合成综合分数</span>
+      </div>
+
+      <section style="display: flex; flex-direction: column; gap: 12px; padding: 20px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+          <span style="height: 26px; padding: 0 10px; border-radius: 13px; background: #FDF3E4; color: #7A3B06; font-size: 13px; font-weight: 600; display: flex; align-items: center">取舍：部分目标性质有利、部分不利</span>
+          <b style="font: 600 15px 'IBM Plex Mono', monospace">C[*:1]&gt;&gt;[H][*:1]</b>
+          <span style="font-size: 13px; color: #4E5F63">去掉一个 N-甲基 · 2 个分子对 · 来源 CHEMBL3286195、WO2011138751A2</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px 170px repeat(5, minmax(0, 1fr)) 110px; padding: 8px 12px; background: #F0EDE4; border-radius: 6px; font-size: 12px; font-weight: 600; color: #4E5F63">
+          <span>性质</span><span>方向与阈值</span><span>有利</span><span>不利</span><span>未变</span><span>缺失</span><span>本文档无该实验</span><span>证据等级</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px 170px repeat(5, minmax(0, 1fr)) 110px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #ECE8DE; font-size: 13px">
+          <span>细胞活性</span><span style="color: #4E5F63">越低越好 · ≥2 倍</span><span></span><span></span><span></span><span style="font-family: 'IBM Plex Mono', monospace">2</span><span></span><span style="color: #4E5F63">无可比数据</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px 170px repeat(5, minmax(0, 1fr)) 110px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #ECE8DE; font-size: 13px">
+          <span>外排比</span><span style="color: #4E5F63">区间 ≤ 2.5 · ≥2 倍</span><span></span><span style="font: 600 13px 'IBM Plex Mono', monospace; color: #A1321F">1</span><span></span><span></span><span style="font-family: 'IBM Plex Mono', monospace">1</span><span>较弱</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px 170px repeat(5, minmax(0, 1fr)) 110px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #ECE8DE; font-size: 13px">
+          <span>酶活性</span><span style="color: #4E5F63">越低越好 · ≥2 倍</span><span style="font: 600 13px 'IBM Plex Mono', monospace; color: #0A5F55">1</span><span></span><span style="font-family: 'IBM Plex Mono', monospace">1</span><span></span><span></span><span style="color: #7A3B06">不一致</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px 170px repeat(5, minmax(0, 1fr)) 110px; align-items: center; padding: 8px 12px; font-size: 13px">
+          <span>LogD（仅参考）</span><span style="color: #4E5F63">差值 ≥ 0.5</span><span></span><span></span><span style="font-family: 'IBM Plex Mono', monospace">1</span><span></span><span style="font-family: 'IBM Plex Mono', monospace">1</span><span>较弱</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; margin-top: 6px; padding: 16px; border: 1px solid #ECE8DE; border-radius: 8px">
+          <div style="display: flex; gap: 8px">
+            <div style="flex-grow: 1; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #FAFAF7; border: 1px dashed #C9C3B5; border-radius: 6px; text-align: center">
+              <b style="font-size: 14px">A · 6f</b><span style="font-size: 11px; color: #4E5F63">N,N-二甲基酰胺</span><span style="font-size: 11px; color: #4E5F63">[结构图]</span>
+            </div>
+            <div style="flex-grow: 1; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #FAFAF7; border: 1px dashed #C9C3B5; border-radius: 6px; text-align: center">
+              <b style="font-size: 14px">B · 6e</b><span style="font-size: 11px; color: #4E5F63">N-甲基酰胺</span><span style="font-size: 11px; color: #4E5F63">[结构图]</span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+            <span style="font-size: 12px; color: #4E5F63">洛拉替尼发现论文 · 同一文档内比较</span>
+            <div style="display: grid; grid-template-columns: 170px 170px minmax(0, 1fr); gap: 4px 12px; align-items: center">
+              <span>WT ALK 酶 Ki</span><span style="font-family: 'IBM Plex Mono', monospace">22 → 2.8 nM</span><span><b style="color: #0A5F55">有利</b> · B/A 0.127</span>
+              <span>L1196M 酶 Ki</span><span style="font-family: 'IBM Plex Mono', monospace">310 → 35 nM</span><span><b style="color: #0A5F55">有利</b> · B/A 0.113</span>
+              <span>MDR1 外排比</span><span style="font-family: 'IBM Plex Mono', monospace">7.6 → 17</span><span><b style="color: #A1321F">不利</b> · B/A 2.24 · 两者均不在 ≤ 2.5 内</span>
+              <span>LogD</span><span style="font-family: 'IBM Plex Mono', monospace">2.1 → 2.1</span><span>未变</span>
+              <span>细胞 IC50</span><span style="font-family: 'IBM Plex Mono', monospace">— → 116 / 1665 nM</span><span style="color: #7A3B06">6f 无记录，无法判断</span>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; border: 1px solid #ECE8DE; border-radius: 8px; font-size: 13px">
+          <b style="font-family: 'IBM Plex Mono', monospace">Example 7 → Example 6</b>
+          <span style="color: #4E5F63">WO2011138751A2 · 酶活性未变（B/A 1.16 / 0.87）· 细胞活性 B 未测 · 本文档无外排与 LogD 实验</span>
+        </div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 10px; padding: 20px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+        <div style="display: flex; align-items: baseline; gap: 10px">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 700">补测建议</h2>
+          <span style="font-size: 12px; color: #4E5F63">排序：可判断的分子对数 → 其中在其他目标性质上已有利的对数 → 该实验已有测量数。是否有样品、能否安排实验需另行确认。</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 28px 170px minmax(0, 1fr); gap: 8px 12px; align-items: baseline; font-size: 13px">
+          <b style="font-family: 'IBM Plex Mono', monospace">1</b><b>6f · 细胞活性</b><span>CHEMBL3293164 · 补测后可判断 2 个分子对（6f → 6d、6f → 6e），其中 2 个在其他目标性质上已有利；该实验已有 27 条测量</span>
+          <b style="font-family: 'IBM Plex Mono', monospace">2</b><b>6f · 细胞活性</b><span>CHEMBL3293163 · 同上 2 个分子对；该实验已有 24 条测量</span>
+          <b style="font-family: 'IBM Plex Mono', monospace">3</b><b>8j · 酶活性</b><span>CHEMBL3293161 · 可判断 2 个分子对（8j → 8f、8j → 8a），其中 1 个已有利；26 条测量</span>
+          <b style="font-family: 'IBM Plex Mono', monospace">4</b><b>Example 6 · 细胞活性</b><span>WO2011138751A2 cell_L1196M_IC50 · 可判断 Example 1 → 6、Example 7 → 6</span>
+        </div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 12px; padding: 20px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+        <div style="display: flex; align-items: baseline; gap: 10px">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 700">审查与署名</h2>
+          <span style="font-size: 12px; color: #4E5F63">自动规则与人工复核分开记录；署名后以“研究假设”写入报告</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px">
+          <span style="height: 24px; padding: 0 8px; border-radius: 4px; background: #EEF6F4; color: #0A5F55; display: flex; align-items: center">限定值、重复观测已排除</span>
+          <span style="height: 24px; padding: 0 8px; border-radius: 4px; background: #EEF6F4; color: #0A5F55; display: flex; align-items: center">只比较同一文档</span>
+          <span style="height: 24px; padding: 0 8px; border-radius: 4px; background: #FDF3E4; color: #7A3B06; display: flex; align-items: center">所用观测均为待确认</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 12px">
+          <label style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 12px; color: #4E5F63">结论</span><select style="height: 40px; padding: 0 8px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; font: 14px 'Noto Sans SC', sans-serif"><option>支持</option><option>待补测</option><option>拒绝</option></select></label>
+          <label style="display: flex; flex-direction: column; gap: 6px"><span style="font-size: 12px; color: #4E5F63">理由</span><input type="text" placeholder="例如：去 N-甲基改善酶活性但外排变差，先补测 6f 细胞 IC50 再判断" style="height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 6px; font: 14px 'Noto Sans SC', sans-serif"></label>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end">
+          <button type="button" style="height: 40px; padding: 0 16px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 14px 'Noto Sans SC', sans-serif">把补测建议加入报告</button>
+          <a href="Report.dc.html" style="height: 40px; padding: 0 16px; border-radius: 6px; background: #0A5F55; color: #FFFFFF; font-size: 14px; font-weight: 600; text-decoration: none; display: flex; align-items: center">署名并加入报告</a>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1420}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

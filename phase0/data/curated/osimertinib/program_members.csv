@@ -1,0 +1,3 @@
+program_id,compound_id,generation,patent_number,priority_date,example_ref,source_url,source_kind,activity_type,activity_value_nm,activity_assay,activity_source,activity_provenance,note
+osimertinib-holdout,CHEMBL2426279,1,,,CHEMBL3351341; paper compound 9; record 2243331,https://www.ebi.ac.uk/chembl/api/data/compound_record/2243331.json,paper,,,,,chembl,对照分子 · compound 9
+osimertinib-holdout,CHEMBL3353410,2,,,CHEMBL3351341; paper compound 8; record 2243348,https://www.ebi.ac.uk/chembl/api/data/compound_record/2243348.json,paper,,,,,chembl,候选分子 · compound 8 / AZD9291

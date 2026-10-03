@@ -1,4 +1,5 @@
-rdkit>=2024.3
-PyYAML>=6.0
-anthropic>=0.40
-pytest>=8.0
+rdkit==2026.3.6
+PyYAML==6.0.3
+pytest==9.1.1
+beautifulsoup4==4.14.3
+pydantic==2.13.5

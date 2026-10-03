@@ -1,0 +1,21 @@
+{
+  "document_chembl_id": "CHEMBL3351341",
+  "program_id": "osimertinib-holdout",
+  "program_name": "奥希替尼：独立文献留出对照",
+  "assignee": "AstraZeneca",
+  "target": "EGFR",
+  "ordering_note": "只比较论文中的 compound 9 与 compound 8；这是明确选定的结构对照，不宣称 9 直接演化为 8，也不将编号当作研发日期。此数据不用于调整规则阈值。",
+  "candidate": "CHEMBL3353410",
+  "stages": [
+    {"generation": 1, "label": "对照分子 · compound 9", "compound_keys": ["9"]},
+    {"generation": 2, "label": "候选分子 · compound 8 / AZD9291", "compound_keys": ["8"]}
+  ],
+  "assay_labels": {
+    "CHEMBL3389020": "EGFR_L858R_T790M_cell_IC50",
+    "CHEMBL3389021": "EGFR_ex19del_cell_IC50",
+    "CHEMBL3389022": "EGFR_WT_cell_IC50",
+    "CHEMBL3389023": "LogD_pH7.4",
+    "CHEMBL3389027": "solubility_pH7.4",
+    "CHEMBL3389028": "hERG_IC50"
+  }
+}

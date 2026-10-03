@@ -1,0 +1,2 @@
+program_id,program_name,assignee,target,kind,note
+osimertinib-holdout,奥希替尼：独立文献留出对照,AstraZeneca,EGFR,literature_series,只比较论文中的 compound 9 与 compound 8；这是明确选定的结构对照，不宣称 9 直接演化为 8，也不将编号当作研发日期。此数据不用于调整规则阈值。

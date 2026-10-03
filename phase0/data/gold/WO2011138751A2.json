@@ -1,0 +1,189 @@
+{
+ "schema_version": 1,
+ "publication": "WO2011138751A2",
+ "source_pdf_sha256": "25d70df69bc52e2e3e585bb6ec744e21d4629c80099050bd8b1a5882f8752649",
+ "gold_status": "agent_visual_checked_pending_independent_review",
+ "derived_from": {
+  "path": "phase0/data/patent_evidence/WO2011138751A2.json",
+  "sha256": "a684b07447a3f87e719f274cd7836494a6dc834fb6736f8fa8c0121e2f1e7048"
+ },
+ "assays": [
+  {
+   "id": "ALK_WT_Ki",
+   "unit": "nM",
+   "protocol_locator": "WO2011138751A2; PDF pp. 181–182; ALK enzymatic assay 2 (WT)"
+  },
+  {
+   "id": "ALK_L1196M_Ki",
+   "unit": "nM",
+   "protocol_locator": "WO2011138751A2; PDF pp. 181–182; ALK enzymatic assay 3 (L1196M)"
+  },
+  {
+   "id": "cell_WT_IC50",
+   "unit": "nM",
+   "protocol_locator": "WO2011138751A2; PDF pp. 184–185; Cellular Phospho-ALK ELISA for EML4-ALK"
+  },
+  {
+   "id": "cell_L1196M_IC50",
+   "unit": "nM",
+   "protocol_locator": "WO2011138751A2; PDF pp. 184–185; Cellular Phospho-ALK ELISA for EML4-ALK"
+  }
+ ],
+ "compounds": [
+  {
+   "example": "1",
+   "role": "example",
+   "smiles": "CC(Oc1cc(-c2c(C)nnn2C=C)cnc1N)c1cc(F)ccc1OC",
+   "structure_pdf_page": 127,
+   "reported_mass": 370.22
+  },
+  {
+   "example": "6",
+   "role": "example",
+   "smiles": "CC(Oc1cc(-c2c(C)[nH]nc2C)cnc1N)c1cc(F)ccc1OC",
+   "structure_pdf_page": 128,
+   "reported_mass": 357
+  },
+  {
+   "example": "7",
+   "role": "example",
+   "smiles": "CC(Oc1cc(-c2c(C)n(C)nc2C)cnc1N)c1cc(F)ccc1OC",
+   "structure_pdf_page": 128,
+   "reported_mass": 371
+  }
+ ],
+ "observations": [
+  {
+   "example": "1",
+   "assay_id": "ALK_WT_Ki",
+   "status": "measured",
+   "relation": "=",
+   "value": 2.9,
+   "unit": "nM",
+   "grade": null,
+   "raw": "2.90 nM",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "1",
+   "assay_id": "ALK_L1196M_Ki",
+   "status": "measured",
+   "relation": "=",
+   "value": 18.0,
+   "unit": "nM",
+   "grade": null,
+   "raw": "18.0 nM",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "1",
+   "assay_id": "cell_WT_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 144.0,
+   "unit": "nM",
+   "grade": null,
+   "raw": "144 nM",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "1",
+   "assay_id": "cell_L1196M_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 950.0,
+   "unit": "nM",
+   "grade": null,
+   "raw": "950 nM",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "6",
+   "assay_id": "ALK_WT_Ki",
+   "status": "measured",
+   "relation": "=",
+   "value": 0.62,
+   "unit": "nM",
+   "grade": null,
+   "raw": "0.620 nM",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "6",
+   "assay_id": "ALK_L1196M_Ki",
+   "status": "measured",
+   "relation": "=",
+   "value": 2.75,
+   "unit": "nM",
+   "grade": null,
+   "raw": "2.75 nM",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "6",
+   "assay_id": "cell_WT_IC50",
+   "status": "not_tested",
+   "relation": null,
+   "value": null,
+   "unit": null,
+   "grade": null,
+   "note": "原表空白；表前说明为空白项未测试",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "6",
+   "assay_id": "cell_L1196M_IC50",
+   "status": "not_tested",
+   "relation": null,
+   "value": null,
+   "unit": null,
+   "grade": null,
+   "note": "原表空白；表前说明为空白项未测试",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "7",
+   "assay_id": "ALK_WT_Ki",
+   "status": "measured",
+   "relation": "=",
+   "value": 0.536,
+   "unit": "nM",
+   "grade": null,
+   "raw": "0.536 nM",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "7",
+   "assay_id": "ALK_L1196M_Ki",
+   "status": "measured",
+   "relation": "=",
+   "value": 3.16,
+   "unit": "nM",
+   "grade": null,
+   "raw": "3.16 nM",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "7",
+   "assay_id": "cell_WT_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 33.0,
+   "unit": "nM",
+   "grade": null,
+   "raw": "33.0 nM",
+   "table_pdf_page": 186
+  },
+  {
+   "example": "7",
+   "assay_id": "cell_L1196M_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 177.0,
+   "unit": "nM",
+   "grade": null,
+   "raw": "177 nM",
+   "table_pdf_page": 186
+  }
+ ]
+}

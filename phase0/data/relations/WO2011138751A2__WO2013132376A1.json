@@ -1,0 +1,104 @@
+{
+ "id": "WO2011138751A2__WO2013132376A1",
+ "type": "related_series",
+ "from_publication": "WO2011138751A2",
+ "to_publication": "WO2013132376A1",
+ "status": "related_series_not_direct_evolution",
+ "label": "相关 ALK 系列 · 直接演化未证实",
+ "basis": [
+  {
+   "check": "family_id",
+   "publication": "WO2011138751A2",
+   "expected": "44278717"
+  },
+  {
+   "check": "priority_date",
+   "publication": "WO2011138751A2",
+   "expected": "2010-05-04"
+  },
+  {
+   "check": "snapshot_matches_evidence",
+   "publication": "WO2011138751A2"
+  },
+  {
+   "check": "has_evidence_cards",
+   "publication": "WO2011138751A2"
+  },
+  {
+   "check": "family_id",
+   "publication": "WO2013132376A1",
+   "expected": "48142828"
+  },
+  {
+   "check": "priority_date",
+   "publication": "WO2013132376A1",
+   "expected": "2012-03-06"
+  },
+  {
+   "check": "snapshot_matches_evidence",
+   "publication": "WO2013132376A1"
+  },
+  {
+   "check": "has_evidence_cards",
+   "publication": "WO2013132376A1"
+  },
+  {
+   "check": "cites",
+   "publication": "WO2013132376A1",
+   "expected": "WO2011138751A2"
+  }
+ ],
+ "facts": [
+  "两份公开文本属于不同专利家族，申请人均为 Pfizer，涉及 ALK 抑制剂。",
+  "较晚公开文本的引用列表含较早专利；此处未判定引用由申请人还是审查员加入。",
+  "所选 Example 7 与 Example 6 共享氨基吡啶、吡唑及含氟芳基醚结构片段；后者含大环连接。"
+ ],
+ "hypothesis": "待验证问题：大环化是否用于限制构象，并影响 ALK 抑制？这是基于所选结构的研究假设，不是原文确认的研发动机。",
+ "gaps": [
+  "未找到证明这两个实施例直接先后优化的材料。",
+  "跨专利实验批次与可比性未核实；不计算活性改善倍数。",
+  "结构转录与实验表尚待独立化学家复核；不能据此判断脑暴露、选择性或毒性。"
+ ],
+ "sources": [
+  {
+   "label": "较早专利：家族、日期及申请人",
+   "publication": "WO2011138751A2",
+   "fragment": ""
+  },
+  {
+   "label": "较晚专利：引用列表",
+   "publication": "WO2013132376A1",
+   "fragment": "#patentCitations"
+  },
+  {
+   "label": "早期 Example 7：通式 PDF p.127",
+   "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=127"
+  },
+  {
+   "label": "早期 Example 7：取代基行 PDF p.128",
+   "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=128"
+  },
+  {
+   "label": "大环 Example 6：最终结构 PDF p.268",
+   "url": "https://patentimages.storage.googleapis.com/45/f2/58/34b02c33ca73a9/WO2013132376A1.pdf#page=268"
+  }
+ ],
+ "pair": {
+  "a": {
+   "publication": "WO2011138751A2",
+   "example": 7
+  },
+  "b": {
+   "publication": "WO2013132376A1",
+   "example": 6
+  }
+ },
+ "review": {
+  "record_status": "proposed",
+  "provenance_status": "agent_curated_pending_independent_review",
+  "reviewer": null,
+  "gaps": [
+   "independent_review"
+  ]
+ }
+}

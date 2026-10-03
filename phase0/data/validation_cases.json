@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "scope": "One development program and one independent program. This is a small initial validation set, not a 10–15-program scientific benchmark. Ground truth describes program objectives; it does not establish intent for each chosen pair.",
+  "cases": [
+    {
+      "id": "lorlatinib-development",
+      "split": "development",
+      "data": "curated/lorlatinib",
+      "program_id": "lorlatinib-literature",
+      "from": "CHEMBL601719",
+      "to": "CHEMBL3286830",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/24819116/",
+      "locator": "Abstract; J Med Chem 2014, 57, 4720–4744",
+      "ground_truth_verified_scope": "Program objectives checked against the public original abstract; pair-specific attribution not verified.",
+      "challenges": [
+        {"id": "mutant_coverage", "name": "覆盖 ALK 耐药突变", "keywords": ["耐药", "突变"]},
+        {"id": "cns", "name": "改善中枢暴露与外排问题", "keywords": ["脑", "外排", "P-gp"]},
+        {"id": "selectivity", "name": "提高激酶选择性", "keywords": ["选择性"]}
+      ]
+    },
+    {
+      "id": "osimertinib-independent",
+      "split": "holdout",
+      "data": "curated/osimertinib",
+      "program_id": "osimertinib-holdout",
+      "from": "CHEMBL2426279",
+      "to": "CHEMBL3353410",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/25271963/",
+      "locator": "Abstract; J Med Chem 2014, 57, 8249–8267",
+      "ground_truth_verified_scope": "Program objectives checked against the public original abstract; compound 9 vs 8 is a comparison, not a confirmed historical step.",
+      "challenges": [
+        {"id": "t790m", "name": "针对 EGFR T790M 耐药", "keywords": ["T790M", "耐药", "突变"]},
+        {"id": "wt_sparing", "name": "保留对野生型 EGFR 的选择性窗口", "keywords": ["野生型", "选择性"]}
+      ]
+    }
+  ]
+}

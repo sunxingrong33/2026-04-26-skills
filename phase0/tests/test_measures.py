@@ -69,7 +69,7 @@ def test_measurement_delta_and_ratio(tmp_path):
     _, deltas = compute_program_deltas(ds, "p", run_mcs=False)
     md = deltas[0].measures["efflux"]
     assert md.val_from == 8 and md.val_to == 1.1
-    assert md.ratio == 0.138
+    assert md.ratio == pytest.approx(1.1 / 8)
     assert md.comparable is True
 
 
@@ -83,7 +83,7 @@ def test_measurement_cross_assay_flagged(tmp_path):
     assert deltas[0].measures["ic50"].comparable is False
 
 
-def test_mixed_units_are_rejected(tmp_path):
+def test_convertible_mixed_units_are_normalised(tmp_path):
     """Silently aggregating nM with uM would produce a confident wrong median."""
     d = _write(tmp_path,
                [_cmp("a", SMILES["crizotinib"]), _cmp("b", SMILES["ceritinib"]),
@@ -91,8 +91,9 @@ def test_mixed_units_are_rejected(tmp_path):
                [_mem("a", 1), _mem("b", 1), _mem("c", 2)],
                ["a,ic50,24,nM,L,s,unverified,\n", "b,ic50,0.02,uM,L,s,unverified,\n"])
     ds = load_dataset(d)
-    with pytest.raises(ValueError, match="混用了单位"):
-        compute_program_deltas(ds, "p", run_mcs=False)
+    summaries, _ = compute_program_deltas(ds, "p", run_mcs=False)
+    assert summaries[0].measures["ic50"].median == 22
+    assert summaries[0].measures["ic50"].unit == "nM"
 
 
 def test_measurements_become_citable_evidence(tmp_path):

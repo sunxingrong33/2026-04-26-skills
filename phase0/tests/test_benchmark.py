@@ -56,10 +56,10 @@ def test_assertion_counts_towards_recall():
     assert s.matched_challenges == {"cns"}
 
 
-def test_headline_counts_towards_recall():
+def test_uncited_headline_does_not_count_towards_recall():
     n = _narrative([], headline="这一代在解决耐药问题")
     s = score_transition("p", 1, 2, n, _facts(), CHALLENGES)
-    assert s.matched_challenges == {"resistance"}
+    assert s.matched_challenges == set()
 
 
 def test_citation_accuracy_penalises_fabricated_refs():

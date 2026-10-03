@@ -1,0 +1,789 @@
+{
+ "$defs": {
+  "Assay": {
+   "additionalProperties": false,
+   "properties": {
+    "document_id": {
+     "title": "Document Id",
+     "type": "string"
+    },
+    "endpoint": {
+     "description": "终点，例如 IC50、Ki、Emax；Emax 等激动剂终点作为独立 assay 记录",
+     "title": "Endpoint",
+     "type": "string"
+    },
+    "grade_definitions": {
+     "anyOf": [
+      {
+       "additionalProperties": {
+        "type": "string"
+       },
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "分级值的等级定义，例如 {\"A\": \"EC50 < 10 nM\"}",
+     "title": "Grade Definitions"
+    },
+    "id": {
+     "description": "台账内唯一：<document_id>:<source_assay_id>",
+     "title": "Id",
+     "type": "string"
+    },
+    "protocol": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Protocol"
+    },
+    "protocol_locator": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Protocol Locator"
+    },
+    "review": {
+     "$ref": "#/$defs/Review"
+    },
+    "source_assay_id": {
+     "description": "原文或数据库中的 assay 编号，不同文档可以重名",
+     "title": "Source Assay Id",
+     "type": "string"
+    },
+    "unit": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Unit"
+    },
+    "variant": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "协议变体，例如 10 点 / 20 点格式",
+     "title": "Variant"
+    }
+   },
+   "required": [
+    "id",
+    "document_id",
+    "source_assay_id",
+    "endpoint",
+    "review"
+   ],
+   "title": "Assay",
+   "type": "object"
+  },
+  "CheckKind": {
+   "enum": [
+    "family_id",
+    "priority_date",
+    "snapshot_matches_evidence",
+    "has_evidence_cards",
+    "cites"
+   ],
+   "title": "CheckKind",
+   "type": "string"
+  },
+  "Compound": {
+   "additionalProperties": false,
+   "properties": {
+    "document_id": {
+     "title": "Document Id",
+     "type": "string"
+    },
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "mapping_source": {
+     "$ref": "#/$defs/Location",
+     "description": "编号与结构对应关系的来源"
+    },
+    "reported_mass": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "原文报告的质谱值（如 LCMS M+H），仅作辅助核对",
+     "title": "Reported Mass"
+    },
+    "review": {
+     "$ref": "#/$defs/Review"
+    },
+    "role": {
+     "$ref": "#/$defs/CompoundRole"
+    },
+    "smiles": {
+     "title": "Smiles",
+     "type": "string"
+    },
+    "stereochemistry_note": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Stereochemistry Note"
+    },
+    "structure_source": {
+     "$ref": "#/$defs/Location"
+    }
+   },
+   "required": [
+    "id",
+    "document_id",
+    "label",
+    "smiles",
+    "role",
+    "structure_source",
+    "mapping_source",
+    "review"
+   ],
+   "title": "Compound",
+   "type": "object"
+  },
+  "CompoundRole": {
+   "enum": [
+    "example",
+    "intermediate",
+    "reference",
+    "reagent",
+    "unspecified"
+   ],
+   "title": "CompoundRole",
+   "type": "string"
+  },
+  "Document": {
+   "additionalProperties": false,
+   "properties": {
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "identifiers": {
+     "additionalProperties": true,
+     "description": "DOI、PubMed、公开号等",
+     "title": "Identifiers",
+     "type": "object"
+    },
+    "kind": {
+     "$ref": "#/$defs/DocumentKind"
+    },
+    "review": {
+     "$ref": "#/$defs/Review"
+    },
+    "source_sha256": {
+     "additionalProperties": {
+      "type": "string"
+     },
+     "description": "原始快照哈希，例如 html / pdf",
+     "title": "Source Sha256",
+     "type": "object"
+    },
+    "url": {
+     "title": "Url",
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "kind",
+    "url",
+    "review"
+   ],
+   "title": "Document",
+   "type": "object"
+  },
+  "DocumentKind": {
+   "enum": [
+    "paper",
+    "patent"
+   ],
+   "title": "DocumentKind",
+   "type": "string"
+  },
+  "DocumentRelation": {
+   "additionalProperties": false,
+   "properties": {
+    "basis": {
+     "description": "全部满足才展示该关系",
+     "items": {
+      "$ref": "#/$defs/RelationCheck"
+     },
+     "minItems": 1,
+     "title": "Basis",
+     "type": "array"
+    },
+    "facts": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Facts",
+     "type": "array"
+    },
+    "from_publication": {
+     "title": "From Publication",
+     "type": "string"
+    },
+    "gaps": {
+     "items": {
+      "type": "string"
+     },
+     "title": "Gaps",
+     "type": "array"
+    },
+    "hypothesis": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "研究假设，不是原文确认的结论",
+     "title": "Hypothesis"
+    },
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "pair": {
+     "anyOf": [
+      {
+       "additionalProperties": {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "预设的 A/B 分子对照",
+     "title": "Pair"
+    },
+    "review": {
+     "$ref": "#/$defs/Review"
+    },
+    "sources": {
+     "items": {
+      "$ref": "#/$defs/RelationSource"
+     },
+     "title": "Sources",
+     "type": "array"
+    },
+    "status": {
+     "description": "对外展示的关系状态，例如 related_series_not_direct_evolution",
+     "title": "Status",
+     "type": "string"
+    },
+    "to_publication": {
+     "title": "To Publication",
+     "type": "string"
+    },
+    "type": {
+     "$ref": "#/$defs/RelationType"
+    }
+   },
+   "required": [
+    "id",
+    "type",
+    "from_publication",
+    "to_publication",
+    "status",
+    "label",
+    "basis",
+    "facts",
+    "gaps",
+    "sources",
+    "review"
+   ],
+   "title": "DocumentRelation",
+   "type": "object"
+  },
+  "InputFile": {
+   "additionalProperties": false,
+   "properties": {
+    "path": {
+     "title": "Path",
+     "type": "string"
+    },
+    "sha256": {
+     "title": "Sha256",
+     "type": "string"
+    }
+   },
+   "required": [
+    "path",
+    "sha256"
+   ],
+   "title": "InputFile",
+   "type": "object"
+  },
+  "Location": {
+   "additionalProperties": false,
+   "description": "Where a fact was read. ``locator`` is free text (table row, paragraph, record).",
+   "properties": {
+    "locator": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Locator"
+    },
+    "pdf_page": {
+     "anyOf": [
+      {
+       "minimum": 1,
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pdf Page"
+    },
+    "printed_page": {
+     "anyOf": [
+      {
+       "type": "integer"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Printed Page"
+    },
+    "scope": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Scope"
+    },
+    "url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Url"
+    }
+   },
+   "title": "Location",
+   "type": "object"
+  },
+  "Observation": {
+   "additionalProperties": false,
+   "properties": {
+    "assay_id": {
+     "title": "Assay Id",
+     "type": "string"
+    },
+    "compound_id": {
+     "title": "Compound Id",
+     "type": "string"
+    },
+    "document_id": {
+     "title": "Document Id",
+     "type": "string"
+    },
+    "grade": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Grade"
+    },
+    "id": {
+     "title": "Id",
+     "type": "string"
+    },
+    "missing_reason": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Missing Reason"
+    },
+    "quality_flag": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Quality Flag"
+    },
+    "raw": {
+     "additionalProperties": true,
+     "description": "来源记录原样保存，用于无损回溯",
+     "title": "Raw",
+     "type": "object"
+    },
+    "relation": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Relation"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "review": {
+     "$ref": "#/$defs/Review"
+    },
+    "source": {
+     "$ref": "#/$defs/Location"
+    },
+    "status": {
+     "$ref": "#/$defs/ObservationStatus"
+    },
+    "unit": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Unit"
+    },
+    "value": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Value"
+    }
+   },
+   "required": [
+    "id",
+    "document_id",
+    "compound_id",
+    "assay_id",
+    "status",
+    "source",
+    "raw",
+    "review"
+   ],
+   "title": "Observation",
+   "type": "object"
+  },
+  "ObservationStatus": {
+   "enum": [
+    "measured",
+    "not_tested",
+    "blank",
+    "not_reported",
+    "not_applicable"
+   ],
+   "title": "ObservationStatus",
+   "type": "string"
+  },
+  "RecordStatus": {
+   "enum": [
+    "proposed",
+    "confirmed",
+    "rejected"
+   ],
+   "title": "RecordStatus",
+   "type": "string"
+  },
+  "Relation": {
+   "enum": [
+    "=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "~",
+    "grade"
+   ],
+   "title": "Relation",
+   "type": "string"
+  },
+  "RelationCheck": {
+   "additionalProperties": false,
+   "description": "One condition that must hold on the loaded sources before the relation is shown.",
+   "properties": {
+    "check": {
+     "$ref": "#/$defs/CheckKind"
+    },
+    "expected": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "family_id / priority_date / cites 的期望值",
+     "title": "Expected"
+    },
+    "publication": {
+     "title": "Publication",
+     "type": "string"
+    }
+   },
+   "required": [
+    "check",
+    "publication"
+   ],
+   "title": "RelationCheck",
+   "type": "object"
+  },
+  "RelationSource": {
+   "additionalProperties": false,
+   "description": "A fixed URL, or the loaded publication's source page plus an optional fragment.",
+   "properties": {
+    "fragment": {
+     "default": "",
+     "title": "Fragment",
+     "type": "string"
+    },
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "publication": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Publication"
+    },
+    "url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Url"
+    }
+   },
+   "required": [
+    "label"
+   ],
+   "title": "RelationSource",
+   "type": "object"
+  },
+  "RelationType": {
+   "enum": [
+    "same_family",
+    "sibling_application",
+    "citation",
+    "inventor_overlap",
+    "related_series"
+   ],
+   "title": "RelationType",
+   "type": "string"
+  },
+  "Review": {
+   "additionalProperties": false,
+   "properties": {
+    "gaps": {
+     "description": "显式列出的待补证据",
+     "items": {
+      "type": "string"
+     },
+     "title": "Gaps",
+     "type": "array"
+    },
+    "provenance_status": {
+     "description": "来源处理状态原文，例如 database_import_pending_original_review",
+     "title": "Provenance Status",
+     "type": "string"
+    },
+    "record_status": {
+     "$ref": "#/$defs/RecordStatus",
+     "default": "proposed"
+    },
+    "reviewer": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Reviewer"
+    }
+   },
+   "required": [
+    "provenance_status"
+   ],
+   "title": "Review",
+   "type": "object"
+  }
+ },
+ "additionalProperties": false,
+ "properties": {
+  "assays": {
+   "items": {
+    "$ref": "#/$defs/Assay"
+   },
+   "title": "Assays",
+   "type": "array"
+  },
+  "compounds": {
+   "items": {
+    "$ref": "#/$defs/Compound"
+   },
+   "title": "Compounds",
+   "type": "array"
+  },
+  "documents": {
+   "items": {
+    "$ref": "#/$defs/Document"
+   },
+   "title": "Documents",
+   "type": "array"
+  },
+  "inputs": {
+   "items": {
+    "$ref": "#/$defs/InputFile"
+   },
+   "title": "Inputs",
+   "type": "array"
+  },
+  "notice": {
+   "title": "Notice",
+   "type": "string"
+  },
+  "observations": {
+   "items": {
+    "$ref": "#/$defs/Observation"
+   },
+   "title": "Observations",
+   "type": "array"
+  },
+  "relations": {
+   "items": {
+    "$ref": "#/$defs/DocumentRelation"
+   },
+   "title": "Relations",
+   "type": "array"
+  },
+  "schema_version": {
+   "default": 2,
+   "title": "Schema Version",
+   "type": "integer"
+  },
+  "scope": {
+   "title": "Scope",
+   "type": "string"
+  }
+ },
+ "required": [
+  "scope",
+  "notice",
+  "inputs",
+  "documents",
+  "compounds",
+  "assays",
+  "observations"
+ ],
+ "title": "Ledger",
+ "type": "object"
+}

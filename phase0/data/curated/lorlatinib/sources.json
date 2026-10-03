@@ -1,0 +1,204 @@
+{
+  "document_chembl_id": "CHEMBL3286195",
+  "doi": "10.1021/jm500261q",
+  "pubmed_id": 24819116,
+  "year": 2014,
+  "built_at": "2026-09-26T10:25:28.069966+00:00",
+  "structure_count": 29,
+  "observation_count": 247,
+  "exact_measurement_count": 224,
+  "excluded_from_numeric_aggregation": [
+    {
+      "activity_id": 14722319,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722322,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722325,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722327,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722332,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722333,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722334,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722336,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722337,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722339,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722340,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722341,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722342,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722354,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722365,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722368,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722471,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722472,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722473,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722518,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722527,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722528,
+      "reason": "censored_or_missing_relation"
+    },
+    {
+      "activity_id": 14722559,
+      "reason": "censored_or_missing_relation"
+    }
+  ],
+  "source_snapshots": [
+    {
+      "url": "https://www.ebi.ac.uk/chembl/api/data/document/CHEMBL3286195.json",
+      "sha256": "502ea3ffdda033983399c49d6fad4726d5bdd3d676db2138803ad32b4e2e8162",
+      "cache_file": "8f362e336816bef1c5efebb9cf34906c0968a4bc6b54f49302fe54ee13d44e60.json",
+      "retrieved_at": "2026-09-26T10:06:05.249277+00:00"
+    },
+    {
+      "url": "https://www.ebi.ac.uk/chembl/api/data/compound_record.json?document_chembl_id=CHEMBL3286195&limit=1000",
+      "sha256": "b959e3bca065779ec17e2b12426f1b9490a24692483e613bedaf796bf52848a6",
+      "cache_file": "46c22146fee97f4901c17e96f5ba0e5ec419d584ee19374543b1079b56f4371c.json",
+      "retrieved_at": "2026-09-26T10:06:09.067848+00:00"
+    },
+    {
+      "url": "https://www.ebi.ac.uk/chembl/api/data/activity.json?document_chembl_id=CHEMBL3286195&limit=1000",
+      "sha256": "39c07f917ccfe1e3802822288f750e36e56d005ad8dbc1832008ae78e22e1331",
+      "cache_file": "bdcadf99a6c7823d08f28f1e7849aafcf800b1e741e69085b37aec8c9a357c95.json",
+      "retrieved_at": "2026-09-26T10:06:14.237646+00:00"
+    }
+  ],
+  "plan": {
+    "document_chembl_id": "CHEMBL3286195",
+    "program_id": "lorlatinib-literature",
+    "program_name": "洛拉替尼：论文系列与实测权衡",
+    "assignee": "Pfizer",
+    "target": "ALK / ROS1",
+    "ordering_note": "按论文 compound 1、series 6、series 7、series 8 分组展示；这是结构系列对照，不是专利时间线或已证实的单一线性优化路径。",
+    "candidate": "CHEMBL3286830",
+    "stages": [
+      {
+        "generation": 1,
+        "label": "参考分子 · crizotinib",
+        "compound_keys": [
+          "1"
+        ]
+      },
+      {
+        "generation": 2,
+        "label": "无环系列 · 6a–6i",
+        "compound_keys": [
+          "6a",
+          "6b",
+          "6c",
+          "6d",
+          "6e",
+          "6f",
+          "6g",
+          "6h",
+          "6i"
+        ]
+      },
+      {
+        "generation": 3,
+        "label": "早期大环系列 · 7a–7f",
+        "compound_keys": [
+          "7a",
+          "7b",
+          "7c",
+          "7d",
+          "7e",
+          "7f"
+        ]
+      },
+      {
+        "generation": 4,
+        "label": "后续大环系列 · 8a–8m（8k 为洛拉替尼）",
+        "compound_keys": [
+          "8a",
+          "8b",
+          "8c",
+          "8d",
+          "8e",
+          "8f",
+          "8g",
+          "8h",
+          "8i",
+          "8j",
+          "8k",
+          "8l",
+          "8m"
+        ]
+      }
+    ],
+    "assay_labels": {
+      "CHEMBL3293161": "ALK_WT_Ki",
+      "CHEMBL3293162": "ALK_L1196M_Ki",
+      "CHEMBL3293163": "cell_ALK_WT_IC50",
+      "CHEMBL3293164": "cell_ALK_L1196M_IC50",
+      "CHEMBL3293165": "LogD_pH7.4",
+      "CHEMBL3293391": "MDR1_efflux_ratio",
+      "CHEMBL3293390": "human_microsome_clearance",
+      "CHEMBL3293393": "TRKB_Ki"
+    }
+  },
+  "limitations": [
+    "结构、编号与数值来自 ChEMBL 对原始论文的整理，尚未逐项对照论文图表进行人工复核。",
+    "阶段由已声明的论文系列分组构成，不代表逐个化合物的真实研发先后或专利优先权时间。",
+    "不等式/缺失/质量标记数据保留在 observations.csv，不当作精确值参与中位数；精确值子集可能有选择偏差。",
+    "分子式由导入结构计算，仅验证内部一致性，不能代替原文结构身份核验。"
+  ]
+}

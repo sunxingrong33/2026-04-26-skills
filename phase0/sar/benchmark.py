@@ -1,19 +1,7 @@
-"""§5 评测：Recall / Hallucination rate / Citation accuracy。
+"""Legacy benchmark: evidence ID validity, flagged-claim rate and keyword proxy.
 
-    python -m phase0.sar.benchmark --narratives phase0/examples
-
-三个指标的可自动化程度差别很大，这个模块对此不打马虎眼：
-
-* **Citation accuracy** 完全可自动化。引用的 ``[Ex]`` 是否真实存在于 FACTS，
-  是个确定性判断。
-* **Hallucination rate** 只能自动化一部分。程序能抓到伪造引用和 FACTS 里没有的
-  数字，抓不到"引用真实证据但推出无据结论"。所以自动值是**下界**，
-  必须配合人工复核；本模块会导出复核工作表。
-* **Recall** 依赖 ground truth。ground truth 未经核实时，本模块**拒绝给分**，
-  而不是给一个看起来能用的数字。
-
-这三条的排序不是偶然：方案 §5 说 hallucination 是生死线，而它恰恰是最不能
-自动测的那个。任何声称"幻觉率 0.03"的自动化数字都应该被怀疑。
+These checks are not scientific citation accuracy, hallucination rate or recall.
+Human adjudication is required; use validate.py for frozen-rule review sheets.
 """
 
 from __future__ import annotations
@@ -43,6 +31,7 @@ class TransitionScore:
     n_bad_refs: int
     n_stray_numbers: int
     matched_challenges: set[str] = field(default_factory=set)
+    n_flagged_hypotheses: int = 0
 
     @property
     def citation_accuracy(self) -> float | None:
@@ -85,8 +74,8 @@ class ProgramScore:
         total = sum(t.n_hypotheses for t in self.transitions)
         if not total:
             return None
-        bad = sum(1 for t in self.transitions for _ in range(t.n_bad_refs + t.n_stray_numbers))
-        return round(min(bad / total, 1.0), 4)
+        bad = sum(t.n_flagged_hypotheses for t in self.transitions)
+        return round(bad / total, 4)
 
 
 def load_benchmark(path: str | Path) -> dict[str, Any]:
@@ -102,7 +91,7 @@ def _claim_text(narrative: dict[str, Any]) -> str:
     counting it as a hit inflates recall with the tool's own disclaimers, which is
     the self-fulfilling failure mode the benchmark exists to avoid.
     """
-    parts = [str(narrative.get("headline", ""))]
+    parts = []
     for h in narrative.get("hypotheses", []) or []:
         parts.append(str(h.get("claim", "")))
     return "\n".join(parts)
@@ -117,19 +106,24 @@ def score_transition(
     challenges: list[dict[str, Any]],
 ) -> TransitionScore:
     index = facts.index
-    facts_numbers = set(NUMBER_RE.findall(facts.render()))
-
-    n_refs = n_bad = n_stray = 0
+    n_refs = n_bad = n_stray = n_flagged = 0
+    eligible_claims = []
     for h in narrative.get("hypotheses", []) or []:
         claim = str(h.get("claim", ""))
-        refs = [str(r).strip().upper() for r in h.get("evidence_refs", [])]
+        refs = [str(r).strip().upper().strip("[]") for r in h.get("evidence_refs", [])]
         refs += [f"E{n}" for n in EVIDENCE_RE.findall(claim)]
         refs = list(dict.fromkeys(refs))
         n_refs += len(refs)
-        n_bad += sum(1 for r in refs if r not in index)
-        n_stray += sum(1 for n in NUMBER_RE.findall(claim) if n not in facts_numbers)
+        bad = sum(1 for r in refs if r not in index)
+        facts_numbers = set(NUMBER_RE.findall(" ".join(index[r].text for r in refs if r in index)))
+        stray = sum(1 for n in NUMBER_RE.findall(EVIDENCE_RE.sub("", claim)) if n not in facts_numbers)
+        n_bad += bad
+        n_stray += stray
+        n_flagged += int(bool(bad or stray or not refs))
+        if refs and not bad and not stray and not re.search(r"无法|不能判断|证据不足|未能|不能确定", claim):
+            eligible_claims.append(claim)
 
-    text = _claim_text(narrative)
+    text = "\n".join(eligible_claims)
     matched = {
         c["id"]
         for c in challenges
@@ -145,6 +139,7 @@ def score_transition(
         n_bad_refs=n_bad,
         n_stray_numbers=n_stray,
         matched_challenges=matched,
+        n_flagged_hypotheses=n_flagged,
     )
 
 
@@ -190,7 +185,15 @@ def run(narratives_dir: Path, data_dir: Path, review_out: Path | None) -> int:
             print(f"跳过 {path.name}: benchmark.yaml 里没有 {pid}")
             continue
         gen_from, gen_to = int(m.group("a")), int(m.group("b"))
-        facts = _facts_for(dataset, rules_doc, pid, gen_from, gen_to)
+        snapshot = path.with_name(path.name.replace(".narrative.json", ".facts.json"))
+        if snapshot.exists():
+            from .narrate import Evidence, FactsBlock
+            saved = json.loads(snapshot.read_text(encoding="utf-8"))
+            saved["evidence"] = [Evidence(**e) for e in saved["evidence"]]
+            facts = FactsBlock(**saved)
+        else:
+            print(f"警告 {path.name}: 无原始 FACTS 快照；旧样例按当前数据重建，证据编号可能变化")
+            facts = _facts_for(dataset, rules_doc, pid, gen_from, gen_to)
         if facts is None:
             print(f"跳过 {path.name}: 数据里没有 Gen{gen_from}→Gen{gen_to}")
             continue
@@ -234,13 +237,12 @@ def run(narratives_dir: Path, data_dir: Path, review_out: Path | None) -> int:
         ca = ps.citation_accuracy
         if ca is not None:
             flag = "✓" if ca >= targets.get("citation_accuracy", 0.95) else "✗"
-            print(f"  Citation accuracy      {ca:.3f}  {flag} (目标 ≥ {targets.get('citation_accuracy')})")
+            print(f"  Evidence ID validity   {ca:.3f}（仅编号有效率，不代表来源真实或结论有据）")
 
         hb = ps.automated_hallucination_lower_bound
         if hb is not None:
-            print(f"  Hallucination 自动下界  {hb:.3f}     (目标 ≤ {targets.get('hallucination_rate')})")
-            print("    ⚠ 这是下界，只覆盖伪造引用与凭空数字。"
-                  "『引用真实证据但结论无据』只能人工判，见复核工作表。")
+            print(f"  自动标记假说比例        {hb:.3f}（每条最多计一次；不是人工幻觉率）")
+            print("    只检查引用与数字格式；结论是否有据需人工判定。")
 
         rc = ps.recall
         if rc is None:
@@ -249,7 +251,7 @@ def run(narratives_dir: Path, data_dir: Path, review_out: Path | None) -> int:
             print(f"    已匹配挑战: {sorted(ps.matched) or '无'} / 共 {len(ps.challenges)} 条")
         else:
             flag = "✓" if rc >= targets.get("recall", 0.6) else "✗"
-            print(f"  Recall                 {rc:.3f}  {flag} "
+            print(f"  关键词召回代理指标      {rc:.3f}  {flag} "
                   f"({sorted(ps.matched)} / {len(ps.challenges)})")
 
     if review_out and review_rows:

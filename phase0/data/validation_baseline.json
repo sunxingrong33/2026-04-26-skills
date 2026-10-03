@@ -1,0 +1,5 @@
+{
+  "rules_sha256": "30d9dc524466def320457d4ad3fa9ca62f7d36384bcee2ec5977ffea949a1db7",
+  "baseline_commit": "4bf854acc2f8cdbed25d2f1f2d9166b083a54e55",
+  "note": "Original rule thresholds frozen before scoring the independent EGFR case; fixes to arithmetic and output auditing do not tune these thresholds."
+}

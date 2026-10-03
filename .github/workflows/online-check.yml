@@ -1,0 +1,27 @@
+name: Online path check
+# Manual: Actions -> Online path check -> Run workflow. Reaches Google Patents,
+# ChEMBL, SureChEMBL and PubChem from a GitHub runner; the report is shown in the
+# run summary and kept as an artifact. Not run on push: it depends on outside services.
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements-agent.txt
+      - run: python -m phase0.tools.verify_online --out artifacts/online-check/run
+      - if: always()
+        run: cat artifacts/online-check/run/report.md >> "$GITHUB_STEP_SUMMARY" || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: online-check-report
+          path: |
+            artifacts/online-check/run/report.md
+            artifacts/online-check/run/report.json

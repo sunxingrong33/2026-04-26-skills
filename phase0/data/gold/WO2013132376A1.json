@@ -1,0 +1,189 @@
+{
+ "schema_version": 1,
+ "publication": "WO2013132376A1",
+ "source_pdf_sha256": "88f35d03bdb57f33029a90e5b09f141cd7c457183abb9b3fc09e31df65a93096",
+ "gold_status": "agent_visual_checked_pending_independent_review",
+ "derived_from": {
+  "path": "phase0/data/patent_evidence/WO2013132376A1.json",
+  "sha256": "9ccd57a063135739e255fb382039681ecaecee17379d8b4b171e8db652b0605e"
+ },
+ "assays": [
+  {
+   "id": "ALK_WT_Ki",
+   "unit": "nM",
+   "protocol_locator": "p3363–p3365；PDF p. 435"
+  },
+  {
+   "id": "ALK_L1196M_Ki",
+   "unit": "nM",
+   "protocol_locator": "p3363–p3365；PDF p. 435"
+  },
+  {
+   "id": "cell_WT_IC50",
+   "unit": "nM",
+   "protocol_locator": "p3366–p3371；PDF pp. 435–436"
+  },
+  {
+   "id": "cell_L1196M_IC50",
+   "unit": "nM",
+   "protocol_locator": "p3366–p3371；PDF pp. 435–436"
+  }
+ ],
+ "compounds": [
+  {
+   "example": "2",
+   "role": "example",
+   "smiles": "C[C@H]1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21",
+   "structure_pdf_page": 260,
+   "reported_mass": 407
+  },
+  {
+   "example": "4",
+   "role": "example",
+   "smiles": "C1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21",
+   "structure_pdf_page": 264,
+   "reported_mass": 393
+  },
+  {
+   "example": "6",
+   "role": "example",
+   "smiles": "C1Oc2cc(cnc2N)-c2c(n(C)nc2C)CN(C)C(=O)c2ccc(F)cc21",
+   "structure_pdf_page": 268,
+   "reported_mass": 382
+  }
+ ],
+ "observations": [
+  {
+   "example": "2",
+   "assay_id": "ALK_WT_Ki",
+   "status": "measured",
+   "relation": "<",
+   "value": 0.2,
+   "unit": "nM",
+   "grade": null,
+   "raw": "<0.200 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "2",
+   "assay_id": "ALK_L1196M_Ki",
+   "status": "measured",
+   "relation": "=",
+   "value": 0.78,
+   "unit": "nM",
+   "grade": null,
+   "raw": "0.78 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "2",
+   "assay_id": "cell_WT_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 1.33,
+   "unit": "nM",
+   "grade": null,
+   "raw": "1.33 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "2",
+   "assay_id": "cell_L1196M_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 20.7,
+   "unit": "nM",
+   "grade": null,
+   "raw": "20.7 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "4",
+   "assay_id": "ALK_WT_Ki",
+   "status": "measured",
+   "relation": "<",
+   "value": 0.2,
+   "unit": "nM",
+   "grade": null,
+   "raw": "<0.200 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "4",
+   "assay_id": "ALK_L1196M_Ki",
+   "status": "measured",
+   "relation": "=",
+   "value": 1.2,
+   "unit": "nM",
+   "grade": null,
+   "raw": "1.20 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "4",
+   "assay_id": "cell_WT_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 28.1,
+   "unit": "nM",
+   "grade": null,
+   "raw": "28.1 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "4",
+   "assay_id": "cell_L1196M_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 184.0,
+   "unit": "nM",
+   "grade": null,
+   "raw": "184 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "6",
+   "assay_id": "ALK_WT_Ki",
+   "status": "measured",
+   "relation": "<",
+   "value": 0.2,
+   "unit": "nM",
+   "grade": null,
+   "raw": "<0.200 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "6",
+   "assay_id": "ALK_L1196M_Ki",
+   "status": "measured",
+   "relation": "=",
+   "value": 1.93,
+   "unit": "nM",
+   "grade": null,
+   "raw": "1.93 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "6",
+   "assay_id": "cell_WT_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 6.41,
+   "unit": "nM",
+   "grade": null,
+   "raw": "6.41 nM",
+   "table_pdf_page": 436
+  },
+  {
+   "example": "6",
+   "assay_id": "cell_L1196M_IC50",
+   "status": "measured",
+   "relation": "=",
+   "value": 97.1,
+   "unit": "nM",
+   "grade": null,
+   "raw": "97.1 nM",
+   "table_pdf_page": 436
+  }
+ ]
+}

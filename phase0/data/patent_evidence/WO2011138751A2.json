@@ -1,0 +1,206 @@
+{
+  "publication": "WO2011138751A2",
+  "version": 1,
+  "source_html_sha256": "b121414d73cece9e94f0755db353ea48525879b17bc47ce91bf74057dfeadf14",
+  "source_pdf_sha256": "25d70df69bc52e2e3e585bb6ec744e21d4629c80099050bd8b1a5882f8752649",
+  "pdf_url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf",
+  "review": {
+    "status": "agent_visual_checked_pending_independent_review",
+    "method": "Agent visually compared original PDF final product (Example 1) and general scaffold plus substituent rows (Examples 6, 7), rendered transcribed structures back for comparison, and read the lower Ki/ELISA table on PDF page 186. No independent chemistry review.",
+    "independent_reviewer": null
+  },
+  "assays": [
+    {
+      "id": "ALK_WT_Ki",
+      "label": "WT ALK 酶 Ki",
+      "unit": "nM",
+      "protocol": "微流控迁移率实验；ATP 60 μM；室温反应 1 h；竞争性抑制模型拟合 Ki",
+      "protocol_locator": "WO2011138751A2; PDF pp. 181–182; ALK enzymatic assay 2 (WT)"
+    },
+    {
+      "id": "ALK_L1196M_Ki",
+      "label": "L1196M ALK 酶 Ki",
+      "unit": "nM",
+      "protocol": "与 WT 分列；L1196M ALK 激酶结构域；ATP 60 μM；室温反应 1 h",
+      "protocol_locator": "WO2011138751A2; PDF pp. 181–182; ALK enzymatic assay 3 (L1196M)"
+    },
+    {
+      "id": "cell_WT_IC50",
+      "label": "WT EML4-ALK 细胞 ELISA IC50",
+      "unit": "nM",
+      "protocol": "NIH-3T3 EML4-ALK v1；化合物处理 1 h；phospho-ALK Tyr1604 ELISA",
+      "protocol_locator": "WO2011138751A2; PDF pp. 184–185; Cellular Phospho-ALK ELISA for EML4-ALK"
+    },
+    {
+      "id": "cell_L1196M_IC50",
+      "label": "L1196M EML4-ALK 细胞 ELISA IC50",
+      "unit": "nM",
+      "protocol": "NIH-3T3 EML4-ALK v1 L1196M；处理 1 h；phospho-ALK Tyr1604 ELISA",
+      "protocol_locator": "WO2011138751A2; PDF pp. 184–185; Cellular Phospho-ALK ELISA for EML4-ALK"
+    }
+  ],
+  "cards": [
+    {
+      "example": 1,
+      "label": "Example 1",
+      "smiles": "CC(Oc1cc(-c2c(C)nnn2C=C)cnc1N)c1cc(F)ccc1OC",
+      "structure_source": {
+        "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=127",
+        "pdf_page": 127,
+        "printed_page": 125,
+        "locator": "p1071–p1074",
+        "scope": "Final product"
+      },
+      "reported_lcms_m_plus_h": 370.22,
+      "stereochemistry_note": "原图未指定乙氧基连接中心的立体构型；保留未指定，不推断 R/S 或外消旋比例。",
+      "table_source": {
+        "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=186",
+        "pdf_page": 186,
+        "printed_page": 184,
+        "locator": "Lower Ki / cellular ELISA table, row Example 1, columns 2–5 (not ALK assay 1 IC50)"
+      },
+      "measurements": [
+        {
+          "assay_id": "ALK_WT_Ki",
+          "relation": "=",
+          "value": 2.9,
+          "unit": "nM",
+          "raw": "2.90 nM"
+        },
+        {
+          "assay_id": "ALK_L1196M_Ki",
+          "relation": "=",
+          "value": 18.0,
+          "unit": "nM",
+          "raw": "18.0 nM"
+        },
+        {
+          "assay_id": "cell_WT_IC50",
+          "relation": "=",
+          "value": 144.0,
+          "unit": "nM",
+          "raw": "144 nM"
+        },
+        {
+          "assay_id": "cell_L1196M_IC50",
+          "relation": "=",
+          "value": 950.0,
+          "unit": "nM",
+          "raw": "950 nM"
+        }
+      ],
+      "missing_measurements": []
+    },
+    {
+      "example": 6,
+      "label": "Example 6",
+      "smiles": "CC(Oc1cc(-c2c(C)[nH]nc2C)cnc1N)c1cc(F)ccc1OC",
+      "structure_source": {
+        "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=128",
+        "pdf_page": 128,
+        "printed_page": 126,
+        "locator": "Examples 2–17 substituent table, row 6; scaffold on preceding page",
+        "scope": "General scaffold on PDF p.127 combined with substituent row on p.128"
+      },
+      "reported_lcms_m_plus_h": 357,
+      "stereochemistry_note": "原图未指定乙氧基连接中心的立体构型；保留未指定，不推断 R/S 或外消旋比例。",
+      "table_source": {
+        "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=186",
+        "pdf_page": 186,
+        "printed_page": 184,
+        "locator": "Lower Ki / cellular ELISA table, row Example 6, columns 2–5 (not ALK assay 1 IC50)"
+      },
+      "measurements": [
+        {
+          "assay_id": "ALK_WT_Ki",
+          "relation": "=",
+          "value": 0.62,
+          "unit": "nM",
+          "raw": "0.620 nM"
+        },
+        {
+          "assay_id": "ALK_L1196M_Ki",
+          "relation": "=",
+          "value": 2.75,
+          "unit": "nM",
+          "raw": "2.75 nM"
+        }
+      ],
+      "missing_measurements": [
+        {
+          "assay_id": "cell_WT_IC50",
+          "label": "WT EML4-ALK 细胞 ELISA IC50",
+          "reason": "原表空白；表前说明为空白项未测试"
+        },
+        {
+          "assay_id": "cell_L1196M_IC50",
+          "label": "L1196M EML4-ALK 细胞 ELISA IC50",
+          "reason": "原表空白；表前说明为空白项未测试"
+        }
+      ],
+      "additional_structure_sources": [
+        {
+          "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=127",
+          "label": "配套通式：PDF 第 127 页（印刷页 125）"
+        }
+      ]
+    },
+    {
+      "example": 7,
+      "label": "Example 7",
+      "smiles": "CC(Oc1cc(-c2c(C)n(C)nc2C)cnc1N)c1cc(F)ccc1OC",
+      "structure_source": {
+        "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=128",
+        "pdf_page": 128,
+        "printed_page": 126,
+        "locator": "Examples 2–17 substituent table, row 7; scaffold on preceding page",
+        "scope": "General scaffold on PDF p.127 combined with substituent row on p.128"
+      },
+      "reported_lcms_m_plus_h": 371,
+      "stereochemistry_note": "原图未指定乙氧基连接中心的立体构型；保留未指定，不推断 R/S 或外消旋比例。",
+      "table_source": {
+        "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=186",
+        "pdf_page": 186,
+        "printed_page": 184,
+        "locator": "Lower Ki / cellular ELISA table, row Example 7, columns 2–5 (not ALK assay 1 IC50)"
+      },
+      "measurements": [
+        {
+          "assay_id": "ALK_WT_Ki",
+          "relation": "=",
+          "value": 0.536,
+          "unit": "nM",
+          "raw": "0.536 nM"
+        },
+        {
+          "assay_id": "ALK_L1196M_Ki",
+          "relation": "=",
+          "value": 3.16,
+          "unit": "nM",
+          "raw": "3.16 nM"
+        },
+        {
+          "assay_id": "cell_WT_IC50",
+          "relation": "=",
+          "value": 33.0,
+          "unit": "nM",
+          "raw": "33.0 nM"
+        },
+        {
+          "assay_id": "cell_L1196M_IC50",
+          "relation": "=",
+          "value": 177.0,
+          "unit": "nM",
+          "raw": "177 nM"
+        }
+      ],
+      "missing_measurements": [],
+      "additional_structure_sources": [
+        {
+          "url": "https://patentimages.storage.googleapis.com/09/cd/ed/8c529f4bb6a3e6/WO2011138751A2.pdf#page=127",
+          "label": "配套通式：PDF 第 127 页（印刷页 125）"
+        }
+      ]
+    }
+  ]
+}
