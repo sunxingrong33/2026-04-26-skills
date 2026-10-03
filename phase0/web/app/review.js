@@ -71,7 +71,9 @@ function sources(i) {
 
 function drawViewer(i) {
   const srcs = sources(i);
-  if (!state.pdf || !srcs.some(x => x.key === state.pdf.key)) state.pdf = srcs[0] ? {...srcs[0], loaded: false} : null;
+  // A new record keeps the same tab kind but never the previous record's page.
+  const same = state.pdf && srcs.find(x => x.key === state.pdf.key && x.url === state.pdf.url);
+  if (!same) state.pdf = srcs[0] ? {...srcs[0], loaded: false} : null;
   const cur = state.pdf;
   const loc = i.structure_source || {};
   const head = h('div', {class: 'sources'}, srcs.map(x => h('button', {type: 'button', class: 'btn small' + (cur && cur.key === x.key ? ' primary' : ''),
