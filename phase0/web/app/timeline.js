@@ -80,7 +80,7 @@ function alignment() {
     return tr;
   });
   const a = al.anchor || {};
-  return h('div', {class: 'card span-2 col'},
+  return h('div', {class: 'card col'},
     h('div', {class: 'card-head', style: 'margin:0'}, h('h2', {}, 'R 基团对齐'),
       h('span', {class: 'hint'}, '共同锚点 ' + (a.atoms || '?') + ' 个原子 · 覆盖 ' + al.rows.filter(r => r.matched).length + '/' + al.rows.length +
         (a.coverage_min != null ? ' · 锚点占分子 ' + Math.round(a.coverage_min * 100) + '–' + Math.round(a.coverage_max * 100) + '%' : '')),
@@ -134,7 +134,7 @@ function draw() {
         h('span', {class: 'hint'}, data.families.length + ' 个家族 · 按优先权日排列' + (relation ? ' · 已整理关系：' + relation.label : '')),
         h('span', {class: 'grow'}), toggle),
       track()),
-    h('section', {class: 'grid-3'}, alignment(), grouping()),
+    h('section', {class: 'grid-side'}, alignment(), grouping()),
     data.papers.length ? h('p', {class: 'muted small'}, '论文不在专利时间轴上：' + data.papers.map(p => p.title + '（' + p.citation + '）').join('、') + '。论文化合物可在 ', h('a', {href: studyUrl(id, 'evidence')}, '证据'), ' 页查看。') : null);
   requestAnimationFrame(drawEdges);
 }

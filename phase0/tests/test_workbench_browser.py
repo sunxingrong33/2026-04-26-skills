@@ -111,6 +111,7 @@ def test_review_queue_confirms_with_named_reviewer(app, page):
     settle(page, f'.qitem[data-id="{EARLY}:example:1"]')
     page.click(f'.qitem[data-id="{LATE}:example:2"]')
     page.wait_for_function('document.querySelector(".detail").textContent.includes("Example 2")')
+    assert 'PDF p.260' in page.text_content('.pdf-placeholder')  # not the previous record's page
     assert page.is_disabled('#confirm')
     for _ in range(page.locator('.review-check').count()):
         page.keyboard.press('y')
