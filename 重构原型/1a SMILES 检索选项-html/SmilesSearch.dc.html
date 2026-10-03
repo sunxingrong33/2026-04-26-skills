@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>SMILES 检索选项</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;family=Noto+Serif+SC:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F3EC}
+a{color:#0A5F55}a:hover{color:#063F38}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1220px; box-sizing: border-box; background: #F5F3EC; color: #16242A; font-family: 'Noto Sans SC', sans-serif; display: flex; flex-direction: column">
+  <header style="height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 32px; padding: 0 40px; background: #16242A; color: #F5F3EC">
+    <a href="Main.dc.html" style="font-family: 'Noto Serif SC', serif; font-size: 20px; font-weight: 700; color: #F5F3EC; text-decoration: none">SAR Atlas</a>
+    <span style="font-size: 13px; color: #B8C4C2">竞对化学证据工作台</span>
+    <div style="flex-grow: 1"></div>
+    <a href="Review.dc.html" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 6px; color: #F5F3EC; text-decoration: none; font-size: 14px; background: #24363C">复核队列<span style="min-width: 22px; height: 22px; border-radius: 11px; background: #E8A33D; color: #16242A; font: 600 12px 'IBM Plex Mono', monospace; display: flex; align-items: center; justify-content: center">6</span></a>
+  </header>
+
+  <main style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; padding: 32px 120px 40px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <a href="Main.dc.html" style="font-size: 14px">← 首页</a>
+      <h1 style="margin: 0; font-family: 'Noto Serif SC', serif; font-size: 28px; font-weight: 700">结构检索</h1>
+      <span style="height: 24px; padding: 0 10px; border-radius: 4px; background: #DCEFEA; color: #0A5F55; font-size: 12px; font-weight: 600; display: flex; align-items: center">识别为 SMILES</span>
+      <div style="flex-grow: 1"></div>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #4E5F63"><span style="height: 18px; padding: 0 6px; border: 1px solid #8A9598; border-radius: 3px; display: flex; align-items: center">现有</span>当前版本已支持</span>
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #4E5F63"><span style="height: 18px; padding: 0 6px; border-radius: 3px; background: #FBE3C0; color: #7A3B06; display: flex; align-items: center">新增</span>本次设计新增</span>
+    </div>
+
+    <div style="display: flex; gap: 12px; align-items: stretch">
+      <label style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600; color: #4E5F63">SMILES（最多 2000 字符 / 200 个原子）</span>
+        <input type="text" value="C[C@H]1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21" style="height: 52px; box-sizing: border-box; padding: 0 16px; border: 2px solid #0A5F55; border-radius: 8px; background: #FFFFFF; font: 500 16px 'IBM Plex Mono', monospace; color: #16242A">
+      </label>
+      <button type="button" style="align-self: flex-end; height: 52px; padding: 0 16px; border: 1px solid #C9C3B5; border-radius: 8px; background: #FFFFFF; color: #16242A; font: 500 14px 'Noto Sans SC', sans-serif">在结构编辑器中修改</button>
+      <button type="button" style="align-self: flex-end; height: 52px; padding: 0 16px; border: 1px solid #C9C3B5; border-radius: 8px; background: #FFFFFF; color: #16242A; font: 500 14px 'Noto Sans SC', sans-serif">上传 MOL / SDF</button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 24px; align-items: start">
+      <section style="display: flex; flex-direction: column; gap: 12px; padding: 20px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">解析结果 · 本地 RDKit</h2>
+        <img src="./assets/5d08324b6a4beaa8227007cd650f1bb7.svg" alt="输入 SMILES 的二维结构" style="width: 378px; height: 265px; background: #FAFAF7; border-radius: 6px">
+        <div style="display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 6px 10px; font-size: 13px">
+          <span style="color: #4E5F63">分子式</span><span style="font-family: 'IBM Plex Mono', monospace">C21H19FN6O2</span>
+          <span style="color: #4E5F63">MW</span><span style="font-family: 'IBM Plex Mono', monospace">406.4</span>
+          <span style="color: #4E5F63">InChIKey</span><span style="font: 12px 'IBM Plex Mono', monospace; word-break: break-all">IIXWYSCJSQVBQM-LLVKDONJSA-N</span>
+          <span style="color: #4E5F63">立体</span><span>1 个立体中心，已指定 R</span>
+          <span style="color: #4E5F63">组分</span><span>单组分，未检测到盐或溶剂</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #EEF6F4; border-radius: 6px; font-size: 13px; color: #0A5F55">解析成功 · 30 个重原子 · 结构未离开本机</div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 18px; padding: 22px 24px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+        <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 8px">
+          <legend style="font-size: 15px; font-weight: 700; margin-bottom: 10px">1 匹配方式</legend>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+            <label style="display: flex; gap: 10px; padding: 12px; border: 2px solid #0A5F55; border-radius: 8px; background: #F4FAF8"><input type="radio" name="match" checked="" style="width: 18px; height: 18px; margin: 2px 0 0"><span style="display: flex; flex-direction: column; gap: 3px"><span style="display: flex; gap: 6px; align-items: center"><b style="font-size: 14px">精确</b><span style="height: 18px; padding: 0 5px; border: 1px solid #8A9598; border-radius: 3px; font-size: 11px; color: #4E5F63; display: flex; align-items: center">现有</span></span><span style="font-size: 12px; color: #4E5F63">标准化后按标准 InChIKey 匹配（含立体层）；会合并盐型与互变异构形式</span></span></label>
+            <label style="display: flex; gap: 10px; padding: 12px; border: 1px solid #DDD8CC; border-radius: 8px"><input type="radio" name="match" style="width: 18px; height: 18px; margin: 2px 0 0"><span style="display: flex; flex-direction: column; gap: 3px"><span style="display: flex; gap: 6px; align-items: center"><b style="font-size: 14px">精确 · 忽略立体</b><span style="height: 18px; padding: 0 5px; border-radius: 3px; background: #FBE3C0; color: #7A3B06; font-size: 11px; display: flex; align-items: center">新增</span></span><span style="font-size: 12px; color: #4E5F63">InChIKey 前 14 位一致；对映体、消旋体与未指定立体一并列出</span></span></label>
+            <label style="display: flex; gap: 10px; padding: 12px; border: 1px solid #DDD8CC; border-radius: 8px"><input type="radio" name="match" style="width: 18px; height: 18px; margin: 2px 0 0"><span style="display: flex; flex-direction: column; gap: 3px"><span style="display: flex; gap: 6px; align-items: center"><b style="font-size: 14px">子结构</b><span style="height: 18px; padding: 0 5px; border: 1px solid #8A9598; border-radius: 3px; font-size: 11px; color: #4E5F63; display: flex; align-items: center">现有</span></span><span style="font-size: 12px; color: #4E5F63">以输入为片段，至少 6 个重原子；不做互变异构标准化</span></span></label>
+            <label style="display: flex; gap: 10px; padding: 12px; border: 1px solid #DDD8CC; border-radius: 8px; align-items: center"><input type="radio" name="match" style="width: 18px; height: 18px; margin: 0"><span style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1"><span style="display: flex; gap: 6px; align-items: center"><b style="font-size: 14px">相似性</b><span style="height: 18px; padding: 0 5px; border: 1px solid #8A9598; border-radius: 3px; font-size: 11px; color: #4E5F63; display: flex; align-items: center">现有</span></span><span style="font-size: 12px; color: #4E5F63">Morgan 半径 2、2048 位 · Tanimoto；只排序，不作证据</span></span><span style="font-size: 13px; color: #4E5F63">≥</span><input type="number" value="70" step="1" min="40" max="100" aria-label="相似度阈值（%）" style="width: 64px; height: 36px; box-sizing: border-box; padding: 0 8px; border: 1px solid #C9C3B5; border-radius: 6px; font: 14px 'IBM Plex Mono', monospace"><span style="font-size: 13px; color: #4E5F63">%</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+          <legend style="font-size: 15px; font-weight: 700; margin-bottom: 10px">2 检索范围</legend>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" checked="" style="width: 18px; height: 18px">本地证据台账 · 4 份文档 · 37 条结构记录 · 离线<span style="height: 18px; padding: 0 5px; border: 1px solid #8A9598; border-radius: 3px; font-size: 11px; color: #4E5F63; display: flex; align-items: center">现有</span></label>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" checked="" style="width: 18px; height: 18px">我的调研中上传 PDF 抽取出的结构<span style="height: 18px; padding: 0 5px; border-radius: 3px; background: #FBE3C0; color: #7A3B06; font-size: 11px; display: flex; align-items: center">新增</span></label>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" checked="" style="width: 18px; height: 18px">ChEMBL：分子、测量与来源文档<span style="height: 18px; padding: 0 5px; border: 1px solid #8A9598; border-radius: 3px; font-size: 11px; color: #4E5F63; display: flex; align-items: center">现有</span><span style="font-size: 12px; color: #7A3B06">待在线核对</span></label>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" style="width: 18px; height: 18px">SureChEMBL：专利中自动提取的结构，异步检索<span style="height: 18px; padding: 0 5px; border: 1px solid #8A9598; border-radius: 3px; font-size: 11px; color: #4E5F63; display: flex; align-items: center">现有</span><span style="font-size: 12px; color: #7A3B06">待在线核对</span></label>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" style="width: 18px; height: 18px">PubChem 交叉引用：关联专利与 PubMed 文献<span style="height: 18px; padding: 0 5px; border: 1px solid #8A9598; border-radius: 3px; font-size: 11px; color: #4E5F63; display: flex; align-items: center">现有</span><span style="font-size: 12px; color: #7A3B06">待在线核对</span></label>
+          <div style="margin-left: 28px; padding: 10px 12px; background: #FDF3E4; border: 1px solid #E8C48C; border-radius: 6px; font-size: 13px; color: #5C3408; line-height: 1.6">将发送：ChEMBL 精确检索发送标准 InChIKey，相似性与子结构发送标准化后的 SMILES；SureChEMBL 发送标准化后的 SMILES。未公开的内部结构请只查本地。</div>
+        </fieldset>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+          <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+            <legend style="font-size: 15px; font-weight: 700; margin-bottom: 10px">3 标准化</legend>
+            <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" checked="" style="width: 18px; height: 18px">去盐和溶剂、中和、统一互变异构<span style="height: 18px; padding: 0 5px; border: 1px solid #8A9598; border-radius: 3px; font-size: 11px; color: #4E5F63; display: flex; align-items: center">现有</span></label>
+            <span style="font-size: 12px; color: #4E5F63; line-height: 1.6">实际做了哪些改动逐步记录，并排显示标准化前后结构；互变异构改变立体信息时提示</span>
+          </fieldset>
+          <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+            <legend style="font-size: 15px; font-weight: 700; margin-bottom: 10px">4 命中后</legend>
+            <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="radio" name="after" checked="" style="width: 18px; height: 18px">先预览全部命中，再选择加入<span style="height: 18px; padding: 0 5px; border-radius: 3px; background: #FBE3C0; color: #7A3B06; font-size: 11px; display: flex; align-items: center">新增</span></label>
+            <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="radio" name="after" style="width: 18px; height: 18px">精确命中以“待确认”加入「ALK 大环系列」<span style="height: 18px; padding: 0 5px; border-radius: 3px; background: #FBE3C0; color: #7A3B06; font-size: 11px; display: flex; align-items: center">新增</span></label>
+          </fieldset>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center; padding-top: 6px; border-top: 1px solid #ECE8DE">
+          <span style="font-size: 13px; color: #4E5F63">精确 · 本地台账 + PDF 抽取 + ChEMBL · 标准化</span>
+          <div style="flex-grow: 1"></div>
+          <button type="button" style="height: 44px; padding: 0 16px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 14px 'Noto Sans SC', sans-serif">保存为常用条件</button>
+          <a href="SmilesResults.dc.html" style="height: 44px; padding: 0 24px; border-radius: 6px; background: #0A5F55; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none; display: flex; align-items: center">检索 →</a>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1220}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

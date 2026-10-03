@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>从 PDF 开始</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;family=Noto+Serif+SC:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F3EC}
+a{color:#0A5F55}a:hover{color:#063F38}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1160px; box-sizing: border-box; background: #F5F3EC; color: #16242A; font-family: 'Noto Sans SC', sans-serif; display: flex; flex-direction: column">
+  <header style="height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 32px; padding: 0 40px; background: #16242A; color: #F5F3EC">
+    <a href="Main.dc.html" style="font-family: 'Noto Serif SC', serif; font-size: 20px; font-weight: 700; color: #F5F3EC; text-decoration: none">SAR Atlas</a>
+    <span style="font-size: 13px; color: #B8C4C2">竞对化学证据工作台</span>
+    <div style="flex-grow: 1"></div>
+    <a href="Review.dc.html" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 6px; color: #F5F3EC; text-decoration: none; font-size: 14px; background: #24363C">复核队列<span style="min-width: 22px; height: 22px; border-radius: 11px; background: #E8A33D; color: #16242A; font: 600 12px 'IBM Plex Mono', monospace; display: flex; align-items: center; justify-content: center">6</span></a>
+  </header>
+
+  <main style="flex-grow: 1; display: flex; flex-direction: column; gap: 20px; padding: 32px 40px 40px">
+    <div style="display: flex; align-items: center; gap: 12px">
+      <a href="Main.dc.html" style="font-size: 14px">← 首页</a>
+      <h1 style="margin: 0; font-family: 'Noto Serif SC', serif; font-size: 28px; font-weight: 700">从 PDF 开始</h1>
+      <span style="font-size: 14px; color: #4E5F63">文件只在本机解析；抽取结果以“待确认”写入台账，具名复核后才用于结论</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 24px; align-items: start">
+      <aside style="display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 2px solid #0A5F55; border-radius: 10px; background: #FFFFFF">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <span style="height: 20px; padding: 0 6px; border-radius: 4px; background: #16242A; color: #FFFFFF; font-size: 11px; font-weight: 600; display: flex; align-items: center">专利</span>
+            <b style="font: 600 14px 'IBM Plex Mono', monospace">WO2013132376A1.pdf</b>
+          </div>
+          <span style="font-size: 12px; color: #4E5F63">[n] 页 · 解析中 4 / 6 步</span>
+          <div style="height: 6px; border-radius: 3px; background: #ECE8DE"><div style="width: 62%; height: 6px; border-radius: 3px; background: #0A5F55"></div></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 1px solid #DDD8CC; border-radius: 10px; background: #FFFFFF">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <span style="height: 20px; padding: 0 6px; border-radius: 4px; background: #2F5D9E; color: #FFFFFF; font-size: 11px; font-weight: 600; display: flex; align-items: center">论文</span>
+            <b style="font: 600 14px 'IBM Plex Mono', monospace">[你上传的论文].pdf</b>
+          </div>
+          <span style="font-size: 12px; color: #4E5F63">排队中 · 识别 DOI / PMID 后可关联 ChEMBL 文档</span>
+        </div>
+        <label style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 16px; border: 1.5px dashed #C9C3B5; border-radius: 10px; background: transparent; font-size: 14px; color: #4E5F63; text-align: center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4E5F63" stroke-width="1.6" aria-hidden="true"><path d="M14 3H6v18h12V7z"></path><path d="M14 3v4h4"></path><path d="M12 17v-6"></path><path d="M9.5 13.5L12 11l2.5 2.5"></path></svg>
+          <span>继续拖入 PDF，或点击选择</span>
+          <input type="file" accept="application/pdf" multiple="" style="font-size: 12px">
+        </label>
+        <div style="padding: 12px 14px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 8px; font-size: 12px; color: #4E5F63; line-height: 1.7">扫描版 PDF 没有文本层时改用 OCR，页码与定位框照常保留；识别失败的页面单独列出，不会被静默跳过。</div>
+      </aside>
+
+      <section style="display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; flex-direction: column; padding: 8px 20px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+          <div style="display: grid; grid-template-columns: 36px 180px minmax(0, 1fr) 180px; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #ECE8DE">
+            <span style="width: 26px; height: 26px; border-radius: 13px; background: #0A5F55; color: #FFFFFF; font-size: 14px; display: flex; align-items: center; justify-content: center">✓</span>
+            <b style="font-size: 14px">1 读取与校验</b>
+            <span style="font-size: 13px; color: #4E5F63">SHA-256 <span style="font-family: 'IBM Plex Mono', monospace">88f35d03…3096</span> · 有文本层</span>
+            <span style="font-size: 12px; color: #4E5F63; text-align: right">新增 · 上传入口</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 36px 180px minmax(0, 1fr) 180px; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #ECE8DE">
+            <span style="width: 26px; height: 26px; border-radius: 13px; background: #0A5F55; color: #FFFFFF; font-size: 14px; display: flex; align-items: center; justify-content: center">✓</span>
+            <b style="font-size: 14px">2 识别文档</b>
+            <span style="font-size: 13px; color: #4E5F63">专利 · 公开号 <b style="font-family: 'IBM Plex Mono', monospace; color: #16242A">WO2013132376A1</b> · 与已知公开 PDF 哈希一致</span>
+            <span style="font-size: 12px; color: #0A5F55; text-align: right">新增 · 来源等同公开版本</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 36px 180px minmax(0, 1fr) 180px; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #ECE8DE">
+            <span style="width: 26px; height: 26px; border-radius: 13px; background: #0A5F55; color: #FFFFFF; font-size: 14px; display: flex; align-items: center; justify-content: center">✓</span>
+            <b style="font-size: 14px">3 公共记录匹配</b>
+            <span style="font-size: 13px; color: #4E5F63">家族 48142828 · 优先权 2012-03-06 · 已在调研「ALK 大环系列」</span>
+            <span style="font-size: 12px; color: #4E5F63; text-align: right">现有 · 可选联网</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 36px 180px minmax(0, 1fr) 180px; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #ECE8DE">
+            <span style="width: 26px; height: 26px; box-sizing: border-box; border-radius: 13px; border: 3px solid #0A5F55; border-right-color: #DCEFEA"></span>
+            <b style="font-size: 14px">4 页面分区</b>
+            <span style="font-size: 13px; color: #4E5F63">识别活性表、实施例、中间体页并保留依据 · 已定位 Table 1（PDF p.436）</span>
+            <span style="font-size: 12px; color: #4E5F63; text-align: right">现有 · 仅在示例页上测过</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 36px 180px minmax(0, 1fr) 180px; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #ECE8DE">
+            <span style="width: 26px; height: 26px; box-sizing: border-box; border-radius: 13px; border: 1.5px solid #C9C3B5"></span>
+            <b style="font-size: 14px; color: #4E5F63">5 逐级抽取</b>
+            <span style="font-size: 13px; color: #4E5F63">结构图与活性表；编号核对、冲突保留、质谱与名称交叉校验给出置信度</span>
+            <span style="font-size: 12px; color: #4E5F63; text-align: right">控制逻辑现有 · 抽取器新增（I3b）</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 36px 180px minmax(0, 1fr) 180px; gap: 12px; align-items: center; padding: 12px 0">
+            <span style="width: 26px; height: 26px; box-sizing: border-box; border-radius: 13px; border: 1.5px solid #C9C3B5"></span>
+            <b style="font-size: 14px; color: #4E5F63">6 写入台账</b>
+            <span style="font-size: 13px; color: #4E5F63">以“待确认”提交；实验对不上的记录拒绝并说明原因；生成低置信度在前的复核报告</span>
+            <span style="font-size: 12px; color: #4E5F63; text-align: right">现有</span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; padding: 20px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+          <div style="display: flex; align-items: baseline; gap: 12px">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 700">抽取预览</h2>
+            <span style="font-size: 13px; color: #4E5F63">全部为 L0 · 待确认，尚未与原文逐项核对</span>
+            <div style="flex-grow: 1"></div>
+            <span style="font-size: 13px; color: #4E5F63">与调研中已有证据卡相同的结构会自动合并</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #DDD8CC; border-radius: 8px">
+              <img src="./assets/5d08324b6a4beaa8227007cd650f1bb7.svg" alt="识别出的 Example 2 结构" style="width: 100%; height: 150px; object-fit: contain; background: #FAFAF7; border-radius: 4px">
+              <div style="display: flex; align-items: center; gap: 6px"><b style="font-size: 14px">Example 2</b><span style="margin-left: auto; font: 500 12px 'IBM Plex Mono', monospace; color: #4E5F63">p.260</span></div>
+              <span style="font-size: 12px; color: #0A5F55">与已有 L2 证据卡一致 · 合并</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #DDD8CC; border-radius: 8px">
+              <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #F5F3EC; border-radius: 4px; font-size: 12px; color: #4E5F63">结构识别中</div>
+              <div style="display: flex; align-items: center; gap: 6px"><b style="font-size: 14px">Example [n]</b><span style="margin-left: auto; font: 500 12px 'IBM Plex Mono', monospace; color: #4E5F63">p.[n]</span></div>
+              <span style="font-size: 12px; color: #4E5F63">待核对</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #E8C48C; border-radius: 8px; background: #FFFBF3">
+              <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #FDF3E4; border-radius: 4px; font-size: 12px; color: #7A3B06; text-align: center; line-height: 1.6">通式 + 取代基表<br>需人工组合</div>
+              <div style="display: flex; align-items: center; gap: 6px"><b style="font-size: 14px">Example [n]</b><span style="margin-left: auto; font: 500 12px 'IBM Plex Mono', monospace; color: #4E5F63">p.[n]</span></div>
+              <span style="font-size: 12px; color: #7A3B06">无法自动识别 · 已标记</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #DDD8CC; border-radius: 8px">
+              <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: #F5F3EC; border-radius: 4px; font-size: 12px; color: #4E5F63">结构识别中</div>
+              <div style="display: flex; align-items: center; gap: 6px"><b style="font-size: 14px">Example [n]</b><span style="margin-left: auto; font: 500 12px 'IBM Plex Mono', monospace; color: #4E5F63">p.[n]</span></div>
+              <span style="font-size: 12px; color: #4E5F63">待核对</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center">
+          <span style="font-size: 13px; color: #4E5F63">可以在抽取完成前开始核对已识别的条目</span>
+          <div style="flex-grow: 1"></div>
+          <button type="button" style="height: 44px; padding: 0 16px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 14px 'Noto Sans SC', sans-serif">只保存文档</button>
+          <button type="button" style="height: 44px; padding: 0 16px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 14px 'Noto Sans SC', sans-serif">新建调研</button>
+          <a href="Review.dc.html" style="height: 44px; padding: 0 20px; border-radius: 6px; background: #0A5F55; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none; display: flex; align-items: center">加入「ALK 大环系列」并开始核对 →</a>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

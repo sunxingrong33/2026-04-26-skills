@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>结构检索 · 多命中结果</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;family=Noto+Serif+SC:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F3EC}
+a{color:#0A5F55}a:hover{color:#063F38}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1220px; box-sizing: border-box; background: #F5F3EC; color: #16242A; font-family: 'Noto Sans SC', sans-serif; display: flex; flex-direction: column">
+  <header style="height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 32px; padding: 0 40px; background: #16242A; color: #F5F3EC">
+    <a href="Main.dc.html" style="font-family: 'Noto Serif SC', serif; font-size: 20px; font-weight: 700; color: #F5F3EC; text-decoration: none">SAR Atlas</a>
+    <span style="font-size: 13px; color: #B8C4C2">竞对化学证据工作台</span>
+    <div style="flex-grow: 1"></div>
+    <a href="Review.dc.html" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 6px; color: #F5F3EC; text-decoration: none; font-size: 14px; background: #24363C">复核队列<span style="min-width: 22px; height: 22px; border-radius: 11px; background: #E8A33D; color: #16242A; font: 600 12px 'IBM Plex Mono', monospace; display: flex; align-items: center; justify-content: center">6</span></a>
+  </header>
+
+  <div style="flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 16px 40px; background: #FFFFFF; border-bottom: 1px solid #DDD8CC">
+    <img src="./assets/5d08324b6a4beaa8227007cd650f1bb7.svg" alt="查询结构" style="width: 120px; height: 84px; background: #FAFAF7; border-radius: 6px">
+    <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1">
+      <span style="font: 500 13px 'IBM Plex Mono', monospace">C[C@H]1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21</span>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap">
+        <span style="height: 24px; padding: 0 8px; border-radius: 12px; background: #EEF2F2; font-size: 12px; display: flex; align-items: center">精确 · 标准 InChIKey</span>
+        <span style="height: 24px; padding: 0 8px; border-radius: 12px; background: #EEF2F2; font-size: 12px; display: flex; align-items: center">本地台账 + ChEMBL + SureChEMBL + PubChem</span>
+        <span style="height: 24px; padding: 0 8px; border-radius: 12px; background: #EEF2F2; font-size: 12px; display: flex; align-items: center">已标准化 · 结构未改变</span>
+      </div>
+    </div>
+    <a href="SmilesSearch.dc.html" style="height: 40px; padding: 0 14px; border: 1px solid #C9C3B5; border-radius: 6px; color: #16242A; font-size: 14px; text-decoration: none; display: flex; align-items: center">修改条件</a>
+    <button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 14px 'Noto Sans SC', sans-serif">放宽为忽略立体</button>
+  </div>
+
+  <div style="flex-shrink: 0; display: flex; gap: 12px; padding: 16px 40px 0">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; padding: 14px 20px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px">
+      <div style="display: flex; align-items: center; gap: 8px"><b style="font-size: 14px">检索覆盖报告</b><span style="height: 18px; padding: 0 5px; border: 1px solid #8A9598; border-radius: 3px; font-size: 11px; color: #4E5F63; display: flex; align-items: center">现有</span><span style="font-size: 12px; color: #4E5F63">未命中不代表不存在：范围仅限所列来源，受阈值、标准化和返回上限影响</span></div>
+      <div style="display: grid; grid-template-columns: 170px 140px 110px minmax(0, 1fr); gap: 3px 12px; font-size: 12.5px">
+        <span style="color: #4E5F63">来源</span><span style="color: #4E5F63">状态</span><span style="color: #4E5F63">命中 / 显示</span><span style="color: #4E5F63">说明</span>
+        <b>本地证据台账</b><span style="color: #0A5F55">已查询</span><span style="font-family: 'IBM Plex Mono', monospace">2 / 2</span><span>2 份文档，均有测量</span>
+        <b>ChEMBL</b><span style="color: #7A3B06">待在线核对</span><span style="font-family: 'IBM Plex Mono', monospace">[n] / [n]</span><span>远程命中逐个经本地 RDKit 复核，不一致标红不删除</span>
+        <b>SureChEMBL</b><span style="color: #7A3B06">待在线核对</span><span style="font-family: 'IBM Plex Mono', monospace">[n] / 20</span><span>每次取前 20 个；达到服务端 10,000 上限时提示</span>
+        <b>PubChem 交叉引用</b><span style="color: #7A3B06">待在线核对</span><span style="font-family: 'IBM Plex Mono', monospace">[n] / 20</span><span>关联专利与 PubMed 各前 20 条附总数；可能与 SureChEMBL 同源</span>
+      </div>
+    </div>
+    <div style="width: 330px; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: #EEF6F4; border: 1px solid #BFE2D9; border-radius: 10px">
+      <span style="font-size: 12px; font-weight: 600; color: #0A5F55">当前命中中最早的披露 <span style="font-weight: 400; color: #7A3B06">新增</span></span>
+      <span style="font: 600 14px 'IBM Plex Mono', monospace">WO2013132376A1</span>
+      <span style="font-size: 13px">优先权 2012-03-06 · Example 2</span>
+      <span style="font-size: 12px; color: #4E5F63; line-height: 1.5">目前只按本地命中计算；外部来源实连后会更新，也不代表全部公开文献</span>
+    </div>
+  </div>
+
+  <main style="flex-grow: 1; display: flex; gap: 20px; padding: 16px 40px 0; min-height: 0">
+    <aside style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 18px; padding: 18px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px; align-self: flex-start; box-sizing: border-box">
+      <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 4px">
+        <legend style="font-size: 13px; font-weight: 700; margin-bottom: 6px">来源</legend>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px"><input type="checkbox" checked="" style="width: 16px; height: 16px">来源：本地台账<span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; color: #4E5F63">[n]</span></label>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px"><input type="checkbox" checked="" style="width: 16px; height: 16px">来源：ChEMBL<span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; color: #4E5F63">[n]</span></label>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px"><input type="checkbox" checked="" style="width: 16px; height: 16px">来源：SureChEMBL / PubChem<span style="margin-left: auto; font-family: 'IBM Plex Mono', monospace; color: #4E5F63">[n]</span></label>
+      </fieldset>
+      <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 4px">
+        <legend style="font-size: 13px; font-weight: 700; margin-bottom: 6px">文档类型</legend>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px"><input type="checkbox" checked="" style="width: 16px; height: 16px">专利</label>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px"><input type="checkbox" checked="" style="width: 16px; height: 16px">论文</label>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px"><input type="checkbox" style="width: 16px; height: 16px">无文档定位的记录</label>
+      </fieldset>
+      <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 4px">
+        <legend style="font-size: 13px; font-weight: 700; margin-bottom: 6px">申请人 / 机构</legend>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px"><input type="checkbox" checked="" style="width: 16px; height: 16px">Pfizer</label>
+        <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px"><input type="checkbox" checked="" style="width: 16px; height: 16px">其他</label>
+      </fieldset>
+      <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 6px">
+        <legend style="font-size: 13px; font-weight: 700; margin-bottom: 6px">年份</legend>
+        <div style="display: flex; gap: 6px; align-items: center"><input type="text" aria-label="起始年份" placeholder="起" style="width: 80px; height: 32px; box-sizing: border-box; padding: 0 8px; border: 1px solid #C9C3B5; border-radius: 6px; font: 13px 'IBM Plex Mono', monospace"><span>–</span><input type="text" aria-label="结束年份" placeholder="止" style="width: 80px; height: 32px; box-sizing: border-box; padding: 0 8px; border: 1px solid #C9C3B5; border-radius: 6px; font: 13px 'IBM Plex Mono', monospace"></div>
+      </fieldset>
+      <label style="display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px"><input type="checkbox" style="width: 16px; height: 16px">隐藏已在调研中的命中</label>
+    </aside>
+
+    <section style="flex-grow: 1; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: center; gap: 12px; font-size: 13px; color: #4E5F63">
+        <label style="display: flex; align-items: center; gap: 8px"><input type="checkbox" style="width: 16px; height: 16px">全选当前筛选</label>
+        <div style="flex-grow: 1"></div>
+        <span>排序</span>
+        <select aria-label="排序方式" style="height: 34px; padding: 0 8px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; font: 13px 'Noto Sans SC', sans-serif"><option>最早日期在前</option><option>测量数量</option><option>命中方式</option></select>
+        <div style="display: flex; border: 1px solid #C9C3B5; border-radius: 6px; overflow: hidden">
+          <button type="button" style="height: 34px; padding: 0 12px; border: none; background: #16242A; color: #FFFFFF; font: 500 13px 'Noto Sans SC', sans-serif">列表</button>
+          <button type="button" style="height: 34px; padding: 0 12px; border: none; background: #FFFFFF; color: #16242A; font: 500 13px 'Noto Sans SC', sans-serif">时间轴</button>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 10px; overflow: hidden">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 12px 18px; background: #F0EDE4; font-size: 14px; font-weight: 700">专利 · 按家族合并 <span style="height: 18px; padding: 0 5px; border-radius: 3px; background: #FBE3C0; color: #7A3B06; font-size: 11px; font-weight: 400; display: flex; align-items: center">新增</span><span style="font-weight: 400; font-size: 12px; color: #4E5F63">同族公开折叠显示；实施例编号不跨公开继承；多来源命中同一专利时合为一行，来源并列标注</span></div>
+
+        <div style="display: grid; grid-template-columns: 32px 150px minmax(0, 1fr) 200px 150px; gap: 14px; align-items: center; padding: 14px 18px; border-top: 1px solid #ECE8DE; background: #F8F7F2">
+          <input type="checkbox" checked="" disabled="" aria-label="已在调研中" style="width: 18px; height: 18px">
+          <div style="display: flex; flex-direction: column; gap: 3px"><b style="font: 600 14px 'IBM Plex Mono', monospace">2012-03-06</b><span style="font-size: 12px; color: #4E5F63">家族 48142828</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span style="font: 600 15px 'IBM Plex Mono', monospace">WO2013132376A1 <span style="font: 400 12px 'Noto Sans SC', sans-serif; color: #4E5F63">＋ 同族公开 [n] 项</span></span>
+            <span style="font-size: 13px">Pfizer · 本结构为 <b>Example 2</b>（PDF p.260）· Table 1 测量 4 项</span>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="height: 22px; padding: 0 7px; border-radius: 4px; background: #DCEFEA; color: #0A5F55; font-size: 12px; font-weight: 600; display: flex; align-items: center">精确</span><span style="height: 22px; padding: 0 7px; border-radius: 4px; background: #DCEFEA; color: #0A5F55; font: 600 12px 'IBM Plex Mono', monospace; display: flex; align-items: center">L2 · 本地台账</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end"><span style="font-size: 12px; color: #4E5F63">已在「ALK 大环系列」</span><a href="Evidence.dc.html" style="font-size: 13px; font-weight: 600">打开证据卡 →</a></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 32px 150px minmax(0, 1fr) 200px 150px; gap: 14px; align-items: center; padding: 14px 18px; border-top: 1px solid #ECE8DE">
+          <input type="checkbox" checked="" aria-label="选择该专利家族" style="width: 18px; height: 18px">
+          <div style="display: flex; flex-direction: column; gap: 3px"><b style="font: 600 14px 'IBM Plex Mono', monospace">[优先权日]</b><span style="font-size: 12px; color: #4E5F63">家族 [家族号]</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span style="font: 600 15px 'IBM Plex Mono', monospace">[公开号] <span style="font: 400 12px 'Noto Sans SC', sans-serif; color: #4E5F63">＋ 同族公开 [n] 项</span></span>
+            <span style="font-size: 13px">[申请人] · 来源 SureChEMBL 与 PubChem（可能同源，并列显示）· 是否为实施例待核实</span>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="height: 22px; padding: 0 7px; border-radius: 4px; background: #DCEFEA; color: #0A5F55; font-size: 12px; font-weight: 600; display: flex; align-items: center">精确</span><span style="height: 22px; padding: 0 7px; border-radius: 4px; border: 1px solid #8A9598; color: #4E5F63; font: 600 12px 'IBM Plex Mono', monospace; display: flex; align-items: center">L0 自动提取</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end"><button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 13px 'Noto Sans SC', sans-serif">核实并加载专利</button></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 32px 150px minmax(0, 1fr) 200px 150px; gap: 14px; align-items: center; padding: 14px 18px; border-top: 1px solid #ECE8DE">
+          <input type="checkbox" aria-label="选择该专利家族" style="width: 18px; height: 18px">
+          <div style="display: flex; flex-direction: column; gap: 3px"><b style="font: 600 14px 'IBM Plex Mono', monospace">[优先权日]</b><span style="font-size: 12px; color: #4E5F63">家族 [家族号]</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span style="font: 600 15px 'IBM Plex Mono', monospace">[公开号]</span>
+            <span style="font-size: 13px">[申请人] · 仅 PubChem 关联 · 文中位置未知</span>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="height: 22px; padding: 0 7px; border-radius: 4px; background: #DCEFEA; color: #0A5F55; font-size: 12px; font-weight: 600; display: flex; align-items: center">精确</span><span style="height: 22px; padding: 0 7px; border-radius: 4px; border: 1px solid #8A9598; color: #4E5F63; font: 600 12px 'IBM Plex Mono', monospace; display: flex; align-items: center">L0 关联</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end"><button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 13px 'Noto Sans SC', sans-serif">核实并加载专利</button></div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; padding: 12px 18px; background: #F0EDE4; border-top: 1px solid #DDD8CC; font-size: 14px; font-weight: 700">论文</div>
+
+        <div style="display: grid; grid-template-columns: 32px 150px minmax(0, 1fr) 200px 150px; gap: 14px; align-items: center; padding: 14px 18px; border-top: 1px solid #ECE8DE">
+          <input type="checkbox" checked="" disabled="" aria-label="已在调研中" style="width: 18px; height: 18px">
+          <div style="display: flex; flex-direction: column; gap: 3px"><b style="font: 600 14px 'IBM Plex Mono', monospace">2014</b><span style="font-size: 12px; color: #4E5F63">PubMed 24819116</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span style="font-size: 15px; font-weight: 600">Johnson et al. · 洛拉替尼发现论文</span>
+            <span style="font-size: 13px">Pfizer · 本结构为化合物 <b>8k</b>（CHEMBL3286830）· 本地台账 56 条观测 · 已在「ALK 大环系列」</span>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="height: 22px; padding: 0 7px; border-radius: 4px; background: #DCEFEA; color: #0A5F55; font-size: 12px; font-weight: 600; display: flex; align-items: center">精确 · 含立体</span><span style="height: 22px; padding: 0 7px; border-radius: 4px; border: 1px solid #2F5D9E; color: #2F5D9E; font: 600 12px 'IBM Plex Mono', monospace; display: flex; align-items: center">L1</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end"><button type="button" aria-expanded="true" style="height: 32px; padding: 0 10px; border: none; background: transparent; color: #0A5F55; font: 600 13px 'Noto Sans SC', sans-serif">为什么命中 ▴</button></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 18px 14px 64px; padding: 12px 14px; background: #F8F7F2; border-radius: 8px; font: 12px 'IBM Plex Mono', monospace; color: #16242A">
+          <span style="padding: 3px 8px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 4px">输入 SMILES</span><span>→</span>
+          <span style="padding: 3px 8px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 4px">InChIKey IIXWYSCJSQVBQM-LLVKDONJSA-N</span><span>→</span>
+          <span style="padding: 3px 8px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 4px">分子 CHEMBL3286830</span><span>→</span>
+          <span style="padding: 3px 8px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 4px">文档 CHEMBL3286195</span><span>→</span>
+          <span style="padding: 3px 8px; background: #FFFFFF; border: 1px solid #DDD8CC; border-radius: 4px">论文 · 化合物 8k</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; padding: 12px 18px; background: #F0EDE4; border-top: 1px solid #DDD8CC; font-size: 14px; font-weight: 700">无文档定位的记录 <span style="font-weight: 400; font-size: 12px; color: #4E5F63">[n] 条 · 已按筛选隐藏，只在分子层级显示测量</span></div>
+      </div>
+    </section>
+  </main>
+
+  <div style="flex-shrink: 0; margin-top: 20px; height: 76px; display: flex; align-items: center; gap: 14px; padding: 0 40px; background: #16242A; color: #F5F3EC">
+    <span style="font-size: 15px; font-weight: 600">已选 1 项</span>
+    <span style="font-size: 13px; color: #B8C4C2">1 个专利家族 · 已在调研中的 2 项自动跳过 · 加入后先核实专利，结构以“待确认”写入台账</span>
+    <div style="flex-grow: 1"></div>
+    <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #B8C4C2">加入到
+      <select aria-label="目标调研" style="height: 40px; padding: 0 10px; border: 1px solid #4E5F63; border-radius: 6px; background: #24363C; color: #F5F3EC; font: 14px 'Noto Sans SC', sans-serif"><option>ALK 大环系列 · 辉瑞</option><option>＋ 新建调研</option></select>
+    </label>
+    <a href="Overview.dc.html" style="height: 44px; padding: 0 20px; border-radius: 6px; background: #3FB8A6; color: #16242A; font-size: 15px; font-weight: 700; text-decoration: none; display: flex; align-items: center">加入并核实来源 →</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1220}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

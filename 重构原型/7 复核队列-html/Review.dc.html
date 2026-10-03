@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>复核队列</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;family=Noto+Serif+SC:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F5F3EC}
+a{color:#0A5F55}a:hover{color:#063F38}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1040px; box-sizing: border-box; background: #F5F3EC; color: #16242A; font-family: 'Noto Sans SC', sans-serif; display: flex; flex-direction: column">
+  <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 0 40px; background: #16242A; color: #F5F3EC">
+    <a href="Main.dc.html" style="font-family: 'Noto Serif SC', serif; font-size: 18px; font-weight: 700; color: #F5F3EC; text-decoration: none">SAR Atlas</a>
+    <span style="font-size: 13px; color: #8FA09E">/</span>
+    <span style="font-size: 13px; color: #F5F3EC">复核队列</span>
+    <div style="flex-grow: 1"></div>
+    <a href="Overview.dc.html" style="font-size: 13px; color: #B8C4C2; text-decoration: none">返回调研「ALK 大环系列 · 辉瑞」</a>
+  </header>
+
+  <main style="flex-grow: 1; display: flex; gap: 0; min-height: 0">
+    <aside style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; background: #FFFFFF; border-right: 1px solid #DDD8CC">
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 20px 20px 12px">
+        <h1 style="margin: 0; font-family: 'Noto Serif SC', serif; font-size: 22px; font-weight: 700">复核队列</h1>
+        <span style="font-size: 12px; color: #4E5F63; line-height: 1.6">台账中所有“待确认”记录。确认或拒绝都要具名并写理由，审计日志只追加。</span>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap">
+          <button type="button" style="height: 30px; padding: 0 10px; border: none; border-radius: 15px; background: #16242A; color: #FFFFFF; font: 600 12px 'Noto Sans SC', sans-serif">专利证据卡 · 6</button>
+          <button type="button" style="height: 30px; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 15px; background: #FFFFFF; color: #16242A; font: 500 12px 'Noto Sans SC', sans-serif">加入台账 · [n]</button>
+          <button type="button" style="height: 30px; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 15px; background: #FFFFFF; color: #16242A; font: 500 12px 'Noto Sans SC', sans-serif">PDF 抽取 · [n]</button>
+          <button type="button" style="height: 30px; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 15px; background: #FFFFFF; color: #16242A; font: 500 12px 'Noto Sans SC', sans-serif">agent 提交 · [n]</button>
+        </div>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #4E5F63">排序
+          <select aria-label="排序" style="height: 30px; padding: 0 6px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; font: 12px 'Noto Sans SC', sans-serif"><option>被分析引用次数</option><option>置信度低的在前</option><option>提交时间</option></select>
+        </label>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 20px; background: #EEF6F4; border-left: 4px solid #0A5F55">
+          <span style="font: 600 14px 'IBM Plex Mono', monospace">WO2013132376A1 · Ex 2</span>
+          <span style="font-size: 12px; color: #4E5F63">结构 p.260 · 活性 p.436 · 4 项测量</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 20px; border-top: 1px solid #ECE8DE">
+          <span style="font: 500 14px 'IBM Plex Mono', monospace">WO2013132376A1 · Ex 4</span>
+          <span style="font-size: 12px; color: #4E5F63">结构 p.264 · SFC 峰未分配</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 20px; border-top: 1px solid #ECE8DE">
+          <span style="font: 500 14px 'IBM Plex Mono', monospace">WO2013132376A1 · Ex 6</span>
+          <span style="font-size: 12px; color: #4E5F63">结构 p.268 · 4 项测量</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 20px; border-top: 1px solid #ECE8DE">
+          <span style="font: 500 14px 'IBM Plex Mono', monospace">WO2011138751A2 · Ex 1</span>
+          <span style="font-size: 12px; color: #4E5F63">结构 p.127 · 立体未指定</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 20px; border-top: 1px solid #ECE8DE">
+          <span style="font: 500 14px 'IBM Plex Mono', monospace">WO2011138751A2 · Ex 6</span>
+          <span style="font-size: 12px; color: #4E5F63">通式 + 取代基表 · 2 项未测</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 20px; border-top: 1px solid #ECE8DE; border-bottom: 1px solid #ECE8DE">
+          <span style="font: 500 14px 'IBM Plex Mono', monospace">WO2011138751A2 · Ex 7</span>
+          <span style="font-size: 12px; color: #4E5F63">通式 + 取代基表 · 4 项测量</span>
+        </div>
+      </div>
+      <div style="margin-top: auto; padding: 16px 20px; font-size: 12px; color: #4E5F63; line-height: 1.6">快捷键：J / K 切换条目，Y 确认当前字段，E 编辑</div>
+    </aside>
+
+    <section style="flex-grow: 1; display: flex; flex-direction: column; background: #E9E6DD">
+      <div style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 20px; background: #FFFFFF; border-bottom: 1px solid #DDD8CC">
+        <button type="button" style="height: 32px; padding: 0 12px; border: none; border-radius: 6px; background: #16242A; color: #FFFFFF; font: 600 13px 'Noto Sans SC', sans-serif">结构 · PDF p.260</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 13px 'Noto Sans SC', sans-serif">活性表 · PDF p.436</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 13px 'Noto Sans SC', sans-serif">协议 · PDF p.435</button>
+        <div style="flex-grow: 1"></div>
+        <span style="font: 500 12px 'IBM Plex Mono', monospace; color: #4E5F63">印刷页 258 · 段落 p2076 · 快照 9094…045c</span>
+      </div>
+      <div style="flex-grow: 1; display: flex; justify-content: center; padding: 24px">
+        <div style="width: 520px; height: 736px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 40px 44px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(22,36,42,0.18)">
+          <div style="height: 8px; width: 60%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="height: 8px; width: 92%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="height: 8px; width: 88%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="height: 8px; width: 95%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="height: 8px; width: 40%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="margin: 18px 0; height: 250px; display: flex; align-items: center; justify-content: center; border: 2.5px solid #E8A33D; border-radius: 4px; background: #FFFBF3; font-size: 13px; color: #7A3B06; text-align: center; line-height: 1.7">[原文 PDF 第 260 页渲染]<br>Example 2 最终产物图 · 定位框</div>
+          <div style="height: 8px; width: 90%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="height: 8px; width: 85%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="height: 8px; width: 93%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="height: 8px; width: 70%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="height: 8px; width: 88%; background: #E4E1D8; border-radius: 2px"></div>
+          <div style="height: 8px; width: 55%; background: #E4E1D8; border-radius: 2px"></div>
+        </div>
+      </div>
+    </section>
+
+    <aside style="width: 480px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; padding: 20px 24px; background: #FFFFFF; border-left: 1px solid #DDD8CC; box-sizing: border-box">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <span style="font: 600 16px 'IBM Plex Mono', monospace">WO2013132376A1 · Example 2</span>
+        <span style="height: 20px; padding: 0 6px; border-radius: 4px; background: #DCEFEA; color: #0A5F55; font: 600 11px 'IBM Plex Mono', monospace; display: flex; align-items: center">L2 · 待确认</span>
+        <span style="font-size: 12px; color: #4E5F63">被 SAR 分析引用 [n] 次</span>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: flex-start">
+        <img src="./assets/5d08324b6a4beaa8227007cd650f1bb7.svg" alt="转录结构 Example 2" style="width: 220px; height: 154px; border: 1px solid #ECE8DE; border-radius: 6px">
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #4E5F63; line-height: 1.5">
+          <span>转录 SMILES 重绘，与左侧原图并排核对</span>
+          <span>立体：原图与名称指定 10R</span>
+          <span>质谱校验：报告 407 · 计算 [M+H]⁺ 407.16 · 一致</span>
+          <span style="color: #7A3B06">质谱只能发现原子数错误，查不出同分异构与立体错误</span>
+        </div>
+      </div>
+      <span style="padding: 8px 10px; background: #F5F3EC; border-radius: 6px; font: 12px 'IBM Plex Mono', monospace; word-break: break-all">C[C@H]1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21</span>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 13px; font-weight: 700">逐项核对</span>
+        <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" checked="" style="width: 18px; height: 18px">连接关系与原图一致</label>
+        <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" checked="" style="width: 18px; height: 18px">立体中心与原图一致（10R）</label>
+        <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" style="width: 18px; height: 18px">4 项测量与 Table 1 一致，限定符保留</label>
+        <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px"><input type="checkbox" style="width: 18px; height: 18px">assay 列对应正确（非 assay 1 IC50）</label>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; padding: 12px; background: #F8F7F2; border-radius: 8px; font-size: 13px">
+        <span style="color: #4E5F63">WT 酶 Ki</span><span style="font: 600 13px 'IBM Plex Mono', monospace">&lt;0.200 nM</span>
+        <span style="color: #4E5F63">L1196M 酶 Ki</span><span style="font: 600 13px 'IBM Plex Mono', monospace">0.78 nM</span>
+        <span style="color: #4E5F63">WT 细胞 IC50</span><span style="font: 600 13px 'IBM Plex Mono', monospace">1.33 nM</span>
+        <span style="color: #4E5F63">L1196M 细胞 IC50</span><span style="font: 600 13px 'IBM Plex Mono', monospace">20.7 nM</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px">
+        <label style="display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 12px; color: #4E5F63">复核人（具名）</span>
+          <input type="text" placeholder="[你的姓名]" style="height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 6px; font: 14px 'Noto Sans SC', sans-serif">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 12px; color: #4E5F63">理由（必填）</span>
+          <input type="text" placeholder="例如：与 PDF p.260 结构图及 Table 1 逐项一致" style="height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid #C9C3B5; border-radius: 6px; font: 14px 'Noto Sans SC', sans-serif">
+        </label>
+      </div>
+      <div style="margin-top: auto; display: flex; gap: 8px">
+        <button type="button" style="height: 44px; padding: 0 14px; border: 1px solid #C9C3B5; border-radius: 6px; background: #FFFFFF; color: #16242A; font: 500 14px 'Noto Sans SC', sans-serif">跳过</button>
+        <button type="button" style="height: 44px; padding: 0 14px; border: 1px solid #B45309; border-radius: 6px; background: #FFFFFF; color: #7A3B06; font: 600 14px 'Noto Sans SC', sans-serif">拒绝（退出分析，保留审计）</button>
+        <button type="button" disabled="" style="flex-grow: 1; height: 44px; border: none; border-radius: 6px; background: #9CB9B3; color: #FFFFFF; font: 600 14px 'Noto Sans SC', sans-serif">勾选并填写后可确认</button>
+      </div>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
