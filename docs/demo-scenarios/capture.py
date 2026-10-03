@@ -4,15 +4,16 @@
     python docs/demo-scenarios/capture.py
 
 Runs the real workbench on a free local port, offline, with real curated data
-only. No Google Patents page is read: patent metadata comes from the curated
-evidence packages and the relation records, and the page title says so.
-Scenarios 5 and 6 are the actual output of ``phase0.tools.demo`` and
-``phase0.extract.demo`` rendered as terminal screenshots. Set ``SAR_CHROMIUM``
-to a Chromium executable if the one bundled with Playwright is missing.
+only, against a fresh ledger database in a temporary folder (so the review
+step can be shown without touching artifacts/). No external source is
+queried: structure search covers the local ledger only, and no Google Patents
+page is read. Scenarios 7 and 8 include the actual output of
+``phase0.tools.demo`` and ``phase0.extract.demo`` rendered as terminal
+screenshots. Set ``SAR_CHROMIUM`` to a Chromium executable if the one bundled
+with Playwright is missing.
 """
 import glob
 import html
-import json
 import os
 import subprocess
 import sys
@@ -28,33 +29,17 @@ sys.path.insert(0, str(ROOT))
 from PIL import Image  # noqa: E402
 from playwright.sync_api import sync_playwright  # noqa: E402
 
+from phase0.ledger import access  # noqa: E402
+from phase0.ledger.migrate import build  # noqa: E402
+from phase0.ledger.store import LedgerStore  # noqa: E402
 from phase0.sar import serve  # noqa: E402
-from phase0.sar.lineage import load_relations  # noqa: E402
-from phase0.sar.patent_evidence import DATA, attach_evidence  # noqa: E402
 
 LORLATINIB = 'C[C@H]1Oc2cc(cnc2N)-c2c(nn(C)c2C#N)CN(C)C(=O)c2ccc(F)cc21'  # WO2013132376A1 Example 2
 FRAGMENT = 'Nc1ncccc1OCc1ccccc1'  # aminopyridine benzyl ether shared by both ALK families
+EARLY, LATE = 'WO2011138751A2', 'WO2013132376A1'
+STUDY = '/s/alk-pfizer/'
 SCALE = 1.5
-REL = load_relations()[0]
-BASIS = {(c.publication, c.check): c.expected for c in REL.basis}
-
-
-def offline_patent(pid, cache):
-    """Curated evidence only; nothing here comes from the live patent page."""
-    pkg = json.loads((DATA / f'{pid}.json').read_text(encoding='utf-8'))
-    url = f'https://patents.google.com/patent/{pid}/en'
-    d = {'publication': pid, 'title': '（离线演示：未联网读取专利页面；以下为已整理证据包内容）',
-         'assignee': '', 'assignees': [], 'inventors': [], 'abstract': '',
-         'priority_date': BASIS.get((pid, 'priority_date')), 'filing_date': None, 'publication_date': None,
-         'family_id': BASIS.get((pid, 'family_id')), 'family_members': [],
-         'references': [REL.from_publication] if pid == REL.to_publication else [],
-         'examples': [], 'structures': [], 'invalid_or_query_structures': [], 'structure_limit_reached': False,
-         'limitations': ['离线演示：未读取专利页面，实施例标题与化学实体索引未提取。'], 'metadata_sources': {},
-         'source_url': url, 'pdf_url': pkg['pdf_url'],
-         'source_snapshot': {'url': url, 'sha256': pkg['source_html_sha256'],
-                             'retrieved_at': '整理时快照（离线演示）', 'cache_hit': True}}
-    attach_evidence(d)
-    return d
+WIDTH = 1360
 
 
 def launch(p):
@@ -75,122 +60,141 @@ def save(path, max_h):
     print('saved', path.name, Image.open(path).size)
 
 
-def shot(loc, name, max_h=1500):
+def shot(loc, name, max_h=1600):
     path = OUT / f'{name}.png'
     loc.screenshot(path=str(path))
     save(path, max_h)
 
 
-def table_region(pg, heading, name):
-    """The heading plus the table right after it."""
-    box = pg.evaluate('''text => { const h = [...document.querySelectorAll('h3')].find(x => x.textContent.includes(text));
-        let t = h.nextElementSibling; while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
-        const a = h.getBoundingClientRect(), b = t.getBoundingClientRect();
-        return {x: Math.min(a.left, b.left) + scrollX - 8, y: a.top + scrollY - 8,
-                width: Math.max(a.right, b.right) - Math.min(a.left, b.left) + 16, height: b.bottom - a.top + 16}; }''',
-        heading)
+UNSTICK = '.abbar,.addbar{position:static!important}'  # a sticky bar would land mid-page in a full-page shot
+
+
+def viewport(pg, name, max_h=1600):
+    """What the reader sees on arrival: the top of the page, header included."""
+    pg.add_style_tag(content=UNSTICK)
     path = OUT / f'{name}.png'
-    pg.screenshot(path=str(path), clip=box, full_page=True)
-    save(path, 10_000)
+    pg.screenshot(path=str(path), full_page=True)
+    save(path, max_h)
 
 
-def status(pg, text):
-    pg.wait_for_function('t => document.querySelector("#status").textContent.includes(t)', arg=text, timeout=20000)
-
-
-def pick(pg, select, label):
-    value = pg.eval_on_selector(select, '(s, t) => [...s.options].find(o => o.textContent.includes(t))?.value', label)
-    pg.select_option(select, value)
+def wait_text(pg, selector, text, timeout=30000):
+    pg.wait_for_function('([s, t]) => (document.querySelector(s)?.textContent || "").includes(t)',
+                         arg=[selector, text], timeout=timeout)
 
 
 def workbench(b, base):
-    pg = b.new_page(viewport={'width': 1360, 'height': 1000}, device_scale_factor=SCALE)
+    pg = b.new_page(viewport={'width': WIDTH, 'height': 1000}, device_scale_factor=SCALE)
     errors = []
     pg.on('pageerror', lambda e: errors.append(str(e)))
+    pg.add_init_script("try { localStorage.setItem('sar-atlas-author', '演示用户'); } catch (e) {}")
 
-    # 1 patent evidence cards
-    pg.goto(base + '/classic')
-    pg.fill('#publication', 'WO2013132376A1')
-    pg.click('#submit')
-    pg.wait_for_selector('#evidence-cards .card')
-    shot(pg.locator('#evidence'), 's1-evidence-cards', 1400)
-    card = pg.locator('#evidence-cards .card').first
-    card.locator('details summary').click()
-    shot(card, 's1-card-detail', 2200)
+    # 1 from a publication number to the study overview
+    pg.goto(base + '/')
+    pg.wait_for_selector('[data-study="alk-pfizer"]')
+    pg.fill('#q', LATE)
+    wait_text(pg, '#detect', '已在调研')
+    viewport(pg, 's1-home', 1250)
+    pg.click('#go')
+    pg.wait_for_url('**' + STUDY + 'overview')
+    wait_text(pg, '#next', '补测建议第 1 位')
+    viewport(pg, 's1-overview', 2000)
 
-    # 2 cross-family relation and comparison
-    pg.click('#load-lineage')
-    pg.wait_for_selector('#lineage-content h3:has-text("可核查事实")', timeout=20000)
-    shot(pg.locator('#lineage-content'), 's2-lineage', 2000)
-    pg.get_by_role('button', name='对照早期 Example 7 与大环 Example 6 →').click()
-    pg.wait_for_selector('h3:has-text("跨专利测量并列")', timeout=20000)
-    pg.add_style_tag(content='.selection-bar{display:none!important}')
-    shot(pg.locator('#compare'), 's2-compare-structures', 1050)
-    table_region(pg, '跨专利测量并列', 's2-compare-measurements')
+    # 2 evidence table and a cross-family A/B comparison
+    pg.goto(base + STUDY + 'evidence')
+    pg.wait_for_selector(f'[data-compound="{LATE}:example:6"] img')
+    pg.wait_for_load_state('networkidle')
+    pg.check(f'[data-compound="{EARLY}:example:7"] input[type=checkbox]')
+    pg.check(f'[data-compound="{LATE}:example:6"] input[type=checkbox]')
+    pg.wait_for_load_state('networkidle')
+    viewport(pg, 's2-evidence', 2300)
+    pg.click('#to-compare')
+    pg.wait_for_selector('#activity')
+    shot(pg.locator('main'), 's2-compare', 2600)
 
-    # 4 structure search on the local ledger
-    pg.goto(base + '/classic')
-    pg.select_option('#input-mode', 'smiles')
-    pg.select_option('#search-method', 'similarity')
-    pg.fill('#search-threshold', '50')
-    pg.fill('#publication', LORLATINIB)
-    pg.click('#submit')
-    status(pg, '检索完成')
-    shot(pg.locator('#discovery'), 's4-similarity', 1700)
-    pg.select_option('#search-method', 'substructure')
-    pg.fill('#publication', FRAGMENT)
-    pg.click('#submit')
-    status(pg, '检索完成')
-    shot(pg.locator('#discovery'), 's4-substructure', 1500)
-
-    # 3 six-step workflow
-    pg.goto(base + '/classic/evidence')
-    pg.wait_for_function('document.querySelectorAll("#pair-document option").length > 1')
-    pg.select_option('#pair-document', 'CHEMBL3286195')
-    pick(pg, '#pair-a', '/ 6f ·')
-    pick(pg, '#pair-b', '/ 6e ·')
-    pg.click('#align-pair')
-    pg.wait_for_function('document.querySelector("#pair-status").textContent.includes("结构分析已返回")')
-    shot(pg.locator('#alignment'), 's3-1-alignment', 1500)
-    pg.click('#compare-pair')
-    pg.wait_for_function('document.querySelector("#comparison-result").textContent.includes("B/A")')
-    shot(pg.locator('#comparability'), 's3-2-comparability', 1700)
-    pg.click('#add-sar-pair')
-    pg.click('#run-sar-summary')
-    pg.wait_for_function('document.querySelector("#sar-status").textContent.includes("分析完成")')
-    shot(pg.locator('#sar-summary'), 's3-3-summary', 1900)
-    pg.click('#use-sar-a')
-    pg.select_option('#sar-assay', 'CHEMBL3293161')
-    pg.select_option('#sar-goal', 'lower')
-    pg.click('#run-sar-suggest')
-    pg.wait_for_selector('#sar-suggestions h3')
-    shot(pg.locator('#sar-suggestions'), 's3-4-suggest-lower', 1400)
-    before = pg.text_content('#sar-suggestions')
-    pg.select_option('#sar-assay', 'CHEMBL3293391')
-    pg.click('#run-sar-suggest')
-    pg.wait_for_function('t => document.querySelector("#sar-suggestions").textContent !== t', arg=before)
-    pg.wait_for_selector('#sar-suggestions h3')
-    shot(pg.locator('#sar-suggestions'), 's3-5-suggest-other', 1400)
-
-    # 7 project goal: multi-property SAR over automatic matched pairs
-    pg.goto(base + '/classic/project')
-    pg.wait_for_selector('#template option', state='attached')
-    pg.fill('#focus', 'ALK')
-    pg.click('#suggest')
-    efflux = pg.locator('.prop[data-id="efflux"]')
-    efflux.wait_for()
-    shot(pg.locator('#goal'), 's7-1-goal', 700)
-    shot(efflux, 's7-2-mapping-efflux', 900)
+    # 3 multi-property SAR for the project goal; 6f -> 6e inside one paper
+    pg.goto(base + STUDY + 'analysis')
+    card = pg.locator('.tf[data-transform="C[*:1]>>[H][*:1]"]')
+    card.wait_for(timeout=30000)
+    efflux = pg.locator('.prop-row[data-id="efflux"]')
     efflux.locator('.direction').select_option('range')
     efflux.locator('.range-high').fill('2.5')
     pg.click('#analyse')
-    card = pg.locator('.tf[data-transform="C[*:1]>>[H][*:1]"]')
-    card.wait_for(timeout=20000)
-    shot(pg.locator('#followups'), 's7-3-followups', 1200)
-    card.locator('details summary').last.click()
-    shot(card, 's7-4-tradeoff', 2400)
-    pg.select_option('#group-by', 'site')
-    shot(pg.locator('.tf[data-site="ccc([*:1])cn"]'), 's7-5-site', 1100)
+    wait_text(pg, '#status', '设置已保存')
+    card.wait_for(timeout=30000)
+    pg.wait_for_load_state('networkidle')
+    shot(pg.locator('.split-left > aside'), 's3-mapping', 2600)
+    shot(card, 's3-tradeoff', 2200)
+    shot(pg.locator('#followups'), 's3-followups', 1400)
+    pg.fill('#sign-text', '去 N-甲基改善酶活性但外排变差，先补测 6f 细胞 IC50 再判断')
+    pg.select_option('#sign-verdict', 'pending')
+    pg.click('#sign-add')
+    wait_text(pg, '#sign .status', '已署名')
+
+    pg.goto(base + STUDY + 'compare')
+    pg.wait_for_function('document.querySelectorAll("#pick-a option").length > 30')
+    for slot, label in (('a', '洛拉替尼发现论文 · 6f'), ('b', '洛拉替尼发现论文 · 6e')):
+        value = pg.eval_on_selector(f'#pick-{slot}', '(s, t) => [...s.options].find(o => o.textContent === t).value', label)
+        pg.select_option(f'#pick-{slot}', value)
+    pg.click('#run-compare')
+    pg.wait_for_selector('#activity tr[data-assay="CHEMBL3293161"]')
+    shot(pg.locator('#activity').locator('xpath=ancestor::div[contains(@class,"card")][1]'), 's3-compare-paper', 1600)
+
+    # 4 structure search, local ledger only
+    pg.goto(base + '/search?smiles=' + LORLATINIB.replace('#', '%23'))
+    wait_text(pg, '#parsed', 'C21H19FN6O2')
+    pg.check('input[value="similarity"]')
+    pg.fill('#threshold', '50')
+    pg.wait_for_load_state('networkidle')
+    viewport(pg, 's4-search', 1700)
+    pg.click('#run-search')
+    pg.wait_for_selector('#coverage')
+    pg.wait_for_load_state('networkidle')
+    viewport(pg, 's4-similarity', 2400)
+    pg.goto(base + '/search?' + 'smiles=' + FRAGMENT + '&method=substructure&run=1')
+    pg.wait_for_selector('#coverage')
+    pg.wait_for_load_state('networkidle')
+    viewport(pg, 's4-substructure', 2000)
+
+    # 5 timeline and R-group alignment
+    pg.goto(base + STUDY + 'timeline')
+    pg.wait_for_selector('#alignment')
+    pg.wait_for_load_state('networkidle')
+    pg.wait_for_timeout(300)  # citation arrow is drawn after layout
+    viewport(pg, 's5-timeline', 2400)
+
+    # 6 named review, then the report (A/B pair and signed note from above)
+    pg.set_viewport_size({'width': WIDTH, 'height': 1240})  # the review layout fills the window; show the buttons
+    pg.goto(base + '/review')
+    pg.click(f'.qitem[data-id="{LATE}:example:2"]')
+    wait_text(pg, '.detail', 'Example 2')
+    for _ in range(pg.locator('.review-check').count()):
+        pg.keyboard.press('y')
+    pg.fill('#reviewer', '演示用户')
+    pg.fill('#review-note', '与 PDF p.260 结构图及 Table 1 逐项一致')
+    pg.wait_for_load_state('networkidle')
+    viewport(pg, 's6-review', 1860)
+    pg.set_viewport_size({'width': WIDTH, 'height': 1000})
+    pg.click('#confirm')
+    wait_text(pg, '#review-status', '已确认 Example 2')
+    # the report's key comparison is the A/B pair last chosen in this tab: back to Example 7 / Example 6
+    pg.goto(base + STUDY + f'compare?a={EARLY}:example:7&b={LATE}:example:6')
+    pg.wait_for_function('document.querySelectorAll("#pick-a option").length > 30')
+    pg.click('#run-compare')
+    pg.wait_for_selector('#activity')
+    pg.goto(base + STUDY + 'report')
+    wait_text(pg, '[data-section="4"]', '补测建议')
+    wait_text(pg, '[data-section="3"]', 'Example 7')
+    pg.wait_for_load_state('networkidle')
+    shot(pg.locator('article.report'), 's6-report', 4200)
+
+    # 8 start from a PDF: hashing and identification only
+    pdf = Path(tempfile.gettempdir()) / f'{EARLY}.pdf'
+    pdf.write_bytes(b'%PDF-1.4\n% demo file: not the published patent PDF\n')
+    pg.goto(base + '/upload')
+    pg.set_input_files('#pdf-input', str(pdf))
+    wait_text(pg, '[data-step=identify]', EARLY)
+    viewport(pg, 's8-upload', 1300)
+    pdf.unlink()
     pg.close()
     if errors:
         sys.exit(f'页面脚本错误：{errors}')
@@ -203,8 +207,8 @@ pre{{margin:0;padding:22px 26px;font:15px/1.65 "DejaVu Sans Mono","Noto Sans Mon
 </style><pre><span class="cmd">$ {cmd}</span>
 {body}</pre>'''
 DEMOS = [
-    ('s5-agent-tools', 'phase0.tools.demo', [('拒绝', 'bad'), ('重放', 'ok'), ('比值 = None', 'warn'), ('B/A = 0.185', 'warn')]),
-    ('s6-extraction', 'phase0.extract.demo', [('注意：抽取器为模拟', 'warn'), ('mass_mismatch', 'bad'), ('未调用', 'ok'), ('评测：', 'ok')]),
+    ('s7-agent-tools', 'phase0.tools.demo', [('拒绝', 'bad'), ('重放', 'ok'), ('比值 = None', 'warn'), ('B/A = 0.185', 'warn')]),
+    ('s8-extraction', 'phase0.extract.demo', [('注意：抽取器为模拟', 'warn'), ('mass_mismatch', 'bad'), ('未调用', 'ok'), ('评测：', 'ok')]),
 ]
 
 
@@ -223,10 +227,14 @@ def terminals(b, tmp):
 
 def main():
     OUT.mkdir(exist_ok=True)
-    serve.retrieve = offline_patent
+    for old in OUT.glob('*.png'):
+        old.unlink()
     serve.Handler.log_message = lambda *a: None
     with tempfile.TemporaryDirectory() as tmp:
-        server = serve.create_server(0, Path(tmp) / 'cache')
+        db = Path(tmp) / 'ledger.sqlite'
+        LedgerStore(db).import_ledger(build(), 'demo-capture')
+        os.environ[access.ENV] = str(db)
+        server = serve.create_server(0, Path(tmp) / 'cache', ledger_db=db)
         threading.Thread(target=server.serve_forever, daemon=True).start()
         try:
             with sync_playwright() as p:

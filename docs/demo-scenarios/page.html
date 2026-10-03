@@ -78,143 +78,143 @@ footer{margin-top:64px;color:var(--muted);font-size:14px}
 <div class="wrap">
 <header>
   <h1>SAR Atlas 演示场景</h1>
-  <p class="lede">给药物化学家看的六个完整用例。每个场景从一个实际问题出发，写明操作步骤、系统给出的结果和它刻意不做的推断。截图均来自真实运行的工作台，数据是已整理的 ALK 案例（洛拉替尼相关论文与两份 Pfizer 专利）。</p>
-  <div class="meta"><span>截图日期：2026-09-28</span><span>测试：390 项通过</span><span>运行方式：本机服务，离线</span></div>
+  <p class="lede">给药物化学家看的八个完整用例。每个场景从一个实际问题出发，写明操作步骤、工作台给出的结果，以及它刻意不做的推断。截图全部来自真实运行的新版工作台，数据是已整理的 ALK 案例：洛拉替尼发现论文与两份 Pfizer 专利，归在预置调研「ALK 大环系列 · 辉瑞」中。</p>
+  <div class="meta"><span>截图日期：2026-10-03</span><span>测试：491 项通过</span><span>运行方式：本机服务，离线</span></div>
 </header>
 
 <div class="stack" style="margin-top:28px">
-  <div class="note"><strong>截图的数据来源。</strong>截图在无法联网的环境中拍摄：专利证据卡、跨专利关系和台账都是仓库中已整理的数据（按专利 PDF 转录，<b>尚未经过独立化学家复核</b>）；专利页面本身没有在线读取，所以截图里不含专利标题、摘要和化学实体索引。场景 6 的抽取器是模拟的，页面上也这样写明。需要联网的场景见文末，没有附截图，因为离线环境只能用虚构的数据库返回来截图。</div>
+  <div class="note"><strong>截图的数据来源。</strong>截图在离线环境中拍摄，没有查询任何外部数据库，也没有读取专利公开页面。证据表、跨专利关系和台账都是仓库中已整理的数据（按专利 PDF 转录，<b>尚未经过独立化学家复核</b>）。场景 6 中的“具名确认”是截图脚本在临时台账里做的演示操作，不改动仓库数据。场景 8 的抽取器是模拟的，输出第一行写明。需要联网的功能见文末，没有附截图。</div>
   <div class="panel stack">
     <h3>演示前准备</h3>
     <pre class="cmd">python -m pip install -r requirements-agent.txt
 python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite</pre>
-    <p>终端出现 <code>Open http://127.0.0.1:8766</code> 后打开 <code>http://127.0.0.1:8766/</code>（专利工作台）和 <code>/evidence</code>（六步工作流），运行服务的窗口保持打开。场景 1、2 要读取专利页面，演示前在联网状态下先各走一遍，让页面进入本地缓存；场景 3–6 完全离线。</p>
+    <p>终端出现 <code>Open http://127.0.0.1:8766</code> 后打开 <code>http://127.0.0.1:8766/</code>，运行服务的窗口保持打开。<code>--ledger-db</code> 让复核结论能保存；不加时复核队列只读。旧版页面在 <code>/classic</code>（专利检索、靶点入口）和 <code>/classic/evidence</code>（六步工作流）。</p>
   </div>
 </div>
 
 <nav class="panel" style="margin-top:28px" aria-label="场景目录">
-  <h3 style="margin-bottom:12px">六个场景</h3>
+  <h3 style="margin-bottom:12px">八个场景</h3>
   <ol class="index">
-    <li><span class="n">1</span><div><a href="#s1">竞品专利里到底测了什么</a><span class="sub">打开洛拉替尼专利的证据卡：结构、活性、限定符、PDF 页码、质谱校验</span></div></li>
-    <li><span class="n">2</span><div><a href="#s2">早期专利和大环化专利是什么关系</a><span class="sub">跨家族关联只列事实、假设和缺口；跨专利活性并列，不算倍数</span></div></li>
-    <li><span class="n">3</span><div><a href="#s3">活性提高了，其他性质付出了什么代价</a><span class="sub">六步工作流：6f → 6e 酶活性提高约 8 倍，MDR1 外排比却从 7.6 升到 17，系统按实验分开，不给“整体更优”</span></div></li>
-    <li><span class="n">4</span><div><a href="#s4">从一个结构找回同一条研发线</a><span class="sub">相似性检索找不到大环化前的早期化合物，共有片段的子结构检索能找回</span></div></li>
-    <li><span class="n">5</span><div><a href="#s5">让 AI 助手帮忙整理，但它只能提交“待确认”</a><span class="sub">越权确认被拒绝、拼错参数被拒绝、重复测量阻断比值、全程可重放</span></div></li>
-    <li><span class="n">6</span><div><a href="#s6">自动抽取出错时，错的地方会被标出来</a><span class="sub">漏掉一个氟原子的实施例被质谱校验排在人工核对第一位</span></div></li>
+    <li><span class="n">1</span><div><a href="#s1">从一个专利号开始一项竞对调研</a><span class="sub">首页识别输入类型，进入调研概览：家族时间线、下一步、事实 / 假设 / 缺口</span></div></li>
+    <li><span class="n">2</span><div><a href="#s2">竞品专利里到底测了什么，两代之间能不能比</a><span class="sub">证据表保留限定值和未测；跨家族对照只并列原始值，不算倍数</span></div></li>
+    <li><span class="n">3</span><div><a href="#s3">活性提高了，其他性质付出了什么代价</a><span class="sub">按项目目标自动配对：6f → 6e 酶 Ki 改善，MDR1 外排比变差，补测 6f 细胞 IC50 排第一</span></div></li>
+    <li><span class="n">4</span><div><a href="#s4">从一个结构找回同一条研发线</a><span class="sub">相似性检索找不到大环化前的早期专利实施例，共有片段的子结构检索能找回</span></div></li>
+    <li><span class="n">5</span><div><a href="#s5">两代专利之间改了哪里</a><span class="sub">时间轴与引用箭头；R 基团对齐标出同家族内变化的位点</span></div></li>
+    <li><span class="n">6</span><div><a href="#s6">组会前：具名复核，再导出报告</a><span class="sub">逐项核对后确认为 L3；报告中未复核的证据逐条标“待确认”</span></div></li>
+    <li><span class="n">7</span><div><a href="#s7">让 AI 助手帮忙整理，但它只能提交“待确认”</a><span class="sub">越权确认被拒绝、拼错参数被拒绝、重复测量阻断比值、全程可重放</span></div></li>
+    <li><span class="n">8</span><div><a href="#s8">从 PDF 开始：自动抽取出错时会被标出来</a><span class="sub">本机校验 PDF；模拟抽取中漏掉一个氟原子的实施例被排在人工核对第一位</span></div></li>
   </ol>
 </nav>
 
 <!-- 1 -->
 <section class="scenario" id="s1">
-  <div class="eyebrow">场景 1 · 专利工作台</div>
-  <h2>竞品专利里到底测了什么</h2>
-  <p class="question">“我想快速看洛拉替尼专利里几个代表性实施例的结构和活性，每个数都要能回到原文核对。”</p>
+  <div class="eyebrow">场景 1 · 首页与调研概览</div>
+  <h2>从一个专利号开始一项竞对调研</h2>
+  <p class="question">“情报提醒我辉瑞公开了 WO2013132376A1。它和我们在跟的系列有什么关系？下一步该看什么？”</p>
   <div class="cols">
     <div class="stack"><h3>操作</h3>
       <ol class="steps">
-        <li>首页输入 <code>WO2013132376A1</code>，点“检索专利”。</li>
-        <li>停在“分子证据卡”标签。</li>
-        <li>展开任一卡片的“实验条件与核对说明”。</li>
+        <li>首页输入框填 <code>WO2013132376A1</code>，不用选类型。</li>
+        <li>提示条显示“识别为专利公开号 · 已在调研「ALK 大环系列 · 辉瑞」中”，点“开始检索”或“打开该调研 →”。</li>
+        <li>在概览页从上往下看：统计卡片、家族时间线、下一步、跨家族关系。</li>
       </ol></div>
     <div class="stack"><h3>看什么</h3>
       <ul class="points">
-        <li>WT ALK 酶 Ki 显示为 <code>&lt;0.200 nM</code>，限定符原样保留，不当作 0.2 参与计算。</li>
-        <li>结构链接到 PDF 第 260 / 264 / 268 页，活性链接到 Table 1 对应行。</li>
-        <li>质谱校验：原文 [M+H]+ 407 / 393 / 382 与转录结构一致（整数报告值，容差 ±0.6 Da）。</li>
-        <li>每个实验的协议和出处（PDF 第 435–436 页）写在卡片里。</li>
+        <li>输入框自动识别专利号、SMILES、靶点名和 ChEMBL ID；SMILES 先用本机 RDKit 解析，确认能解析才当作结构。</li>
+        <li>调研范围：2 个专利家族（优先权 2010-05-04 至 2012-03-06）、1 篇论文、35 条结构记录 / 271 条观测，其中 2 项为“未测”。</li>
+        <li>具名确认（L3）为 0，卡片直接链到复核队列。</li>
+        <li>“下一步”由分析结果自动算出：补测建议第 1 位是 6f 的细胞活性；默认噪声阈值待化学家确认。</li>
+        <li>跨家族关系分三栏：可核查事实 3 条、研究假设 1 条（未署名）、证据缺口 3 条。</li>
       </ul></div>
   </div>
   <figure>
-    <img src="shots/s1-evidence-cards.png" width="1164" height="933" alt="WO2013132376A1 的三张证据卡：Example 2、4、6 的结构、质谱校验和四项活性">
-    <figcaption><b>三张证据卡。</b>三个实施例的 WT Ki 都是 &lt;0.200 nM；L1196M Ki 分别为 0.78、1.20、1.93 nM。每张卡注明“助手视觉核对 · 独立复核待完成”。</figcaption>
+    <img src="shots/s1-home.png" width="1360" height="833" alt="首页：输入专利公开号后识别为专利，并提示已在 ALK 大环系列调研中">
+    <figcaption><b>首页。</b>一个输入框、一个 PDF 入口、我的调研和示例数据集。识别结果给出两个去向：打开所在调研，或在经典界面查看公开页面与同族。</figcaption>
   </figure>
-  <figure class="pair">
-    <img src="shots/s1-card-detail.png" width="378" height="1467" alt="Example 2 证据卡展开后的实验条件">
-    <figcaption><b>展开后的 Example 2。</b>四项实验的条件与原文位置逐条列出：酶 Ki 为微流控迁移率实验、ATP 60 µM、室温 1 h；细胞 IC50 为 NIH-3T3 EML4-ALK v1、处理 1 h、phospho-ALK Tyr1604 ELISA。卡片还写明质谱一致只说明分子式相符，查不出同分异构、区域或立体错误。Example 4 的卡片则说明原文 SFC 分出两个峰，系统不把 Table 1 的数值擅自分配给其中一个。</figcaption>
+  <figure>
+    <img src="shots/s1-overview.png" width="1360" height="1194" alt="调研概览：四个统计卡片、家族时间线、下一步与跨家族关系三栏">
+    <figcaption><b>调研概览。</b>时间线按来源记载的优先权日排列，同族公开合并；较晚家族带“引用较早家族”标记。</figcaption>
   </figure>
-  <div class="say"><h3>讲解要点</h3><p>每个数都能点回 PDF 原页；限定值、未测和转录状态都显式标出。系统不替化学家判断立体构型，原文没区分的地方就保留“未区分”。</p></div>
+  <div class="say"><h3>讲解要点</h3><p>“调研”只记录一组文档、项目目标和署名判断，每个数字都在打开页面时从证据台账读取，不会和台账不一致。两份专利的关系标题是“相关 ALK 系列 · 直接演化未证实”：引用关系是事实，“大环化是否用于限制构象”只是待验证的假设。</p></div>
 </section>
 
 <!-- 2 -->
 <section class="scenario" id="s2">
-  <div class="eyebrow">场景 2 · 跨专利关联</div>
-  <h2>早期专利和大环化专利是什么关系</h2>
-  <p class="question">“Pfizer 2010 年的无环系列和 2012 年的大环系列有关系吗？大环化后活性提高了多少？”</p>
+  <div class="eyebrow">场景 2 · 证据表与 A/B 对照</div>
+  <h2>竞品专利里到底测了什么，两代之间能不能比</h2>
+  <p class="question">“两份专利各测了哪些实施例、哪些值？早期的 Example 7 和大环的 Example 6 放在一起，活性提高了多少？”</p>
   <div class="cols">
     <div class="stack"><h3>操作</h3>
       <ol class="steps">
-        <li>首页点“加载跨家族证据案例”，自动加载两份专利并切到“跨专利关联”。</li>
-        <li>点“对照早期 Example 7 与大环 Example 6 →”。</li>
+        <li>切到“证据”页签，两份专利默认展开，论文 29 行默认收起。</li>
+        <li>勾选 WO2011138751A2 Example 7（成为 A）和 WO2013132376A1 Example 6（成为 B）。</li>
+        <li>底栏显示“跨文档 · 只并列原始值”，点“查看 A/B 对照 →”。</li>
       </ol></div>
     <div class="stack"><h3>看什么</h3>
       <ul class="points">
-        <li>两个家族按优先权日排列：WO2011138751A2（2010-05-04）、WO2013132376A1（2012-03-06）。</li>
-        <li>事实、研究假设、仍缺少的证据分成三块，假设明确标为“待验证问题”。</li>
-        <li>结构对照：可旋转键 5 → 0，最大环 6 → 12，cLogP 3.97 → 2.68。</li>
-        <li>活性只并列：WT Ki 0.536 nM 对 &lt;0.200 nM，B/A 一栏写“跨专利实验可比性未核实，不计算倍数”。</li>
+        <li>WO2013132376A1 三个实施例的 WT ALK 酶 Ki 都是 <code>&lt;0.200 nM</code>，用虚线框显示，不参与排序和倍数。</li>
+        <li>WO2011138751A2 Example 6 的两项细胞 IC50 写“未测 · 原表空白”，不填零。</li>
+        <li>数值按原文精度显示（2.90、0.620），每行带来源等级、质谱校验和结构所在的 PDF 页码。</li>
+        <li>色阶只在同一文档、同一实验列内比较，只用于以 nM 报告的活性列。</li>
+        <li>对照页：WT Ki 0.536 nM 对 &lt;0.200 nM，写“B 为限定值，不比较”；其余三项写“跨文档，只并列”。</li>
+        <li>RDKit 性质差：cLogP 3.97 → 2.68，可旋转键 5 → 0，环数 3 → 4。</li>
       </ul></div>
   </div>
   <figure>
-    <img src="shots/s2-lineage.png" width="1114" height="1105" alt="跨专利关联视图：两个家族的时间线、可核查事实、研究假设和缺少的证据">
-    <figcaption><b>跨专利关联。</b>标题就是“相关 ALK 系列 · 直接演化未证实”。每条事实附原文链接（通式 PDF 第 127 页、取代基行第 128 页、大环最终结构第 268 页）。</figcaption>
+    <img src="shots/s2-evidence.png" width="1360" height="1533" alt="证据表：两份专利各三个实施例的结构、四项活性和计算性质，Example 7 与 Example 6 被选为 A 和 B">
+    <figcaption><b>证据表。</b>每个专利一个分组带：家族号、优先权日、活性表页码。勾选后行首出现 A / B 标记。</figcaption>
   </figure>
   <figure>
-    <img src="shots/s2-compare-structures.png" width="1164" height="700" alt="Example 7 与 Example 6 的结构对照，MCS 未覆盖原子标为橙色">
-    <figcaption><b>结构差异。</b>橙色是一次 MCS 匹配未覆盖的原子；页面注明匹配不唯一，不代表药效团或因果关系。</figcaption>
+    <img src="shots/s2-compare.png" width="1360" height="1498" alt="跨家族对照：两个结构的差异原子高亮，活性原始值并列，RDKit 性质差">
+    <figcaption><b>跨家族对照。</b>橙色是一次最大公共子结构匹配未覆盖的原子；页面注明匹配不唯一，不代表药效团或因果关系。底部“我的判断”可以署名写入报告，标为“研究假设”或“证据缺口”。</figcaption>
   </figure>
-  <figure>
-    <img src="shots/s2-compare-measurements.png" width="1130" height="456" alt="跨专利测量并列表：四项实验的 A、B 原始值，不计算倍数">
-    <figcaption><b>跨专利测量并列。</b>四项实验都给出 A、B 原始值和各自原表位置，B/A 一律不计算。</figcaption>
-  </figure>
-  <div class="say"><h3>讲解要点</h3><p>“大环化后提高了几倍”是最容易被直接算出来的数，但两份专利的实验批次和条件没有核实过，所以系统只并列、不算倍数，也不认定直接演化。它给出的是一个可以去验证的问题：大环化是否用于限制构象并影响 ALK 抑制。</p></div>
+  <div class="say"><h3>讲解要点</h3><p>“大环化后提高了几倍”是最容易被直接算出来的数，但两份专利的实验批次没有核实可比，所以只并列、不算倍数。同一个规则在操作时就提示：选完 A/B，底栏马上告诉你这是“同一文档”还是“跨文档”。</p></div>
 </section>
 
 <!-- 3 -->
 <section class="scenario" id="s3">
-  <div class="eyebrow">场景 3 · 六步 SAR 工作流</div>
+  <div class="eyebrow">场景 3 · SAR 分析</div>
   <h2>活性提高了，其他性质付出了什么代价</h2>
-  <p class="question">“酰胺上的 N,N-二甲基改成 N-甲基（6f → 6e），活性变好了吗？外排会不会变差？”</p>
+  <p class="question">“我的目标是改善细胞活性，同时把外排比控制在 2.5 以内。竞对的哪些结构改动值得借鉴，哪些有代价？”</p>
   <div class="cols">
-    <div class="stack"><h3>操作（<code>/evidence</code> 页面）</h3>
+    <div class="stack"><h3>操作</h3>
       <ol class="steps">
-        <li>来源选 <code>CHEMBL3286195</code>（洛拉替尼发现论文），A 选 6f，B 选 6e，点“分析结构变化”。</li>
-        <li>点“检查所选分子的测量”。</li>
-        <li>点“加入当前已检查分子对”，再点“汇总本批替换效果”。</li>
-        <li>第⑥步点“填入当前 A”，实验选 <code>CHEMBL3293161</code>（WT ALK Ki）、目标“数值降低”，生成候选方向；再把实验换成 <code>CHEMBL3293391</code>（MDR1 外排比，同样希望降低）。</li>
+        <li>切到“SAR 分析”，目标模板选“改善细胞活性，同时控制外排”。</li>
+        <li>在“性质与实验映射”里把外排比改为“目标区间”，上限填 2.5；需要时勾选或去掉实验。</li>
+        <li>点“确认映射并重新分析”，设置保存到调研，概览和报告都用这一套目标。</li>
+        <li>看排在最前的替换、补测建议；在“审查与署名”写下判断并署名。</li>
+        <li>想看单个分子对的全部实验，到“对照”页选论文中的 6f 与 6e。</li>
       </ol></div>
     <div class="stack"><h3>看什么</h3>
       <ul class="points">
-        <li>结构对齐：共同锚点 28 个重原子，差异在 R1（甲基 → 氢）；页面提示存在对称歧义，需核对原图。</li>
-        <li>7 项实验里 3 项可暂定计算，另外 4 项不计算。</li>
-        <li>酶活性：WT ALK Ki（CHEMBL3293161）22.0 → 2.8 nM，B/A = 0.127；L1196M Ki（CHEMBL3293162）310 → 35 nM，B/A = 0.113。</li>
-        <li>外排：MDR1 外排比（MDCK 细胞，CHEMBL3293391）7.6 → 17，B/A = 2.24，外排变差。</li>
-        <li>候选方向随性质变化：以酶 Ki 降低为目标时给出 6e 和验证计划；以外排比降低为目标时没有候选，6e 被列为相反案例。</li>
-        <li>台账中没有 6f 的两个细胞 IC50 记录（6e 为 116 nM 和 1665 nM），细胞层面的活性变化无法比较。</li>
+        <li>自动配对（匹配分子对，单切与氢替换）找到 18 个分子对、15 种替换；只比较同一文档内的实验，不合成综合分数。</li>
+        <li>“去掉一个 N-甲基”（<code>C[*:1]&gt;&gt;[H][*:1]</code>，2 个分子对）归为“取舍”：酶活性证据“不一致”，外排比“较弱”，细胞活性“无可比数据”。</li>
+        <li>6f → 6e：WT ALK Ki 22 → 2.8 nM（B/A 0.127）、L1196M Ki 310 → 35 nM（B/A 0.113）有利；MDR1 外排比 7.6 → 17（B/A 2.24）不利，两者都不在 ≤ 2.5 区间内；LogD 2.1 → 2.1 未变。</li>
+        <li>6f 没有细胞 IC50 记录，所以补测建议第 1 位是“6f · 细胞活性”（CHEMBL3293164，补测后可判断 2 个分子对，该实验已有 27 条测量）。</li>
+        <li>对照页：LogD 是对数尺度，不算 B/A；微粒体清除率单位无法确认量纲，也不算。</li>
       </ul></div>
   </div>
-  <figure>
-    <img src="shots/s3-1-alignment.png" width="1200" height="1000" alt="第二步：6f 与 6e 的结构对齐结果">
-    <figcaption><b>② 结构对齐。</b>覆盖 97%–100%，R1 位点有对称歧义，页面要求核对原图。</figcaption>
-  </figure>
-  <figure>
-    <img src="shots/s3-2-comparability.png" width="1200" height="1133" alt="第三步：逐项实验的可比性检查">
-    <figcaption><b>③ 测量可比性。</b>只有同来源、同 assay、同条件的精确值才暂定可比；每条都写明“B/A 非改善倍数”，并列出待补证据（原图、原表定位、完整实验条件、独立复核）。</figcaption>
-  </figure>
-  <figure>
-    <img src="shots/s3-3-summary.png" width="1200" height="1267" alt="第四步：按实验分组的批次汇总：两个酶 Ki 实验数值降低，MDR1 外排比数值升高">
-    <figcaption><b>④ 批次汇总。</b>按实验分开计数：两个酶 Ki 实验（CHEMBL3293161、CHEMBL3293162）为“数值降低 1”，MDR1 外排比（CHEMBL3293391）为“数值升高 1”。页面说明升高 / 降低只是数值方向，未考虑实验误差，单篇来源不证明独立重复。</figcaption>
-  </figure>
   <div class="cols">
     <figure>
-      <img src="shots/s3-4-suggest-lower.png" width="1200" height="478" alt="第六步：CHEMBL3293161 下的待验证候选方向和验证计划">
-      <figcaption><b>⑥ WT ALK Ki（CHEMBL3293161）、目标“数值降低”。</b>给出 6e 作为待验证方向，附需核对项和三条验证计划（核查原始结构与协议、同实验重复测定、另测选择性与 ADMET）。</figcaption>
+      <img src="shots/s3-mapping.png" width="380" height="1733" alt="项目目标与性质—实验映射：外排比设为目标区间 ≤ 2.5，映射已由用户确认">
+      <figcaption><b>目标与实验映射。</b>阈值默认值标“待确认”，用户改过的标“用户设定”；映射确认后显示“已由你确认”。</figcaption>
     </figure>
-    <figure>
-      <img src="shots/s3-5-suggest-other.png" width="1200" height="165" alt="第六步：以 MDR1 外排比降低为目标时没有符合的候选">
-      <figcaption><b>⑥ 换成 MDR1 外排比（CHEMBL3293391），目标同样是“数值降低”。</b>6e 的外排比反而升高（B/A = 2.24），系统不输出候选，只把它列为相反方向案例。</figcaption>
-    </figure>
+    <div class="stack">
+      <figure>
+        <img src="shots/s3-tradeoff.png" width="876" height="748" alt="替换“去掉一个 N-甲基”的多性质汇总表和 6f → 6e 分子对明细">
+        <figcaption><b>按替换汇总。</b>每个性质一行：有利 / 不利 / 未变 / 缺失 / 本文档无该实验的分子对数，以及按固定规则给出的证据等级。</figcaption>
+      </figure>
+      <figure>
+        <img src="shots/s3-followups.png" width="876" height="552" alt="补测建议列表：第一位是 6f 的细胞活性">
+        <figcaption><b>补测建议。</b>排序规则写在标题旁：可判断的分子对数 → 其中在其他目标性质上已有利的对数 → 该实验已有测量数。是否有样品、能否排实验另行确认。</figcaption>
+      </figure>
+    </div>
   </div>
-  <div class="say"><h3>讲解要点</h3><p>把这批数据直接交给大模型总结，很容易得到“N-去甲基化提高活性”这样一句话，外排变差和细胞数据缺失却被略过。系统按实验分开：酶活性有利、外排不利，于是不给“整体更优”的结论；候选也只从已记录的分子里挑，不生成新结构。把这种多性质取舍并排成一张表、并提示“先补测 6f 的细胞 IC50”，是下一步迭代（I2.7）要做的。</p></div>
+  <figure class="narrow">
+    <img src="shots/s3-compare-paper.png" width="628" height="608" alt="同一论文内 6f 与 6e 的逐项实验比较">
+    <figcaption><b>同一文档内的 A/B 对照。</b>同来源、同实验、同单位的精确值才给 B/A，并注明“数值比，非改善倍数”；缺一方测量、对数尺度、单位不明的都写明不计算的原因。</figcaption>
+  </figure>
+  <div class="say"><h3>讲解要点</h3><p>把这批数据直接交给大模型总结，很容易得到“去 N-甲基提高活性”一句话，外排变差和细胞数据缺失却被略过。这里每个性质单独判断，取舍并排放在一张表里，并把“缺什么数据”变成一条可执行的补测建议。化学家的判断要署名后才以“研究假设”进入报告。</p></div>
 </section>
 
 <!-- 4 -->
@@ -225,38 +225,104 @@ python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite</pre>
   <div class="cols">
     <div class="stack"><h3>操作</h3>
       <ol class="steps">
-        <li>首页输入类型切到 SMILES，检索方式选“相似性”，阈值填 50。</li>
-        <li>点“填入洛拉替尼 SMILES”，检索。</li>
-        <li>检索方式改为“子结构”，输入两代共有的氨基吡啶苄醚片段 <code>Nc1ncccc1OCc1ccccc1</code>，检索。</li>
+        <li>首页点“结构检索”，粘贴洛拉替尼 SMILES；左侧立即显示本机解析结果。</li>
+        <li>匹配方式选“相似性”，阈值填 50，检索范围只留本地台账，点“检索 →”。</li>
+        <li>再用两代共有的氨基吡啶苄醚片段 <code>Nc1ncccc1OCc1ccccc1</code> 做子结构检索。</li>
       </ol></div>
     <div class="stack"><h3>看什么</h3>
       <ul class="points">
-        <li>相似性 ≥ 50%：15 个命中，论文 13 个、WO2013132376A1 2 个，<b>早期专利 WO2011138751A2 一个都没有</b>。大环化后，洛拉替尼与早期无环化合物的 Morgan 相似度只有 0.19–0.27。</li>
-        <li>子结构：28 个命中，覆盖论文 22 个，两份专利的实施例全部找回（各 3 个）。</li>
-        <li>页面记录检索方式、阈值、指纹类型、标准化做了什么，以及检索范围（本地台账 37 个结构）。</li>
+        <li>解析结果：C21H19FN6O2、MW 406.4、1 个立体中心已指定 R、单组分，“结构未离开本机”。</li>
+        <li>勾选联网来源前，页面写明会向 ChEMBL、SureChEMBL 发送什么（InChIKey 或标准化后的 SMILES）。</li>
+        <li>相似性 ≥ 50%：15 个命中，WO2013132376A1 的 Example 2、4 和论文 13 个化合物；<b>早期专利 WO2011138751A2 一个都没有</b>。</li>
+        <li>子结构：28 个命中，两份专利的 6 个实施例全部找回，另有论文 22 个化合物。</li>
+        <li>结果页先给检索覆盖报告：哪些来源查了、命中多少、是否截断，以及已知缺口；每个命中标出是否已在调研中。</li>
       </ul></div>
   </div>
   <figure>
-    <img src="shots/s4-similarity.png" width="1164" height="1133" alt="洛拉替尼相似性检索结果：命中数、检索记录和前两个命中">
-    <figcaption><b>相似性检索。</b>顶部说明写明：相似度只用于排序和筛选，不说明活性相近或属于同一研发程序；骨架变化大时同一系列的相似度也可能很低，找跨系列关联请用子结构检索。前两个命中是同一个化合物在论文（8k）和专利（Example 2）中的两条记录。</figcaption>
+    <img src="shots/s4-search.png" width="1360" height="1133" alt="结构检索条件页：本机解析结果、匹配方式、检索范围与标准化选项">
+    <figcaption><b>检索条件。</b>“精确 · 忽略立体”和“上传 PDF 抽取出的结构”标为尚未支持，不放占位结果。</figcaption>
   </figure>
   <figure>
-    <img src="shots/s4-substructure.png" width="1164" height="1000" alt="共有片段的子结构检索结果：28 个命中">
-    <figcaption><b>子结构检索。</b>28 个命中，第一个是论文中的克唑替尼；滚动可见两份专利的全部实施例。</figcaption>
+    <img src="shots/s4-similarity.png" width="1360" height="1600" alt="相似性检索结果：覆盖报告和按专利、论文分组的 15 个命中">
+    <figcaption><b>相似性 ≥ 50%。</b>前两个相似度 1.000 的命中是同一个化合物在专利（Example 2）和论文（8k）中的两条记录。</figcaption>
   </figure>
-  <div class="say"><h3>讲解要点</h3><p>相似度适合找类似物，不适合找骨架跃迁。联网时，同一个检索还可以勾选 ChEMBL 和 SureChEMBL（专利中提取的结构），并对任一命中查 PubChem 关联的专利与文献，远程命中都会用 RDKit 在本地复核一遍。</p></div>
+  <figure>
+    <img src="shots/s4-substructure.png" width="1360" height="1333" alt="子结构检索结果：28 个命中，两份专利的实施例全部在列">
+    <figcaption><b>共有片段子结构检索。</b>早期专利的 Example 1、6、7 都在结果里。</figcaption>
+  </figure>
+  <div class="say"><h3>讲解要点</h3><p>相似度适合找类似物，不适合找骨架跃迁：大环化之后，同一条研发线的前代化合物相似度会很低。联网时同一页可以勾选 ChEMBL 和 SureChEMBL，并对检索结构查 PubChem 关联的专利与文献；远程命中都会用 RDKit 在本地复核，不一致标红不删除。</p></div>
 </section>
 
 <!-- 5 -->
 <section class="scenario" id="s5">
-  <div class="eyebrow">场景 5 · AI 助手工具层</div>
+  <div class="eyebrow">场景 5 · 时间线与程序</div>
+  <h2>两代专利之间改了哪里</h2>
+  <p class="question">“从 2010 年的无环系列到 2012 年的大环系列，具体在哪些位置做了改动？”</p>
+  <div class="cols">
+    <div class="stack"><h3>操作</h3>
+      <ol class="steps">
+        <li>切到“时间线与程序”页签。</li>
+        <li>看时间轴和引用箭头，再看下方的 R 基团对齐表。</li>
+      </ol></div>
+    <div class="stack"><h3>看什么</h3>
+      <ul class="points">
+        <li>时间轴按优先权日摆放两个家族；虚线箭头标“引用（来源：较晚专利引用列表）”。</li>
+        <li>R 基团对齐：共同锚点 14 个原子，覆盖 6/6 个实施例；标“暂定对齐”。</li>
+        <li>黄色标出与同家族上一行不同的位点；多连接点片段标“成环”，大环家族的 R1、R3 为同一个成环片段。</li>
+        <li>每行附 WT 细胞 IC50 原始值，早期 Example 6 写“未测”。</li>
+        <li>“为什么归为一组”需要读取专利公开页面后才计算，离线时只说明规则。</li>
+      </ul></div>
+  </div>
+  <figure>
+    <img src="shots/s5-timeline.png" width="1360" height="1329" alt="时间线页：两个家族的时间轴与引用箭头，R 基团对齐表与分组规则">
+    <figcaption><b>时间线与 R 基团对齐。</b>页面写明 R 标签只在本次对齐中有效，不等于专利中的 R 编号；跨家族差异只描述已整理样本，不推断优化因果。</figcaption>
+  </figure>
+  <div class="say"><h3>讲解要点</h3><p>对齐只告诉你“哪里不同”，不告诉你“为什么改”。存在对称匹配、部分环锚点或成环片段时，页面明确提示不能当作独立单点替换。</p></div>
+</section>
+
+<!-- 6 -->
+<section class="scenario" id="s6">
+  <div class="eyebrow">场景 6 · 复核队列与报告</div>
+  <h2>组会前：具名复核，再导出报告</h2>
+  <p class="question">“明天组会要汇报这个系列。哪些证据我能放心引用？报告里怎么区分已核对和没核对的？”</p>
+  <div class="cols">
+    <div class="stack"><h3>操作</h3>
+      <ol class="steps">
+        <li>点顶栏“复核队列”，在“专利证据卡 · 6”里选 WO2013132376A1 · Ex 2。</li>
+        <li>中间可按需加载原文 PDF（结构 p.260、活性表 p.436）；右侧按 <kbd>Y</kbd> 逐项勾选核对清单。</li>
+        <li>填写复核人和理由，点“确认（L3）”。</li>
+        <li>回到调研的“报告”页签，写结论摘要并署名，选择格式导出。</li>
+      </ol></div>
+    <div class="stack"><h3>看什么</h3>
+      <ul class="points">
+        <li>核对清单按记录生成：连接关系、立体（原图与名称指定 10R）、4 项测量与原表一致且限定符保留、实验列对应、编号对应。</li>
+        <li>质谱校验：原文 [M+H]+ 407.0，结构计算 407.16，一致；页面注明它查不出同分异构与立体错误。</li>
+        <li>勾选并填写复核人和理由之前，确认按钮不可用；拒绝只让记录退出分析，不删除。</li>
+        <li>报告页：已确认证据 1 条，其余 34 条标“待确认”；附录里 Example 2 显示为 L3，其他实施例带“待确认”。</li>
+        <li>报告第 3 节是在证据页选的 A/B（Example 7 与 Example 6），第 5 节列出场景 3 中署名的判断，附录有每份文档的快照 SHA-256。</li>
+      </ul></div>
+  </div>
+  <figure>
+    <img src="shots/s6-review.png" width="1360" height="1240" alt="复核队列：左侧待确认记录，中间原文 PDF 入口，右侧转录结构、核对清单、测量与复核人">
+    <figcaption><b>复核队列。</b>原文 PDF 由浏览器直接从公开地址读取，点“在此加载原文”才加载。</figcaption>
+  </figure>
+  <figure class="narrow">
+    <img src="shots/s6-report.png" width="916" height="2799" alt="报告预览：结论摘要、家族时间线、关键对照、SAR 讨论材料、事实假设缺口与证据来源附录">
+    <figcaption><b>报告预览。</b>工具不自动生成结论；结论摘要由人撰写并署名。导出 PDF 走浏览器打印，Markdown 与 JSON 直接下载。</figcaption>
+  </figure>
+  <div class="say"><h3>讲解要点</h3><p>每条记录都带复核状态，确认必须具名并写理由，审计日志只追加。报告不会把“待确认”的转录当成定论：每处引用都带状态，附录能逐条回到 PDF 页码。</p></div>
+</section>
+
+<!-- 7 -->
+<section class="scenario" id="s7">
+  <div class="eyebrow">场景 7 · AI 助手工具层</div>
   <h2>让 AI 助手帮忙整理，但它只能提交“待确认”</h2>
   <p class="question">“如果让 AI 助手来帮我查数据、录数据，它会不会自己把数据‘确认’掉，或者自己算出一个倍数？”</p>
   <div class="cols">
     <div class="stack"><h3>操作</h3>
       <ol class="steps">
         <li>终端运行 <code>python -m phase0.tools.demo</code>。</li>
-        <li>这是一段脚本化的助手会话，调用的是 Claude Code 等客户端通过 MCP 使用的同一批 15 个工具。</li>
+        <li>这是一段脚本化的助手会话，调用的是 Claude Code 等客户端通过 MCP 使用的同一套工具（共 17 个）。</li>
       </ol></div>
     <div class="stack"><h3>看什么</h3>
       <ul class="points">
@@ -268,33 +334,38 @@ python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite</pre>
       </ul></div>
   </div>
   <figure>
-    <img src="shots/s5-agent-tools.png" width="1180" height="440" alt="终端输出：七步工具调用，其中两次被拒绝，最后重放 8/8 一致">
+    <img src="shots/s7-agent-tools.png" width="1180" height="440" alt="终端输出：七步工具调用，其中两次被拒绝，最后重放 8/8 一致">
     <figcaption><b>工具层演示的真实输出。</b>红色是被拒绝的两次调用，黄色是比值与重复测量阻断，蓝色是重放结果。</figcaption>
   </figure>
-  <div class="say"><h3>讲解要点</h3><p>工具里根本没有“确认”“拒绝”“导入”，约束写在工具边界上，而不是写在提示词里；确认只能由具名的人带理由完成。这段会话是脚本化的，还没有接入真实大模型跑过。</p></div>
+  <div class="say"><h3>讲解要点</h3><p>工具里没有“确认”“拒绝”“导入”，约束写在工具边界上，而不是写在提示词里；确认只能由具名的人在复核队列里完成（场景 6）。这段会话是脚本化的，还没有接入真实大模型跑过。</p></div>
 </section>
 
-<!-- 6 -->
-<section class="scenario" id="s6">
-  <div class="eyebrow">场景 6 · 抽取质控</div>
-  <h2>自动抽取出错时，错的地方会被标出来</h2>
-  <p class="question">“以后大量专利靠自动抽取，抽错了我怎么知道？”</p>
+<!-- 8 -->
+<section class="scenario" id="s8">
+  <div class="eyebrow">场景 8 · 从 PDF 开始与抽取质控</div>
+  <h2>从 PDF 开始：自动抽取出错时会被标出来</h2>
+  <p class="question">“以后我直接丢 PDF 进来、大量靠自动抽取，抽错了我怎么知道？”</p>
   <div class="cols">
     <div class="stack"><h3>操作</h3>
       <ol class="steps">
-        <li>终端运行 <code>python -m phase0.extract.demo</code>。</li>
-        <li>第一行写明：抽取器是模拟的，数据取自金标准，Example 6 故意漏掉一个氟原子。</li>
+        <li>首页点“拖入专利或论文 PDF”，选一个 PDF 文件。截图用的是名为 <code>WO2011138751A2.pdf</code> 的测试文件，不是真正的公开 PDF。</li>
+        <li>终端运行 <code>python -m phase0.extract.demo</code>，看分级抽取的控制逻辑如何处理一个有错的抽取结果。第一行写明抽取器是模拟的，Example 6 故意漏掉一个氟原子。</li>
       </ol></div>
     <div class="stack"><h3>看什么</h3>
       <ul class="points">
-        <li>页面分区：中间体在 PDF 第 125 页，实施例在第 127–128 页，活性表在第 186 页。</li>
+        <li>上传页在浏览器里计算 SHA-256，与台账记录的公开 PDF 哈希比对；对不上就只按文件名推测公开号，并写明“未核实，文件名不作证据”。</li>
+        <li>页面分区、逐级抽取、写入台账三步标为“未接入”，不生成假的抽取预览。</li>
+        <li>抽取演示的页面分区：中间体在 PDF 第 125 页，实施例在第 127–128 页，活性表在第 186 页。</li>
         <li>分级调用：结构化记录和专利全文补齐必填字段后，最贵的 PDF 图表识别没有调用。</li>
-        <li>“需要人工核对”第一条：Example 6 置信度 low，原因是质谱不符（mass_mismatch）。</li>
-        <li>评测：错误 1 个，其中未被标出的 0 个。</li>
+        <li>“需要人工核对”第一条：Example 6 置信度 low，原因是质谱不符（mass_mismatch）。评测：错误 1 个，其中未被标出的 0 个。</li>
       </ul></div>
   </div>
   <figure>
-    <img src="shots/s6-extraction.png" width="1180" height="1133" alt="终端输出：抽取报告，Example 6 因质谱不符排在人工核对第一位">
+    <img src="shots/s8-upload.png" width="1360" height="867" alt="从 PDF 开始：六个步骤中前三步在本机完成或需人工核实，后三步未接入">
+    <figcaption><b>从 PDF 开始。</b>文件只在本机处理；识别出公开号后可一键去读取公开页面核实。</figcaption>
+  </figure>
+  <figure>
+    <img src="shots/s8-extraction.png" width="1180" height="1133" alt="终端输出：抽取报告，Example 6 因质谱不符排在人工核对第一位">
     <figcaption><b>分级抽取演示的真实输出。</b>核心指标不是平均准确率，而是“错了但没被标出来”的数量。</figcaption>
   </figure>
   <div class="say"><h3>讲解要点</h3><p>质谱校验能抓住原子数错误，但查不出同分异构和立体错误：两个来源给出同一个错误的异构体时，系统会给出高置信度，这个盲区已经写成测试。所以金标准和化学家复核不能省。真实抽取器还没有接入，也还没有真实的抽取准确率。</p></div>
@@ -303,20 +374,20 @@ python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite</pre>
 <section class="scenario" id="online">
   <div class="eyebrow">未附截图</div>
   <h2>需要联网的场景</h2>
-  <p>这些功能已经实现并用模拟服务器测试过，但开发环境访问不了外部数据库，还没有连通过。离线只能用虚构的返回数据截图，所以这里不附截图。在能联网的电脑上运行 <code>python -m phase0.tools.verify_online</code> 可以一次核对全部四个来源，之后可以按下面的路径现场演示或补拍截图。</p>
+  <p>这些功能已经实现并用模拟服务器测试过，但还没有在联网环境中连通过。离线只能用虚构的返回数据截图，所以这里不附截图。在能联网的电脑上运行 <code>python -m phase0.tools.verify_online</code> 可以一次核对全部外部来源，之后按下面的路径现场演示或补拍截图。</p>
   <div class="tablewrap"><table>
     <thead><tr><th>场景</th><th>操作路径</th><th>讲解要点</th></tr></thead>
     <tbody>
-      <tr><td>从靶点到测量，再加入台账</td><td>输入类型切到“靶点”，输入 <code>ALK</code> → 选人源 ALK → 查看测量 → “将本页测量加入台账（待确认）”</td><td>数值由服务端重新读取；缺限定符、缺结构、文档类型不明的记录被拒绝并说明原因；重复点击不新增</td></tr>
-      <tr><td>在专利化学中找相似结构</td><td>结构检索勾选“同时查询 SureChEMBL” → 某个命中点“查看含此化合物的专利” → “核实并加载专利”</td><td>SureChEMBL 的结构由自动标注从专利中提取，不说明是实施例或被权利要求覆盖；数据 CC BY 4.0，保留 SCHEMBL 编号</td></tr>
-      <tr><td>一个分子关联了哪些专利和文献</td><td>检索结构旁点“查询检索结构的 PubChem 专利与文献”</td><td>已整理的两份专利排在最前；PubChem 与 SureChEMBL 的专利关联可能同源，并列显示，不当作两份独立证据</td></tr>
+      <tr><td>从靶点到测量，再加入台账</td><td>首页输入 <code>ALK</code> → 进入经典界面的靶点检索 → 选人源 ALK → 查看测量 → “将本页测量加入台账（待确认）”</td><td>数值由服务端重新读取；缺限定符、缺结构、文档类型不明的记录被拒绝并说明原因；重复点击不新增</td></tr>
+      <tr><td>在专利化学中找相似结构</td><td>结构检索勾选“SureChEMBL” → 某个命中点“查看含此化合物的专利” → “核实并加载”</td><td>SureChEMBL 的结构由自动标注从专利中提取，标为 L0，不说明是实施例或被权利要求覆盖；数据 CC BY 4.0，保留 SCHEMBL 编号</td></tr>
+      <tr><td>一个分子关联了哪些专利和文献</td><td>结构检索结果页左侧“查询 PubChem”</td><td>已整理的两份专利标星；PubChem 与 SureChEMBL 的专利关联可能同源，并列显示，不当作两份独立证据</td></tr>
+      <tr><td>读取专利公开页面并计算分组</td><td>时间线页“读取公开页面并计算分组（联网）”</td><td>申请人一致是必要条件；发明人、骨架、靶点三项信号分别给出分数与共同项，缺失信号不重新归一化</td></tr>
     </tbody>
   </table></div>
 </section>
 
 <footer>
-  <p>SAR Atlas 研究原型 · 所有记录的状态仍为“待确认”，证据卡与金标准尚待独立化学家复核。截图由 <code>python docs/demo-scenarios/capture.py</code> 从工作台重新生成。</p>
+  <p>SAR Atlas 研究原型 · 证据卡与金标准尚待独立化学家复核。截图由 <code>python docs/demo-scenarios/capture.py</code> 从工作台重新生成。</p>
 </footer>
 </div>
-
 </html>

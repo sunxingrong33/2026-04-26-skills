@@ -36,6 +36,8 @@
 >
 > 更新：加入两个离线演示命令 `phase0.tools.demo`、`phase0.extract.demo` 及其冒烟测试（`test_demos`，2 项）后为 **344 passed**。
 >
+> 更新（界面重构，2026-10-03）：按 `重构原型/` 设计稿重做前端（`phase0/web/app/`），新增调研模块 `phase0/sar/study.py` 与对应接口；原页面移至 `/classic`（`/evidence`、`/project` 仍可访问），原有浏览器测试改为打开 `/classic` 下的页面，断言不变。新增 `test_study.py` 24 项（调研视图、来源等级、跨文档不算倍数、具名复核、报告、页面与接口）、`test_workbench_browser.py` 8 项（首页识别、证据表到跨家族对照、同一论文 B/A、SAR 分析与署名进入报告、保存映射、复核队列具名确认、结构检索、PDF 本机哈希）。合计 36 个模块、**491 passed**（含 19 项浏览器测试，未安装 Playwright 或浏览器时这 19 项跳过）。离线验证输出不变。
+>
 > 更新（I2.8 A、C）：先导结构锚点（标准化、台账匹配，不产生数值、不入台账）；必须保留的片段约束（破坏者归“超出约束范围”，仍显示、不作候选、不进补测排序）；合成限制作为标签；用户填写的当前测量值按文本隔离。新增 `test_lead_constraints.py` 19 项、浏览器测试 11 项。合计 **459 passed**。
 >
 > 更新（I2.7 第二段）：检索覆盖报告；SureChEMBL 命中作为专利结构入台账（服务端核对）；范围覆盖、分类、补测建议、合成可行性待评估项、Markdown 讨论材料；MCP 工具 17 个（`test_project_sar` 37 项、`test_structure_search` 17 项、`test_surechembl` 8 项、`test_browser` 10 项）。合计 **439 passed**。
@@ -90,8 +92,11 @@ osimertinib-independent: 2 candidates; keyword proxy 0/2; human validation pendi
 | 接口 | 结果 |
 |---|---|
 | `GET /api/health` | 200 |
-| `GET /` | 200（专利工作台） |
-| `GET /evidence` | 200（六步工作流） |
+| `GET /` | 200（新版工作台首页；2026-10-03 前为专利工作台） |
+| `GET /search`、`/upload`、`/review` | 200（结构检索、从 PDF 开始、复核队列） |
+| `GET /s/alk-pfizer/overview` 等 6 个页签 | 200（预置调研的概览、证据、SAR 分析、时间线与程序、对照、报告） |
+| `GET /classic`、`/classic/evidence`、`/classic/project` | 200（原专利工作台、六步工作流、项目目标页；`/evidence`、`/project` 仍可访问） |
+| `GET /api/studies`、`/api/study?id=alk-pfizer` | 200；预置调研 2 个专利家族、1 篇论文、35 条结构记录、271 条观测 |
 | `GET /examples` | 200（离线文献页，需先运行 demo） |
 | `GET /api/evidence` | 200；10 个输入包、320 条观测，与文档一致 |
 | `GET /api/patent?id=WO2013132376A1` | 记录环境的网络策略拦截了 Google Patents；接口返回明确错误“专利来源连接失败或超时”，没有用样例替代，符合设计 |
@@ -112,4 +117,4 @@ osimertinib-independent: 2 candidates; keyword proxy 0/2; human validation pendi
 ## 未覆盖
 
 - 需要联网的在线路径（Google Patents、ChEMBL）未在可联网环境中端到端验证；核对脚本已就绪，待在本机运行。
-- 浏览器测试只覆盖主路径（见 `test_browser.py`）；其余交互演示前仍需人工走查。
+- 浏览器测试只覆盖主路径（见 `test_browser.py`、`test_workbench_browser.py`）；其余交互演示前仍需人工走查。新版界面尚无化学家走查记录。
