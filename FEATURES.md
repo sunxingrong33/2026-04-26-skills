@@ -193,9 +193,9 @@
 | 13.4 | 抽取评测框架 | ✅ | 按字段评测；核心指标为**未标记错误数、编造数值数、可比性误判数**；格式不合规直接报错（`phase0/eval/`） |
 | 13.5 | 金标准 v0 | ⚠️ | 由现有 2 份专利证据包派生（6 个化合物、22 项测量、2 条未测），**待独立复核**；尚无真实抽取器的评测结果 |
 | 13.6 | 回归基线 | ✅ | [docs/baseline.md](docs/baseline.md) 记录每次改动后的测试数与离线验证输出 |
-| 13.7 | 自动化测试 | ✅ | `phase0/tests/` 34 个测试模块、459 项测试（含 11 项浏览器测试，缺少 Playwright 或浏览器时自动跳过），无需联网 |
+| 13.7 | 自动化测试 | ✅ | `phase0/tests/` 36 个测试模块、491 项测试（含 19 项浏览器测试，缺少 Playwright 或浏览器时自动跳过），无需联网 |
 | 13.8 | CI | ✅ | GitHub Actions，Python 3.10 / 3.12：安装 `requirements-agent.txt`，运行 pytest 与离线页面生成；另有可选的浏览器测试任务（`requirements-browser.txt`，失败不阻断） |
-| 13.9 | 浏览器界面自动化测试 | ✅ | `test_browser.py`（Playwright + Chromium，离线夹具）：专利与 ChEMBL 测量“加入台账”、跨家族案例与证据卡质谱校验显示、“未展示原因”、六步工作流主路径（同一替换酶 Ki 降低、MDR1 外排比升高，按实验分开统计，候选方向随实验变化）、结构相似性检索（标准化记录、本地命中排序、ChEMBL 截断与复核不一致提示）。其他页面交互仍需人工走查 |
+| 13.9 | 浏览器界面自动化测试 | ✅ | `test_browser.py`（Playwright + Chromium，离线夹具）：专利与 ChEMBL 测量“加入台账”、跨家族案例与证据卡质谱校验显示、“未展示原因”、六步工作流主路径（同一替换酶 Ki 降低、MDR1 外排比升高，按实验分开统计，候选方向随实验变化）、结构相似性检索（标准化记录、本地命中排序、ChEMBL 截断与复核不一致提示）；`test_workbench_browser.py` 覆盖新版工作台：首页识别与进入调研、证据表选 A/B 到跨家族对照（不算倍数）、同一论文对照 B/A、SAR 分析取舍与署名进入报告、保存实验映射、复核队列具名确认写入台账、结构检索标注调研归属、PDF 本机哈希。其他页面交互仍需人工走查 |
 | 13.10 | 在线路径验证脚本 | ⚠️ | `python -m phase0.tools.verify_online`：全新缓存下检索两份专利、查询 ALK 靶点与一页测量、写入台账（仅 proposed）、重复写入不新增、ChEMBL 相似性与子结构检索、SureChEMBL 相似性检索及首个命中的专利关联、PubChem 交叉引用、断网重放，输出 `report.md` / `report.json`。已用模拟网络响应测试；**尚未在可联网环境中运行**（本开发环境无法访问 Google Patents / ChEMBL / SureChEMBL / PubChem） |
 
 ## 14. 本机服务接口
@@ -204,9 +204,14 @@
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
-| GET | `/` | 专利工作台页面 |
-| GET | `/evidence` | 六步 SAR 证据工作流页面 |
-| GET | `/project` | 项目目标与多性质 SAR 页面 |
+| GET | `/` | 新版工作台首页：统一搜索框（自动识别专利号 / SMILES / 靶点 / ChEMBL ID）、我的调研、示例数据 |
+| GET | `/search` | 结构检索：条件页与结果页（覆盖报告、按文档分组、加入调研） |
+| GET | `/upload` | 从 PDF 开始：本机计算 SHA-256 并与台账已收录 PDF 比对；抽取步骤标明未接入 |
+| GET | `/review` | 复核队列：待确认记录、原文定位、逐项核对、具名确认 / 拒绝 |
+| GET | `/s/<调研>/overview` · `evidence` · `analysis` · `timeline` · `compare` · `report` | 调研的概览、证据表、SAR 分析、时间线与程序、A/B 对照、报告预览与导出 |
+| GET | `/classic` | 经典专利工作台页面（原 `/`；支持 `?mode=patent\|target&q=` 直接检索） |
+| GET | `/classic/evidence`（兼容 `/evidence`） | 六步 SAR 证据工作流页面 |
+| GET | `/classic/project`（兼容 `/project`） | 项目目标与多性质 SAR 页面 |
 | GET | `/examples` | 固定文献离线页面（需先运行 demo） |
 | GET | `/api/health` | 健康检查 |
 | GET | `/api/patent` | 专利检索与解析 |
@@ -220,6 +225,12 @@
 | POST | `/api/evidence-pair` | 台账分子对结构对齐与可比性检查 |
 | POST | `/api/sar-workflow` | 批次汇总、证据审查、候选方向 |
 | POST | `/api/project-sar` | 目标模板（`templates`）、实验映射建议（`suggest`）、多性质分析（`analyse`）、讨论材料（`report`，含 Markdown） |
+| GET | `/api/studies` · `/api/study?id=&view=overview\|evidence\|timeline\|report` | 调研列表与各页视图（数字均在请求时从台账读取） |
+| GET | `/api/depict?smiles=&size=s\|m\|l` · `/api/smiles-info` · `/api/documents` | RDKit 结构图（SVG）、SMILES 本机解析、台账文档及快照哈希 |
+| GET | `/api/review/queue` | 待确认记录及其测量、来源定位、质谱校验 |
+| POST | `/api/studies` · `/api/study/documents` · `/api/study/note` · `/api/study/analysis` | 新建调研、把台账文档加入调研、署名判断（研究假设 / 证据缺口 / 补测建议 / 结论摘要）、保存已确认的分析设置（先试运行） |
+| POST | `/api/study/compare` · `/api/study/report` · `/api/molfile` | A/B 对照（跨文档不算倍数）、报告 Markdown、MOL / SDF 本机转 SMILES |
+| POST | `/api/review` | 具名确认或拒绝一条化合物记录（确认时连同其待确认测量）；未启用数据库时返回 409 |
 | POST | `/api/ledger/propose` | 把服务端已读取的专利或 ChEMBL 测量写入台账（待确认）；未启用数据库时返回 409 |
 
 ## 15. 命令行

@@ -109,7 +109,7 @@ def workbench(b, base):
     pg.on('pageerror', lambda e: errors.append(str(e)))
 
     # 1 patent evidence cards
-    pg.goto(base + '/')
+    pg.goto(base + '/classic')
     pg.fill('#publication', 'WO2013132376A1')
     pg.click('#submit')
     pg.wait_for_selector('#evidence-cards .card')
@@ -129,7 +129,7 @@ def workbench(b, base):
     table_region(pg, '跨专利测量并列', 's2-compare-measurements')
 
     # 4 structure search on the local ledger
-    pg.goto(base + '/')
+    pg.goto(base + '/classic')
     pg.select_option('#input-mode', 'smiles')
     pg.select_option('#search-method', 'similarity')
     pg.fill('#search-threshold', '50')
@@ -144,7 +144,7 @@ def workbench(b, base):
     shot(pg.locator('#discovery'), 's4-substructure', 1500)
 
     # 3 six-step workflow
-    pg.goto(base + '/evidence')
+    pg.goto(base + '/classic/evidence')
     pg.wait_for_function('document.querySelectorAll("#pair-document option").length > 1')
     pg.select_option('#pair-document', 'CHEMBL3286195')
     pick(pg, '#pair-a', '/ 6f ·')
@@ -173,7 +173,7 @@ def workbench(b, base):
     shot(pg.locator('#sar-suggestions'), 's3-5-suggest-other', 1400)
 
     # 7 project goal: multi-property SAR over automatic matched pairs
-    pg.goto(base + '/project')
+    pg.goto(base + '/classic/project')
     pg.wait_for_selector('#template option', state='attached')
     pg.fill('#focus', 'ALK')
     pg.click('#suggest')

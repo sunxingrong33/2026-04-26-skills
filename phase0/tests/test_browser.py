@@ -127,7 +127,7 @@ def wait_status(pg, text):
 
 def test_add_patent_and_chembl_page_to_ledger(app, page):
     base, store, _ = app
-    page.goto(base + '/')
+    page.goto(base + '/classic')
     page.fill('#publication', 'WO2013132376A1')
     page.click('#submit')
     add = page.get_by_role('button', name='将本专利及索引结构加入台账（待确认）')
@@ -153,7 +153,7 @@ def test_add_patent_and_chembl_page_to_ledger(app, page):
 
 def test_cross_family_case_shows_edge_and_mass_check(app, page):
     base, _, _ = app
-    page.goto(base + '/')
+    page.goto(base + '/classic')
     page.click('#load-lineage')
     page.wait_for_selector('#lineage-content h3:has-text("可核查事实")', timeout=15000)
     lineage = page.text_content('#lineage-content')
@@ -172,7 +172,7 @@ def test_cross_family_case_shows_edge_and_mass_check(app, page):
 def test_withheld_relation_says_which_check_failed(app, page):
     base, _, set_retrieve = app
     set_retrieve(withhold_citation=True)
-    page.goto(base + '/')
+    page.goto(base + '/classic')
     page.click('#load-lineage')
     withheld = page.locator('#lineage-content h3:has-text("未展示")')
     withheld.wait_for(timeout=15000)
@@ -191,7 +191,7 @@ def pick(pg, select, label):
 
 def test_six_step_workflow_keeps_opposite_directions_apart(app, page):
     base, _, _ = app
-    page.goto(base + '/evidence')
+    page.goto(base + '/classic/evidence')
     page.wait_for_function('document.querySelectorAll("#pair-document option").length > 1')
     page.select_option('#pair-document', 'CHEMBL3286195')
     pick(page, '#pair-a', '/ 6f ·')
@@ -232,7 +232,7 @@ def test_six_step_workflow_keeps_opposite_directions_apart(app, page):
 
 def test_similarity_search_shows_ranked_local_hits_and_flags_chembl_disagreement(app, page):
     base, _, _ = app
-    page.goto(base + '/')
+    page.goto(base + '/classic')
     page.select_option('#input-mode', 'smiles')
     page.select_option('#search-method', 'similarity')
     assert page.is_visible('#search-threshold')
@@ -260,7 +260,7 @@ def test_surechembl_hits_lead_to_patent_loading(app, page, monkeypatch):
     monkeypatch.setattr(surechembl, 'urlopen', Server())
     monkeypatch.setattr(surechembl, 'SLEEP', lambda seconds: None)
     base, _, _ = app
-    page.goto(base + '/')
+    page.goto(base + '/classic')
     page.select_option('#input-mode', 'smiles')
     page.select_option('#search-method', 'similarity')
     page.check('#surechembl-search')
@@ -288,7 +288,7 @@ def test_pubchem_links_from_structure_to_curated_patent(app, page, monkeypatch):
     from phase0.tests.test_pubchem import Server
     monkeypatch.setattr(pubchem, 'urlopen', Server())
     base, _, _ = app
-    page.goto(base + '/')
+    page.goto(base + '/classic')
     page.select_option('#input-mode', 'smiles')
     page.fill('#publication', LORLATINIB)
     page.click('#submit')
@@ -307,7 +307,7 @@ def test_pubchem_links_from_structure_to_curated_patent(app, page, monkeypatch):
 
 def test_project_goal_page_shows_multi_property_tradeoff(app, page):
     base, _, _ = app
-    page.goto(base + '/project')
+    page.goto(base + '/classic/project')
     page.wait_for_selector('#template option', state='attached')
     page.fill('#focus', 'ALK')
     page.click('#suggest')
@@ -329,7 +329,7 @@ def test_project_goal_page_shows_multi_property_tradeoff(app, page):
 
 def test_project_page_custom_property_range_and_sites(app, page):
     base, _, _ = app
-    page.goto(base + '/project')
+    page.goto(base + '/classic/project')
     page.wait_for_selector('#template option', state='attached')
     page.fill('#focus', 'ALK')
     page.click('#suggest')
@@ -361,7 +361,7 @@ def test_project_page_custom_property_range_and_sites(app, page):
 
 def test_project_page_followups_categories_and_report_download(app, page):
     base, _, _ = app
-    page.goto(base + '/project')
+    page.goto(base + '/classic/project')
     page.wait_for_selector('#template option', state='attached')
     page.fill('#focus', 'ALK')
     page.click('#suggest')
@@ -382,7 +382,7 @@ def test_project_page_followups_categories_and_report_download(app, page):
 def test_project_page_lead_constraints_and_unverified_values(app, page):
     """I2.8 A and C: the lead anchors, a broken fragment leaves the candidate set, typed values stay text."""
     base, _, _ = app
-    page.goto(base + '/project')
+    page.goto(base + '/classic/project')
     page.wait_for_selector('#template option', state='attached')
     page.fill('#focus', 'ALK')
     page.fill('#lead-smiles', 'CN(C)C(=O)c1ccc2c(c1)nc(n2C)-c1ccccc1')  # not in the ledger: anchor only

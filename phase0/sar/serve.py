@@ -21,6 +21,18 @@ from phase0.ledger.store import KINDS, LedgerStore
 from .evidence_pair import analyse_pair
 from .sar_workflow import run_workflow
 from .patent_evidence import compare_measurements, provisional_direction
+from . import study as studies
+
+WEB = ROOT/'phase0/web'
+APP = WEB/'app'
+APP_PAGES = {'/': 'home.html', '/index.html': 'home.html', '/search': 'search.html', '/upload': 'upload.html',
+             '/review': 'review.html'}
+STUDY_TABS = ('overview', 'evidence', 'analysis', 'timeline', 'compare', 'report')
+STUDY_PAGE = re.compile(r'/s/([a-z0-9-]{1,60})/(' + '|'.join(STUDY_TABS) + ')')
+APP_ASSET = re.compile(r'/app/([a-z0-9-]{1,40})\.(css|js)')
+CLASSIC = {'/classic': 'patents.html', '/classic/evidence': 'evidence.html', '/classic/project': 'project.html',
+           '/evidence': 'evidence.html', '/project': 'project.html'}
+ASSET_TYPES = {'css': 'text/css; charset=utf-8', 'js': 'text/javascript; charset=utf-8'}
 
 class Handler(BaseHTTPRequestHandler):
     def reply(self, status, body, content_type='application/json; charset=utf-8'):
@@ -51,16 +63,24 @@ class Handler(BaseHTTPRequestHandler):
         if not self.allowed():
             return self.reply(403, {'error':'仅接受本机同源请求。'})
         url = urlsplit(self.path)
-        if url.path in ('/', '/index.html'):
-            return self.reply(200, (ROOT/'phase0/web/patents.html').read_bytes(), 'text/html; charset=utf-8')
+        if url.path in APP_PAGES:
+            return self.reply(200, (APP/APP_PAGES[url.path]).read_bytes(), 'text/html; charset=utf-8')
+        page = STUDY_PAGE.fullmatch(url.path)
+        if page:
+            return self.reply(200, (APP/(page.group(2) + '.html')).read_bytes(), 'text/html; charset=utf-8')
+        asset = APP_ASSET.fullmatch(url.path)
+        if asset:
+            path = APP/(asset.group(1) + '.' + asset.group(2))
+            return self.reply(200, path.read_bytes(), ASSET_TYPES[asset.group(2)]) if path.exists() \
+                else self.reply(404, {'error': '未找到文件。'})
+        if url.path in CLASSIC:
+            return self.reply(200, (WEB/CLASSIC[url.path]).read_bytes(), 'text/html; charset=utf-8')
+        if url.path.startswith('/api/') and url.path in STUDY_GET:
+            return STUDY_GET[url.path](self, parse_qs(url.query))
         if url.path == '/programs.js':
             return self.reply(200, (ROOT/'phase0/web/programs.js').read_bytes(), 'text/javascript; charset=utf-8')
-        if url.path == '/project':
-            return self.reply(200, (ROOT/'phase0/web/project.html').read_bytes(), 'text/html; charset=utf-8')
         if url.path == '/project.js':
             return self.reply(200, (ROOT/'phase0/web/project.js').read_bytes(), 'text/javascript; charset=utf-8')
-        if url.path == '/evidence':
-            return self.reply(200, (ROOT/'phase0/web/evidence.html').read_bytes(), 'text/html; charset=utf-8')
         if url.path == '/evidence-workflow.js':
             return self.reply(200, (ROOT/'phase0/web/evidence-workflow.js').read_bytes(), 'text/javascript; charset=utf-8')
         if url.path == '/sar-workflow.js':
@@ -119,6 +139,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.project_sar_request()
         if self.path == '/api/ledger/propose':
             return self.ledger_propose()
+        if self.path in STUDY_POST:
+            return STUDY_POST[self.path](self)
         if self.path != '/api/compare':
             return self.reply(404, {'error':'未找到接口。'})
         try:
@@ -356,6 +378,199 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(502, {'error': '写入台账失败，未写入部分记录。'})
         finally:
             self.server.work_lock.release()
+
+
+# ---------------------------------------------------------------- redesigned workbench (studies)
+
+def _studies_folder(handler):
+    return handler.server.cache.parent
+
+
+def _ledger():
+    from phase0.ledger.access import current_ledger
+    return current_ledger()
+
+
+def _body(handler, limit):
+    size = int(handler.headers.get('Content-Length', '0') or 0)
+    if not 0 < size <= limit:
+        raise ValueError('请求大小无效。')
+    data = json.loads(handler.rfile.read(size))
+    if not isinstance(data, dict):
+        raise ValueError('请求格式无效。')
+    return data
+
+
+def _guard(fn):
+    """Uniform errors: input problems are 400, unknown ids 404, anything else 422 without partial results."""
+    def run(handler, *args):
+        try:
+            return fn(handler, *args)
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            return handler.reply(400, {'error': str(exc) or '请求内容无效。'})
+        except KeyError:
+            return handler.reply(422, {'error': '处理未完成，未返回部分结果。'})
+        except LookupError as exc:
+            return handler.reply(404, {'error': str(exc.args[0]) if exc.args else '未找到。'})
+        except PermissionError as exc:
+            return handler.reply(403, {'error': str(exc)})
+        except Exception:
+            return handler.reply(422, {'error': '处理未完成，未返回部分结果。'})
+    return run
+
+
+def _one(query, key, limit=200):
+    value = (query.get(key) or [''])[0]
+    if not value or len(value) > limit:
+        raise ValueError(f'缺少或过长的参数 {key}。')
+    return value
+
+
+@_guard
+def get_studies(handler, query):
+    ledger = _ledger()
+    rows = [studies.summary(ledger, s) for s in studies.load_all(_studies_folder(handler))]
+    pending = sum(1 for c in ledger.compounds if c.review.record_status == 'proposed')
+    return handler.reply(200, {'studies': rows, 'examples': studies.examples(ledger), 'review_pending': pending,
+                               'ledger_writable': handler.ledger_store() is not None,
+                               'documents': [d.id for d in ledger.documents]})
+
+
+@_guard
+def get_study(handler, query):
+    study = studies.get(_studies_folder(handler), _one(query, 'id', 60))
+    view = (query.get('view') or ['overview'])[0]
+    views = {'overview': studies.overview, 'evidence': studies.evidence, 'timeline': studies.timeline,
+             'report': studies.report}
+    if view not in views:
+        raise ValueError('view 必须是 overview、evidence、timeline 或 report。')
+    out = views[view](_ledger(), study)
+    out['ledger_writable'] = handler.ledger_store() is not None
+    return handler.reply(200, out)
+
+
+@_guard
+def get_documents(handler, query):
+    return handler.reply(200, {'documents': studies.documents(_ledger(), studies.load_all(_studies_folder(handler)))})
+
+
+@_guard
+def get_depict(handler, query):
+    smiles = _one(query, 'smiles', 2000)
+    size = (query.get('size') or ['m'])[0]
+    w, h = {'s': (160, 110), 'm': (240, 160), 'l': (360, 240)}.get(size, (240, 160))
+    svg = studies.depict(smiles, w, h)
+    if svg is None:
+        raise ValueError('SMILES 无法解析。')
+    raw = svg.encode('utf-8')
+    handler.send_response(200)
+    handler.send_header('Content-Type', 'image/svg+xml')
+    handler.send_header('Content-Length', str(len(raw)))
+    handler.send_header('Cache-Control', 'private, max-age=86400')
+    handler.send_header('X-Content-Type-Options', 'nosniff')
+    handler.send_header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'")
+    handler.end_headers()
+    handler.wfile.write(raw)
+
+
+@_guard
+def get_smiles_info(handler, query):
+    return handler.reply(200, studies.smiles_info(_one(query, 'smiles', 2000)))
+
+
+@_guard
+def get_review_queue(handler, query):
+    store = handler.ledger_store()
+    ledger = store.load() if store is not None else _ledger()
+    out = studies.review_queue(ledger, store)
+    out['writable'] = store is not None
+    if store is None:
+        out['notice'] = '未启用台账数据库：可以查看待确认记录，但不能保存复核结论。请用 --ledger-db 启动服务。'
+    return handler.reply(200, out)
+
+
+@_guard
+def post_studies(handler):
+    return handler.reply(200, studies.create(_studies_folder(handler), _body(handler, 1024).get('name')))
+
+
+@_guard
+def post_study_documents(handler):
+    req = _body(handler, 4096)
+    known = {d.id for d in _ledger().documents}
+    return handler.reply(200, studies.add_documents(_studies_folder(handler), req.get('id'), req.get('documents'), known))
+
+
+@_guard
+def post_study_note(handler):
+    req = _body(handler, 4096)
+    return handler.reply(200, studies.add_note(_studies_folder(handler), req.get('id'), req))
+
+
+@_guard
+def post_study_compare(handler):
+    req = _body(handler, 1024)
+    if not all(isinstance(req.get(k), str) for k in ('a', 'b')):
+        raise ValueError('请选择 A、B 两个分子。')
+    return handler.reply(200, studies.compare(_ledger(), req['a'], req['b']))
+
+
+@_guard
+def post_study_report(handler):
+    req = _body(handler, 32000)
+    study = studies.get(_studies_folder(handler), req.get('id'))
+    ledger = _ledger()
+    rep = studies.report(ledger, study)
+    analysis = None
+    if isinstance(req.get('analysis'), dict):
+        from .project_sar import handle
+        analysis = handle({**req['analysis'], 'mode': 'report'})['markdown']
+    options = req.get('options') if isinstance(req.get('options'), dict) else {}
+    options = {k: options.get(k) is True for k in ('include_l1', 'include_hashes')}
+    return handler.reply(200, {'report': rep, 'markdown': studies.report_markdown(rep, analysis, options)})
+
+
+@_guard
+def post_study_analysis(handler):
+    req = _body(handler, 32000)
+    folder = _studies_folder(handler)
+    study = studies.get(folder, req.get('id'))
+    setup = req.get('analysis')
+    if not isinstance(setup, dict):
+        raise ValueError('缺少分析设置。')
+    from .project_sar import handle
+    if setup.get('documents') and any(d not in study['documents'] for d in setup['documents']):
+        raise ValueError('分析范围超出了本调研的文档。')
+    handle({**setup, 'mode': 'analyse'})  # only a set-up that runs is kept
+    return handler.reply(200, studies.save_analysis(folder, study['id'], setup))
+
+
+@_guard
+def post_molfile(handler):
+    return handler.reply(200, studies.molfile_smiles(_body(handler, 210000).get('text')))
+
+
+@_guard
+def post_review(handler):
+    req = _body(handler, 4096)
+    store = handler.ledger_store()
+    if store is None:
+        return handler.reply(409, {'error': '未启用台账数据库，复核结论未保存。请用 --ledger-db 启动服务。'})
+    if not handler.server.work_lock.acquire(blocking=False):
+        return handler.reply(429, {'error': '正在处理另一请求，请稍后重试。'})
+    try:
+        return handler.reply(200, studies.review_compound(store, req.get('id'), req.get('status'),
+                                                         req.get('reviewer'), req.get('note')))
+    finally:
+        handler.server.work_lock.release()
+
+
+STUDY_GET = {'/api/studies': get_studies, '/api/study': get_study, '/api/depict': get_depict,
+             '/api/smiles-info': get_smiles_info, '/api/documents': get_documents, '/api/review/queue': get_review_queue}
+STUDY_POST = {'/api/studies': post_studies, '/api/study/documents': post_study_documents,
+              '/api/study/note': post_study_note, '/api/study/compare': post_study_compare,
+              '/api/study/report': post_study_report, '/api/study/analysis': post_study_analysis,
+              '/api/molfile': post_molfile, '/api/review': post_review}
 
 
 PUBLIC_HOST = re.compile(r'(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+')
