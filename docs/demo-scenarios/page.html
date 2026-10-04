@@ -323,6 +323,7 @@ python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite</pre>
       <ol class="steps">
         <li>终端运行 <code>python -m phase0.tools.demo</code>。</li>
         <li>这是一段脚本化的助手会话，调用的是 Claude Code 等客户端通过 MCP 使用的同一套工具（共 17 个）。</li>
+        <li>可选：运行 <code>python -c "from phase0.tools import mcp_server; from phase0.tools.core import REGISTRY; print(REGISTRY['chembl_activities'].description)"</code>，看模型拿到的工具描述原文（换成其他工具名即可）。</li>
       </ol></div>
     <div class="stack"><h3>看什么</h3>
       <ul class="points">
@@ -331,13 +332,14 @@ python -m phase0.sar.serve --port 8766 --ledger-db artifacts/ledger.sqlite</pre>
         <li>第 6 步：助手试图直接提交“已确认”记录，被拒绝。第 7 步：参数名拼错，直接报错，不会变成不带筛选的查询。</li>
         <li>多了一条 WT Ki 之后，比值不再计算：存在重复观测，不自动取平均。</li>
         <li>最后在断网状态下重放整个会话，8/8 次调用结果一致。</li>
+        <li>工具描述就是模型读到的提示词。以 <code>chembl_activities</code> 为例：写明“每页 20 条，按 activity_id 排序，不是效力排名”“数据库关联不证明结构来自哪个实施例”，并指明下一步用 <code>ledger_propose_chembl_activities</code> 提交——提交时只传 activity_id，数值由服务端重读。</li>
       </ul></div>
   </div>
   <figure>
     <img src="shots/s7-agent-tools.png" width="1180" height="440" alt="终端输出：七步工具调用，其中两次被拒绝，最后重放 8/8 一致">
     <figcaption><b>工具层演示的真实输出。</b>红色是被拒绝的两次调用，黄色是比值与重复测量阻断，蓝色是重放结果。</figcaption>
   </figure>
-  <div class="say"><h3>讲解要点</h3><p>工具里没有“确认”“拒绝”“导入”，约束写在工具边界上，而不是写在提示词里；确认只能由具名的人在复核队列里完成（场景 6）。这段会话是脚本化的，还没有接入真实大模型跑过。</p></div>
+  <div class="say"><h3>讲解要点</h3><p>工具里没有“确认”“拒绝”“导入”，约束首先写在工具边界上，由代码校验，不依赖模型听话；确认只能由具名的人在复核队列里完成（场景 6）。工具描述是第二层：17 段描述按同一套写法——何时调用、在哪个工具之后调用；结果不能说明什么（相似度不等于活性相近，SureChEMBL / PubChem 关联不等于实施例）；写入只能提交待确认；数值交给代码（“不要自行估算”）。描述管住模型的理解，代码兜底，两层都要有。这段会话是脚本化的，还没有接入真实大模型跑过。</p></div>
 </section>
 
 <!-- 8 -->

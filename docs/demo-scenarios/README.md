@@ -13,7 +13,7 @@
 | 4 从一个结构找回同一条研发线 | 只有洛拉替尼结构，能否找回前一代化合物和专利 | [检索条件](shots/s4-search.png) · [相似性 ≥ 50%](shots/s4-similarity.png) · [共有片段子结构](shots/s4-substructure.png) |
 | 5 两代专利之间改了哪里 | 无环系列到大环系列在哪些位置做了改动 | [时间线与 R 基团对齐](shots/s5-timeline.png) |
 | 6 组会前：具名复核，再导出报告 | 哪些证据能放心引用，报告里怎么区分 | [复核队列](shots/s6-review.png) · [报告预览](shots/s6-report.png) |
-| 7 AI 助手只能提交“待确认” | 助手会不会自己确认数据或自己算倍数 | [工具层演示输出](shots/s7-agent-tools.png) |
+| 7 AI 助手只能提交“待确认” | 助手会不会自己确认数据或自己算倍数；工具描述（模型读到的提示词）怎么写 | [工具层演示输出](shots/s7-agent-tools.png) |
 | 8 从 PDF 开始：抽取出错时会被标出来 | 直接丢 PDF 进来、大量自动抽取时，抽错了怎么知道 | [从 PDF 开始](shots/s8-upload.png) · [分级抽取演示输出](shots/s8-extraction.png) |
 
 ## 数据来源与边界
